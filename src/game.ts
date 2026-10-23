@@ -4,17 +4,21 @@ export type Creature =
 export type Owner = 0 | 1;
 export type Edges = [number, number, number, number]; // North, east, south, west.
 export type Side = 0 | 1 | 2 | 3;
-export type KeywordType = "head-start" | "comeback";
-export interface StoneKeyword {
-  type: KeywordType;
-  side: Side;
-}
+export type KeywordType = "head-start" | "comeback" | "resonance";
+export type StoneKeyword =
+  | { type: "head-start" | "comeback"; side: Side }
+  | { type: "resonance"; side: Side; element: Element };
+export type ActiveKeyword =
+  | { type: "head-start" | "comeback"; side: Side }
+  | { type: "resonance"; side: Side; element: Element; bonus: number };
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
   "head-start": { name: "Head Start", condition: "winning" },
   comeback: { name: "Comeback", condition: "losing" },
+  resonance: { name: "Resonance", condition: "element count" },
 } as const;
+export const MAX_KEYWORDS = Object.keys(KEYWORD_RULES).length * 4;
 export interface Stone {
   id: string;
   name: string;
@@ -31,7 +35,7 @@ export interface PlacedStone {
   owner: Owner;
   playedBy?: Owner;
   edges?: Edges;
-  activeKeywords?: StoneKeyword[];
+  activeKeywords?: ActiveKeyword[];
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -77,6 +81,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "whale",
     edges: [2, 1, 2, 3],
     description: "Carries a little ocean wherever it goes.",
+    keywords: [{ type: "resonance", side: 3, element: "water" }],
   },
   {
     id: "nocturne",
@@ -120,6 +125,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "mushroom",
     edges: [1, 2, 2, 3],
     description: "A tiny light for the paths less traveled.",
+    keywords: [{ type: "resonance", side: 0, element: "life" }],
   },
   {
     id: "cinder",
@@ -177,17 +183,30 @@ export function evaluateKeywords(
   player: Owner,
 ): {
   edges: Edges;
-  activeKeywords: StoneKeyword[];
+  activeKeywords: ActiveKeyword[];
 } {
   const scores = score(board);
   const rival = player === 0 ? 1 : 0;
-  const activeKeywords = (stone.keywords || []).filter((keyword) =>
-    keyword.type === "head-start"
-      ? scores[player] > scores[rival]
-      : scores[player] < scores[rival],
-  );
+  const activeKeywords: ActiveKeyword[] = [];
   const edges = [...stone.edges] as Edges;
-  for (const keyword of activeKeywords) edges[keyword.side] += 1;
+  for (const keyword of stone.keywords || []) {
+    if (keyword.type === "resonance") {
+      const bonus = board.filter(
+        (cell) => cell?.stone.element === keyword.element,
+      ).length;
+      if (bonus > 0) {
+        activeKeywords.push({ ...keyword, bonus });
+        edges[keyword.side] += bonus;
+      }
+    } else if (
+      keyword.type === "head-start"
+        ? scores[player] > scores[rival]
+        : scores[player] < scores[rival]
+    ) {
+      activeKeywords.push(keyword);
+      edges[keyword.side] += 1;
+    }
+  }
   return { edges, activeKeywords };
 }
 
@@ -330,7 +349,7 @@ export function validateStone(value: unknown): value is Stone {
 }
 
 export function validateKeywords(value: unknown): value is StoneKeyword[] {
-  if (!Array.isArray(value) || value.length > 8) return false;
+  if (!Array.isArray(value) || value.length > MAX_KEYWORDS) return false;
   const seen = new Set<string>();
   return value.every((keyword) => {
     if (
@@ -341,6 +360,12 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
       !Number.isInteger(keyword.side) ||
       keyword.side < 0 ||
       keyword.side > 3
+    )
+      return false;
+    if (
+      keyword.type === "resonance" &&
+      (typeof keyword.element !== "string" ||
+        !Object.hasOwn(ELEMENTS, keyword.element))
     )
       return false;
     const key = `${keyword.type}:${keyword.side}`;

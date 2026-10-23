@@ -425,6 +425,19 @@ export function StoneCard({
             return matches.length ? (
               <span key={type} className={`stone-keyword keyword-${type}`}>
                 {KEYWORD_RULES[type].name}
+                {type === "resonance" &&
+                  (() => {
+                    const elements = [
+                      ...new Set(
+                        matches.flatMap((keyword) =>
+                          keyword.type === "resonance"
+                            ? [ELEMENTS[keyword.element].name]
+                            : [],
+                        ),
+                      ),
+                    ];
+                    return ` ${elements.length === 1 ? elements[0] : `×${elements.length}`}`;
+                  })()}
                 <b>
                   {matches
                     .map((keyword) => SIDE_LETTERS[keyword.side])

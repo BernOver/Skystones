@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Flag, Plus, Trash2 } from "lucide-react";
-import { KEYWORD_RULES, SIDE_NAMES } from "./game";
-import type { KeywordType, Side, StoneKeyword } from "./game";
+import { ELEMENTS, KEYWORD_RULES, MAX_KEYWORDS, SIDE_NAMES } from "./game";
+import type { Element, KeywordType, Side, StoneKeyword } from "./game";
 import { KeywordDetails } from "./CardInspection";
 import type { Stone } from "./game";
 
@@ -39,7 +39,12 @@ export function KeywordEditor({
             (keyword) => keyword.type === type && keyword.side === side,
           )
         ) {
-          onChange([...keywords, { type, side: side as Side }]);
+          onChange([
+            ...keywords,
+            type === "resonance"
+              ? { type, side: side as Side, element: stone.element }
+              : { type, side: side as Side },
+          ]);
           setError("");
           return;
         }
@@ -52,13 +57,16 @@ export function KeywordEditor({
         <span className="step-number">04</span>
         <div>
           <h2>A few clever words</h2>
-          <p>Give a chosen edge a conditional +1 pip.</p>
+          <p>Boost an edge with a condition or an element count.</p>
         </div>
         <Flag size={19} />
       </div>
       <div className="keyword-editor-list">
         {keywords.map((keyword, index) => (
-          <div className="keyword-editor-row" key={index}>
+          <div
+            className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""}`}
+            key={index}
+          >
             <div>
               <label htmlFor={`keyword-type-${index}`}>
                 Keyword {index + 1}
@@ -67,15 +75,29 @@ export function KeywordEditor({
                 id={`keyword-type-${index}`}
                 value={keyword.type}
                 onChange={(e) =>
-                  update(index, {
-                    ...keyword,
-                    type: e.target.value as KeywordType,
-                  })
+                  update(
+                    index,
+                    e.target.value === "resonance"
+                      ? {
+                          type: "resonance",
+                          side: keyword.side,
+                          element:
+                            keyword.type === "resonance"
+                              ? keyword.element
+                              : stone.element,
+                        }
+                      : {
+                          type: e.target.value as "head-start" | "comeback",
+                          side: keyword.side,
+                        },
+                  )
                 }
               >
                 {Object.entries(KEYWORD_RULES).map(([type, rule]) => (
                   <option key={type} value={type}>
-                    {rule.name} · while {rule.condition}
+                    {type === "resonance"
+                      ? "Resonance · count an element"
+                      : `${rule.name} · while ${rule.condition}`}
                   </option>
                 ))}
               </select>
@@ -96,11 +118,35 @@ export function KeywordEditor({
               >
                 {SIDE_NAMES.map((side, i) => (
                   <option key={side} value={i}>
-                    {side} +1
+                    {side}
+                    {keyword.type === "resonance" ? "" : " +1"}
                   </option>
                 ))}
               </select>
             </div>
+            {keyword.type === "resonance" && (
+              <div className="resonance-element-field">
+                <label htmlFor={`keyword-element-${index}`}>
+                  Counted element {index + 1}
+                </label>
+                <select
+                  id={`keyword-element-${index}`}
+                  value={keyword.element}
+                  onChange={(event) =>
+                    update(index, {
+                      ...keyword,
+                      element: event.target.value as Element,
+                    })
+                  }
+                >
+                  {Object.entries(ELEMENTS).map(([element, details]) => (
+                    <option value={element} key={element}>
+                      {details.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button
               type="button"
               className="icon-button"
@@ -123,11 +169,14 @@ export function KeywordEditor({
       <button
         type="button"
         className="button button-outline add-keyword"
-        disabled={keywords.length === 8}
+        disabled={keywords.length >= MAX_KEYWORDS}
         onClick={add}
       >
         <Plus size={15} />
-        Add keyword<span>{keywords.length} / 8</span>
+        Add keyword
+        <span>
+          {keywords.length} / {MAX_KEYWORDS}
+        </span>
       </button>
       {!!keywords.length ? (
         <KeywordDetails stone={stone} />
@@ -141,16 +190,21 @@ export function KeywordEditor({
             <strong>Comeback</strong> activates if you’re losing before
             placement.
           </p>
+          <p>
+            <strong>Resonance</strong> adds one pip per card of your chosen
+            element already on the board, from either player.
+          </p>
           <small>
-            Neither activates on a tie. The +1 stays after score changes and
+            Head Start and Comeback do not activate on a tie. All bonuses are
+            locked in before placement and stay after score changes and
             captures. Bonuses can raise an edge above 5; your printed stats
             still use the 12-point budget.
           </small>
         </div>
       )}
       <p className="field-note">
-        Keyword bonuses do not spend printed-stat points. A boosted edge can
-        reach 6.
+        Keyword bonuses do not spend printed-stat points and can raise edges
+        above 5. Different keywords on the same edge add together.
       </p>
     </section>
   );

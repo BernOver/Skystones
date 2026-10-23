@@ -1,9 +1,16 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUpRight, Check, Flag, Info, RotateCcw } from "lucide-react";
-import { StoneCard } from "./Artwork";
-import { KEYWORD_RULES, SIDE_NAMES } from "./game";
-import type { Edges, KeywordType, Stone, StoneKeyword } from "./game";
+import {
+  ArrowUpRight,
+  Check,
+  Flag,
+  Info,
+  RotateCcw,
+  Waves,
+} from "lucide-react";
+import { ELEMENT_ICONS, StoneCard } from "./Artwork";
+import { ELEMENTS, KEYWORD_RULES, SIDE_NAMES } from "./game";
+import type { ActiveKeyword, Edges, KeywordType, Stone } from "./game";
 
 export interface Inspection {
   stone: Stone;
@@ -11,7 +18,7 @@ export interface Inspection {
   anchor: { left: number; right: number; top: number };
   anchorElement: HTMLElement;
   edges: Edges;
-  activeKeywords: StoneKeyword[];
+  activeKeywords: ActiveKeyword[];
   played: boolean;
   playerName: string;
   controllerName?: string;
@@ -23,7 +30,7 @@ export function KeywordDetails({
   played = false,
 }: {
   stone: Stone;
-  activeKeywords?: StoneKeyword[];
+  activeKeywords?: ActiveKeyword[];
   played?: boolean;
 }) {
   return (
@@ -33,6 +40,15 @@ export function KeywordDetails({
           (keyword) => keyword.type === type,
         );
         if (!keywords.length) return null;
+        if (type === "resonance")
+          return (
+            <ResonanceDetails
+              key={type}
+              stone={stone}
+              activeKeywords={activeKeywords}
+              played={played}
+            />
+          );
         const rule = KEYWORD_RULES[type];
         const active = activeKeywords?.some((keyword) => keyword.type === type);
         const Icon = type === "head-start" ? Flag : RotateCcw;
@@ -78,12 +94,91 @@ export function KeywordDetails({
       {!!stone.keywords?.length && (
         <p className="keyword-timing">
           <Info size={12} />
-          Check once, before placing the stone. Tied scores activate neither
-          keyword. Captures and later score changes never remove an activated
-          bonus.
+          Check once, before placement. Ties block Head Start and Comeback only.
+          Bonuses remain through captures and score changes.
         </p>
       )}
     </div>
+  );
+}
+
+function ResonanceDetails({
+  stone,
+  activeKeywords,
+  played,
+}: {
+  stone: Stone;
+  activeKeywords?: ActiveKeyword[];
+  played: boolean;
+}) {
+  const keywords = (stone.keywords || []).filter(
+    (keyword) => keyword.type === "resonance",
+  );
+  const anyActive = activeKeywords?.some(
+    (keyword) => keyword.type === "resonance" && keyword.bonus > 0,
+  );
+  return (
+    <section
+      className={`keyword-rule resonance-rule ${anyActive ? "keyword-active" : ""}`}
+    >
+      <div className="keyword-rule-heading">
+        <Waves size={15} />
+        <strong>Resonance</strong>
+        <span>Element count</span>
+      </div>
+      <p>
+        Each listed edge gains{" "}
+        <strong>+1 pip per card of its chosen element</strong> already on the
+        board. Count both players’ cards <strong>before placement</strong>; this
+        card does not count.
+      </p>
+      <div className="resonance-rule-list">
+        {keywords.map((keyword) => {
+          const active = activeKeywords?.find(
+            (candidate) =>
+              candidate.type === "resonance" &&
+              candidate.side === keyword.side &&
+              candidate.element === keyword.element,
+          );
+          const bonus = active?.type === "resonance" ? active.bonus : 0;
+          const Icon = ELEMENT_ICONS[keyword.element];
+          return (
+            <div className="resonance-rule-row" key={keyword.side}>
+              <Icon
+                size={14}
+                style={{ color: ELEMENTS[keyword.element].color }}
+              />
+              <div>
+                <strong>{ELEMENTS[keyword.element].name}</strong>
+                <span>{SIDE_NAMES[keyword.side]} edge</span>
+              </div>
+              <div
+                className={`resonance-amount ${bonus > 0 ? "is-active" : ""}`}
+              >
+                {activeKeywords === undefined ? (
+                  <b>+1 per card</b>
+                ) : (
+                  <>
+                    <b>+{bonus}</b>
+                    <small>
+                      {played
+                        ? `${bonus} matching · locked in`
+                        : `${bonus} matching · if played now`}
+                    </small>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <span className="keyword-status">
+        <Info size={12} />
+        {played
+          ? "The count is locked. Later cards and captures do not change it."
+          : "No matching cards means +0. The count is locked when played."}
+      </span>
+    </section>
   );
 }
 
@@ -111,7 +206,9 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
             <small>{side}</small>
             <strong>{edges[index]}</strong>
             {edges[index] > stone.edges[index] && (
-              <span>{stone.edges[index]} + 1</span>
+              <span>
+                {stone.edges[index]} + {edges[index] - stone.edges[index]}
+              </span>
             )}
           </div>
         ))}

@@ -1530,8 +1530,8 @@ export default function App() {
                       })}
                     </div>
                     <span className="field-note">
-                      A little personality. Elements don’t change the capture
-                      rules.
+                      Elements power Resonance. Captures still compare facing
+                      pips.
                     </span>
                   </div>
                 </section>
@@ -1894,8 +1894,9 @@ export default function App() {
           <div className="rules-note">
             <WandSparkles size={19} />
             <p>
-              Make your own stones in the Card studio. Elements and
-              illustrations are for personality; edge numbers do the capturing.
+              Make your own stones in the Card studio. Resonance counts card
+              elements; illustrations and backstories add personality. Edge
+              numbers do the capturing.
             </p>
           </div>
           <div className="rules-note keyword-rules-note">
@@ -1903,9 +1904,12 @@ export default function App() {
             <p>
               <strong>Head Start</strong> adds +1 to its specified edge if its
               player is winning before placement. <strong>Comeback</strong> does
-              the same while losing. Neither activates on a tie. Check once:
-              activated pips stay even if the score changes or the stone is
-              captured.
+              the same while losing. Neither of those activates on a tie.{" "}
+              <strong>Resonance</strong> adds one pip per card of a chosen
+              element already on the board, from either player, regardless of
+              score. Check once before placement, excluding the card being
+              played: activated pips stay even if the score changes or the stone
+              is captured.
             </p>
           </div>
           <button
