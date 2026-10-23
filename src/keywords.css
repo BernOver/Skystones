@@ -1,0 +1,459 @@
+.stone-keywords {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 4px;
+  background: #fcf6e6;
+  border-top: 1px solid #d9cfb64d;
+}
+.stone-keyword {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  font-size: 6px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #7b775b;
+}
+.stone-keyword b {
+  color: #9d8c67;
+  font-size: 0.9em;
+}
+.keyword-comeback {
+  color: #6b8466;
+}
+.stone-card .edge-buffed {
+  background: #e4efbb;
+  color: #507237;
+  box-shadow:
+    0 0 0 1px #afc685,
+    0 0 6px #e5efbf;
+}
+.stone-card .edge-buffed .edge-spikes > i {
+  background: #6f9650;
+}
+.collection-card-button .stone-keyword {
+  font-size: 8px;
+}
+.preview-card .stone-keywords,
+.detail-card .stone-keywords {
+  padding: 7px 9px;
+  gap: 5px;
+}
+.preview-card .stone-keyword {
+  font-size: 12px;
+}
+.detail-card .stone-keyword {
+  font-size: 10px;
+}
+.deck-slot .stone-keywords {
+  padding: 2px 3px;
+}
+.deck-slot .stone-keyword {
+  font-size: 5px;
+}
+.hand-card-button[aria-disabled="true"] {
+  opacity: 0.65;
+  cursor: default;
+}
+.hand-card-button[aria-disabled="true"]:hover {
+  transform: none;
+}
+.board-cell.filled {
+  cursor: zoom-in;
+}
+.board-cell.filled:hover {
+  box-shadow:
+    0 0 0 2px #a4bba766,
+    0 3px 8px #7b735a30;
+}
+.hand-heading .inspect-selected {
+  margin-left: auto;
+  margin-right: 16px;
+  color: #6c8761;
+}
+.card-inspector {
+  position: fixed;
+  z-index: 35;
+  width: min(306px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 17px;
+  border: 1px solid #d4d8c2;
+  border-radius: 14px;
+  background: #fffdf5;
+  box-shadow:
+    0 15px 60px #253a3545,
+    0 3px 12px #6a725725;
+  pointer-events: none;
+}
+.inspector-card {
+  width: 153px;
+  height: 191px;
+  margin: 0 auto 12px;
+}
+.inspector-card .stone-card {
+  border-width: 4px;
+  border-radius: 8px;
+}
+.inspector-card .stone-caption {
+  font-size: 11px;
+  min-height: 28px;
+  padding: 6px;
+}
+.inspector-card .stone-keyword {
+  font-size: 8px;
+}
+.inspector-card .edge {
+  width: 20px;
+  height: 20px;
+}
+.inspector-card .edge b {
+  font-size: 15px;
+}
+.card-inspector h2 {
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: -0.7px;
+}
+.inspection-context {
+  font-size: 10px;
+  line-height: 1.6;
+  text-align: center;
+  color: #899477;
+  margin: 4px 0 11px;
+}
+.inspection-context > span {
+  color: #ab8c67;
+}
+.inspection-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin: 11px 0 13px;
+}
+.inspection-stats > div {
+  min-height: 55px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 3px;
+  background: #f1f1e5;
+  border: 1px solid #e7e8da;
+  border-radius: 5px;
+}
+.inspection-stats small {
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #939b81;
+}
+.inspection-stats strong {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  color: #748767;
+  line-height: 1;
+}
+.inspection-stats .stat-boosted {
+  background: #ebf2d6;
+  border-color: #ccdcac;
+}
+.inspection-stats .stat-boosted strong {
+  color: #6e8e47;
+}
+.inspection-stats .stat-boosted > span {
+  font-size: 8px;
+  color: #8a9e6b;
+}
+.keyword-details {
+  margin: 12px 0;
+  text-align: left;
+}
+.keyword-rule {
+  padding: 10px;
+  margin-bottom: 8px;
+  border: 1px solid #e3e6d5;
+  border-radius: 7px;
+  background: #f5f5ea;
+}
+.keyword-rule.keyword-active {
+  background: #edf3df;
+  border-color: #d2deb8;
+}
+.keyword-rule-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: #7d9263;
+}
+.keyword-rule-heading strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #59734b;
+}
+.keyword-rule-heading > span {
+  font-size: 9px;
+  margin-left: auto;
+  color: #8b9877;
+}
+.keyword-rule > p {
+  font-size: 11px;
+  line-height: 1.65;
+  color: #7b876d;
+  margin-top: 6px;
+}
+.keyword-rule > p strong {
+  font-weight: 600;
+  color: #6d7e5a;
+}
+.keyword-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #9ba18c;
+}
+.keyword-status > svg {
+  flex-shrink: 0;
+}
+.keyword-status.is-active {
+  color: #6b8b49;
+}
+.keyword-timing {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 9px;
+  color: #929b81;
+  line-height: 1.75;
+}
+.keyword-timing > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.no-keywords {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #879379;
+}
+.inspection-story {
+  border-top: 1px solid #e7e8da;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.inspection-story > span {
+  font-size: 7px;
+  letter-spacing: 1.4px;
+  color: #a0a48b;
+}
+.inspection-story p {
+  font-size: 11px;
+  color: #7b856e;
+  line-height: 1.7;
+  font-style: italic;
+  margin: 5px 0;
+}
+.inspection-story small {
+  font-size: 8px;
+  color: #a3a58e;
+}
+.inspection-capture-note {
+  display: flex;
+  gap: 6px;
+  font-size: 9px;
+  color: #9a9f88;
+  line-height: 1.7;
+  margin-top: 12px;
+}
+.inspection-capture-note > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.inspection-dialog .detail-card-stage {
+  padding-bottom: 21px;
+}
+.inspection-dialog .full-width {
+  margin-top: 18px;
+}
+.card-dialog > .keyword-details {
+  margin: 18px 0 24px;
+}
+.keyword-editor .studio-section-heading > svg {
+  margin-left: auto;
+  color: #a2af8b;
+}
+.keyword-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.keyword-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 32px;
+  gap: 10px;
+  align-items: end;
+}
+.keyword-editor-row > div {
+  min-width: 0;
+}
+.keyword-editor-row label {
+  display: block;
+  font-size: 10px;
+  color: #7d8f6e;
+  margin-bottom: 8px;
+}
+.keyword-editor-row select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dce3cb;
+  border-radius: 6px;
+  background: #f6f8ec;
+  color: #70845d;
+  font-size: 11px;
+  padding: 11px 9px;
+}
+.keyword-editor-row > button {
+  height: 37px;
+  width: 32px;
+  border-radius: 5px;
+  color: #b0a189;
+}
+.keyword-editor-row > button:hover {
+  background: #f2e7d5;
+  color: #a37957;
+}
+.add-keyword {
+  font-size: 11px;
+  min-height: 37px;
+  padding: 9px 13px;
+}
+.add-keyword > span {
+  font-size: 9px;
+  color: #a6af94;
+  margin-left: 7px;
+}
+.keyword-editor-error {
+  font-size: 10px;
+  color: #b06b4c;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.keyword-editor-intro {
+  background: #f2f4e7;
+  border: 1px solid #e5ead7;
+  border-radius: 7px;
+  padding: 14px;
+  margin-top: 17px;
+}
+.keyword-editor-intro p {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #839170;
+}
+.keyword-editor-intro strong {
+  font-weight: 600;
+  color: #697f54;
+}
+.keyword-editor-intro small {
+  display: block;
+  margin-top: 9px;
+  font-size: 9px;
+  line-height: 1.8;
+  color: #99a488;
+}
+@media (max-height: 760px) {
+  .inspector-card {
+    width: 120px;
+    height: 147px;
+    margin-bottom: 9px;
+  }
+  .inspector-card .stone-caption {
+    font-size: 9px;
+    min-height: 23px;
+  }
+  .inspector-card .stone-keyword {
+    font-size: 6px;
+  }
+  .card-inspector {
+    padding: 13px;
+  }
+  .card-inspector h2 {
+    font-size: 21px;
+  }
+}
+@media (max-width: 760px) {
+  .preview-card .stone-keywords {
+    padding: 4px 5px;
+    gap: 3px;
+  }
+  .preview-card .stone-keyword {
+    font-size: 7px;
+  }
+  .collection-card-button .stone-keyword {
+    font-size: 6px;
+  }
+}
+@media (max-width: 480px) {
+  .stone-keywords {
+    padding: 2px 3px;
+    gap: 1px;
+  }
+  .stone-keyword {
+    font-size: 5px;
+  }
+  .stone-keyword b {
+    font-size: 5px;
+  }
+  .board-cell .stone-keyword {
+    font-size: 5.5px;
+  }
+  .deck-slot .stone-keyword {
+    font-size: 4px;
+  }
+  .deck-slot .stone-keyword b {
+    font-size: 4px;
+  }
+  .collection-card-button .stone-keyword {
+    font-size: 6px;
+  }
+  .preview-card .stone-keyword {
+    font-size: 6px;
+  }
+  .hand-heading .inspect-selected {
+    font-size: 7px;
+    gap: 3px;
+    margin-right: 10px;
+  }
+  .hand-heading .inspect-selected > svg {
+    width: 11px;
+  }
+  .keyword-editor-row {
+    grid-template-columns: minmax(0, 1fr) 88px 25px;
+    gap: 7px;
+  }
+  .keyword-editor-row label {
+    font-size: 9px;
+  }
+  .keyword-editor-row select {
+    font-size: 9px;
+    padding: 11px 6px;
+  }
+  .keyword-editor-row > button {
+    width: 25px;
+  }
+  .keyword-editor-intro p {
+    font-size: 10px;
+  }
+  .keyword-editor-intro small {
+    font-size: 8px;
+  }
+}

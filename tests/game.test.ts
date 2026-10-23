@@ -13,6 +13,7 @@ import type { Board, Stone } from "../src/game.ts";
 const stone = (edges: Stone["edges"]): Stone => ({
   ...STARTER_STONES[0],
   edges,
+  keywords: [],
 });
 
 test("a stronger facing edge captures, equal or weaker edges do not", () => {

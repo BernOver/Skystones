@@ -15,6 +15,7 @@ import {
   Grid2X2,
   HelpCircle,
   ImagePlus,
+  Info,
   Layers,
   Leaf,
   LoaderCircle,
@@ -44,15 +45,26 @@ import {
   chooseMove,
   placeStone,
   score,
+  evaluateKeywords,
   validateStone,
 } from "./game";
 import type { Board, Creature, Element, Owner, Stone } from "./game";
 import { createId } from "./id";
+import {
+  CardInspector,
+  InspectionDetails,
+  KeywordDetails,
+} from "./CardInspection";
+import type { Inspection } from "./CardInspection";
+import { KeywordEditor } from "./KeywordEditor";
 
 type Page = "table" | "collection" | "studio";
 type Mode = "computer" | "local";
 type DialogState =
-  { kind: "rules" | "new" } | { kind: "card" | "delete"; stone: Stone } | null;
+  | { kind: "rules" | "new" }
+  | { kind: "card" | "delete"; stone: Stone }
+  | { kind: "inspect"; inspection: Inspection }
+  | null;
 interface Library {
   custom: Stone[];
   deck: string[];
@@ -94,6 +106,7 @@ const freshDraft = (): Stone => ({
   creature: "dragon",
   edges: [2, 2, 2, 2],
   custom: true,
+  keywords: [],
 });
 
 function readLibrary(): Library {
@@ -279,6 +292,9 @@ export default function App() {
   const [draft, setDraft] = useState<Stone>(freshDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
+  const [inspection, setInspection] = useState<Inspection | null>(null);
+  const inspectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingInspection = useRef<Inspection | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -294,7 +310,8 @@ export default function App() {
       ? ["You", "Willow"]
       : ["Player one", "Player two"];
   const currentHand = match.hands[match.current];
-  const shownHand = aiTurn ? match.hands[0] : currentHand;
+  const handOwner: Owner = match.mode === "computer" ? 0 : match.current;
+  const shownHand = match.hands[handOwner];
   const visible = collection.filter(
     (s) =>
       (!onlyCustom || s.custom) &&
@@ -303,6 +320,27 @@ export default function App() {
   );
   const totalPoints = draft.edges.reduce((a, b) => a + b, 0);
   const winner = scores[0] > scores[1] ? 0 : 1;
+
+  useEffect(() => {
+    hideInspection();
+  }, [page, dialog, match.id]);
+  useEffect(() => {
+    if (pendingInspection.current)
+      pendingInspection.current = refreshInspection(pendingInspection.current);
+    setInspection((previous) =>
+      previous ? refreshInspection(previous) : null,
+    );
+  }, [match.moves]);
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") hideInspection();
+    };
+    window.addEventListener("keydown", escape);
+    return () => {
+      if (inspectionTimer.current) clearTimeout(inspectionTimer.current);
+      window.removeEventListener("keydown", escape);
+    };
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -368,6 +406,71 @@ export default function App() {
       );
       return false;
     }
+  }
+  function hideInspection() {
+    if (inspectionTimer.current) clearTimeout(inspectionTimer.current);
+    inspectionTimer.current = null;
+    pendingInspection.current = null;
+    setInspection(null);
+  }
+  function cardInspection(
+    stone: Stone,
+    anchor: HTMLElement,
+    sourceId: string,
+    boardIndex?: number,
+  ): Inspection {
+    const cell = boardIndex !== undefined ? match.board[boardIndex] : null;
+    const player = cell ? (cell.playedBy ?? cell.owner) : handOwner;
+    const resolved = cell
+      ? {
+          edges: cell.edges || stone.edges,
+          activeKeywords: cell.activeKeywords || [],
+        }
+      : evaluateKeywords(stone, match.board, player);
+    const rect = anchor.getBoundingClientRect();
+    return {
+      stone,
+      sourceId,
+      anchor: { left: rect.left, right: rect.right, top: rect.top },
+      anchorElement: anchor,
+      ...resolved,
+      played: !!cell,
+      playerName: names[player],
+      controllerName: cell ? names[cell.owner] : undefined,
+    };
+  }
+  function showInspection(
+    stone: Stone,
+    anchor: HTMLElement,
+    sourceId: string,
+    boardIndex?: number,
+    immediate = false,
+  ) {
+    if (inspectionTimer.current) clearTimeout(inspectionTimer.current);
+    const value = cardInspection(stone, anchor, sourceId, boardIndex);
+    pendingInspection.current = value;
+    if (immediate) setInspection(value);
+    else
+      inspectionTimer.current = setTimeout(() => {
+        const pending = pendingInspection.current;
+        if (pending?.anchorElement.isConnected) setInspection(pending);
+        inspectionTimer.current = null;
+      }, 180);
+  }
+  function refreshInspection(previous: Inspection): Inspection | null {
+    const anchor = document.getElementById(previous.sourceId);
+    if (!anchor) return null;
+    if (previous.sourceId.startsWith("board-")) {
+      const index = Number(previous.sourceId.slice(6));
+      const cell = match.board[index];
+      return cell
+        ? cardInspection(cell.stone, anchor, previous.sourceId, index)
+        : null;
+    }
+    const stone = shownHand.find(
+      (candidate) => candidate.id === previous.stone.id,
+    );
+    return stone ? cardInspection(stone, anchor, previous.sourceId) : null;
   }
   function navigate(next: Page) {
     setPage(next);
@@ -703,21 +806,64 @@ export default function App() {
                       {match.board.map((cell, index) => (
                         <button
                           key={`${index}-${cell?.owner ?? "empty"}`}
+                          id={`board-${index}`}
                           className={`board-cell ${cell ? "filled" : "empty"} ${match.lastCaptured.includes(index) ? "just-captured" : ""} ${match.lastPlaced === index ? "just-placed" : ""}`}
                           aria-label={
                             cell
-                              ? `${COORDINATES[index]}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${cell.stone.edges[0]}, east ${cell.stone.edges[1]}, south ${cell.stone.edges[2]}, west ${cell.stone.edges[3]}`
+                              ? `${COORDINATES[index]}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}. Inspect card.`
                               : `${COORDINATES[index]}, empty square`
                           }
                           disabled={
-                            !!cell || aiTurn || done || selected === null
+                            !cell && (aiTurn || done || selected === null)
                           }
-                          onClick={() => playAt(index)}
+                          aria-describedby={
+                            inspection?.sourceId === `board-${index}`
+                              ? "card-inspector"
+                              : undefined
+                          }
+                          onPointerEnter={(event) => {
+                            if (cell && event.pointerType !== "touch")
+                              showInspection(
+                                cell.stone,
+                                event.currentTarget,
+                                `board-${index}`,
+                                index,
+                              );
+                          }}
+                          onPointerLeave={hideInspection}
+                          onFocus={(event) => {
+                            if (
+                              cell &&
+                              event.currentTarget.matches(":focus-visible")
+                            )
+                              showInspection(
+                                cell.stone,
+                                event.currentTarget,
+                                `board-${index}`,
+                                index,
+                                true,
+                              );
+                          }}
+                          onBlur={hideInspection}
+                          onClick={(event) =>
+                            cell
+                              ? setDialog({
+                                  kind: "inspect",
+                                  inspection: cardInspection(
+                                    cell.stone,
+                                    event.currentTarget,
+                                    `board-${index}`,
+                                    index,
+                                  ),
+                                })
+                              : playAt(index)
+                          }
                         >
                           {cell ? (
                             <StoneCard
                               stone={cell.stone}
                               owner={cell.owner}
+                              edges={cell.edges || cell.stone.edges}
                               compact
                             />
                           ) : (
@@ -831,6 +977,24 @@ export default function App() {
                         : "YOUR HAND"}
                       <span className="subtle-count">{shownHand.length}</span>
                     </span>
+                    {selected !== null && !aiTurn && shownHand[selected] && (
+                      <button
+                        className="text-button inspect-selected"
+                        onClick={(event) =>
+                          setDialog({
+                            kind: "inspect",
+                            inspection: cardInspection(
+                              shownHand[selected],
+                              event.currentTarget,
+                              `hand-${shownHand[selected].id}`,
+                            ),
+                          })
+                        }
+                      >
+                        <Info size={13} />
+                        Inspect selected
+                      </button>
+                    )}
                     <button
                       className="text-button"
                       onClick={() => navigate("collection")}
@@ -842,18 +1006,50 @@ export default function App() {
                   <div className="hand-cards">
                     {shownHand.map((stone, index) => (
                       <button
+                        id={`hand-${stone.id}`}
                         className={`hand-card-button ${selected === index && !aiTurn ? "is-selected" : ""}`}
-                        aria-label={`Select ${stone.name}, north ${stone.edges[0]}, east ${stone.edges[1]}, south ${stone.edges[2]}, west ${stone.edges[3]}`}
+                        aria-label={`Select ${stone.name}, current strengths north, east, south, west: ${evaluateKeywords(stone, match.board, handOwner).edges.join(", ")}`}
                         aria-pressed={selected === index && !aiTurn}
-                        disabled={aiTurn || done}
+                        aria-disabled={aiTurn || done}
+                        aria-describedby={
+                          inspection?.sourceId === `hand-${stone.id}`
+                            ? "card-inspector"
+                            : undefined
+                        }
+                        onPointerEnter={(event) => {
+                          if (event.pointerType !== "touch")
+                            showInspection(
+                              stone,
+                              event.currentTarget,
+                              `hand-${stone.id}`,
+                            );
+                        }}
+                        onPointerLeave={hideInspection}
+                        onFocus={(event) => {
+                          if (event.currentTarget.matches(":focus-visible"))
+                            showInspection(
+                              stone,
+                              event.currentTarget,
+                              `hand-${stone.id}`,
+                              undefined,
+                              true,
+                            );
+                        }}
+                        onBlur={hideInspection}
                         key={stone.id}
                         onClick={() =>
+                          !aiTurn &&
+                          !done &&
                           setSelected(selected === index ? null : index)
                         }
                       >
                         <StoneCard
                           stone={stone}
                           selected={selected === index && !aiTurn}
+                          edges={
+                            evaluateKeywords(stone, match.board, handOwner)
+                              .edges
+                          }
                         />
                         {selected === index && !aiTurn && (
                           <span className="selection-check">
@@ -872,7 +1068,7 @@ export default function App() {
                   <p className="hand-hint">
                     {selected !== null && !aiTurn
                       ? "A little courage. Choose your square."
-                      : "The numbers on each edge are your stone’s strength."}
+                      : "Hover or focus a stone for a closer look. Tap a board stone to inspect."}
                   </p>
                 </div>
               </section>
@@ -1489,6 +1685,10 @@ export default function App() {
                     </p>
                   </div>
                 </section>
+                <KeywordEditor
+                  stone={draft}
+                  onChange={(keywords) => setDraft({ ...draft, keywords })}
+                />
                 <div className="studio-form-footer">
                   <span>
                     <Shield size={15} />
@@ -1599,6 +1799,37 @@ export default function App() {
         </div>
       )}
 
+      {inspection && !dialog && page === "table" && (
+        <CardInspector inspection={inspection} />
+      )}
+
+      {dialog?.kind === "inspect" && (
+        <Dialog
+          title={`Inspect ${dialog.inspection.stone.name}`}
+          onClose={() => setDialog(null)}
+          className="card-dialog inspection-dialog"
+        >
+          <div className="detail-card-stage">
+            <div className="detail-card">
+              <StoneCard
+                stone={dialog.inspection.stone}
+                edges={dialog.inspection.edges}
+              />
+            </div>
+          </div>
+          <div className="eyebrow">A CLOSER LOOK</div>
+          <h2>{dialog.inspection.stone.name}</h2>
+          <InspectionDetails inspection={dialog.inspection} />
+          <button
+            className="button button-dark full-width"
+            onClick={() => setDialog(null)}
+          >
+            Back to the table
+            <ArrowRight size={16} />
+          </button>
+        </Dialog>
+      )}
+
       {dialog?.kind === "rules" && (
         <Dialog
           title="How to play"
@@ -1665,6 +1896,16 @@ export default function App() {
             <p>
               Make your own stones in the Card studio. Elements and
               illustrations are for personality; edge numbers do the capturing.
+            </p>
+          </div>
+          <div className="rules-note keyword-rules-note">
+            <Info size={19} />
+            <p>
+              <strong>Head Start</strong> adds +1 to its specified edge if its
+              player is winning before placement. <strong>Comeback</strong> does
+              the same while losing. Neither activates on a tie. Check once:
+              activated pips stay even if the score changes or the stone is
+              captured.
             </p>
           </div>
           <button
@@ -1789,6 +2030,7 @@ export default function App() {
               </span>
             ))}
           </div>
+          <KeywordDetails stone={dialog.stone} />
           <div className="detail-actions">
             <button
               className={`button ${library.deck.includes(dialog.stone.id) ? "button-outline" : "button-dark"}`}

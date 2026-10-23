@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { Droplets, Flame, Leaf, Mountain, Sparkles, Wind } from "lucide-react";
-import { ELEMENTS } from "./game";
-import type { Creature, Element, Stone } from "./game";
+import { ELEMENTS, KEYWORD_RULES, SIDE_LETTERS } from "./game";
+import type { Creature, Edges, Element, KeywordType, Stone } from "./game";
 
 export const ELEMENT_ICONS = {
   fire: Flame,
@@ -374,12 +374,14 @@ export function StoneCard({
   selected = false,
   compact = false,
   faded = false,
+  edges = stone.edges,
 }: {
   stone: Stone;
   owner?: 0 | 1;
   selected?: boolean;
   compact?: boolean;
   faded?: boolean;
+  edges?: Edges;
 }) {
   const element = ELEMENTS[stone.element];
   const Icon = ELEMENT_ICONS[stone.element];
@@ -400,8 +402,11 @@ export function StoneCard({
         ) : (
           <CreatureArt creature={stone.creature} element={stone.element} />
         )}
-        {stone.edges.map((edge, i) => (
-          <span className={`edge edge-${i}`} key={i}>
+        {edges.map((edge, i) => (
+          <span
+            className={`edge edge-${i} ${edge > stone.edges[i] ? "edge-buffed" : ""}`}
+            key={i}
+          >
             <b>{edge}</b>
             <span className="edge-spikes">
               {Array.from({ length: edge }, (_, n) => (
@@ -411,6 +416,25 @@ export function StoneCard({
           </span>
         ))}
       </div>
+      {!!stone.keywords?.length && (
+        <div className="stone-keywords">
+          {(Object.keys(KEYWORD_RULES) as KeywordType[]).map((type) => {
+            const matches = stone.keywords!.filter(
+              (keyword) => keyword.type === type,
+            );
+            return matches.length ? (
+              <span key={type} className={`stone-keyword keyword-${type}`}>
+                {KEYWORD_RULES[type].name}
+                <b>
+                  {matches
+                    .map((keyword) => SIDE_LETTERS[keyword.side])
+                    .join("/")}
+                </b>
+              </span>
+            ) : null;
+          })}
+        </div>
+      )}
       <div className="stone-caption">
         <span>{stone.name}</span>
         <Icon size={13} strokeWidth={1.8} />

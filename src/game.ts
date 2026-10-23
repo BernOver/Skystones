@@ -3,6 +3,18 @@ export type Creature =
   "dragon" | "turtle" | "whale" | "owl" | "fox" | "golem" | "mushroom" | "cat";
 export type Owner = 0 | 1;
 export type Edges = [number, number, number, number]; // North, east, south, west.
+export type Side = 0 | 1 | 2 | 3;
+export type KeywordType = "head-start" | "comeback";
+export interface StoneKeyword {
+  type: KeywordType;
+  side: Side;
+}
+export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
+export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
+export const KEYWORD_RULES = {
+  "head-start": { name: "Head Start", condition: "winning" },
+  comeback: { name: "Comeback", condition: "losing" },
+} as const;
 export interface Stone {
   id: string;
   name: string;
@@ -12,10 +24,14 @@ export interface Stone {
   description: string;
   custom?: boolean;
   image?: string;
+  keywords?: StoneKeyword[];
 }
 export interface PlacedStone {
   stone: Stone;
   owner: Owner;
+  playedBy?: Owner;
+  edges?: Edges;
+  activeKeywords?: StoneKeyword[];
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -43,6 +59,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 2, 1, 2],
     description: "Small wings. Unreasonably big ambitions.",
+    keywords: [{ type: "head-start", side: 1 }],
   },
   {
     id: "mossback",
@@ -51,6 +68,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "turtle",
     edges: [1, 3, 3, 1],
     description: "A wandering garden with nowhere to be.",
+    keywords: [{ type: "comeback", side: 0 }],
   },
   {
     id: "tidecaller",
@@ -67,6 +85,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "owl",
     edges: [3, 1, 3, 1],
     description: "Knows your next move. Usually keeps it secret.",
+    keywords: [{ type: "comeback", side: 3 }],
   },
   {
     id: "sunfox",
@@ -75,6 +94,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 3, 1, 2],
     description: "Always finds the warmest corner of the board.",
+    keywords: [{ type: "head-start", side: 2 }],
   },
   {
     id: "pebble",
@@ -91,6 +111,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "cat",
     edges: [3, 2, 2, 1],
     description: "Made of clouds, curiosity, and a little trouble.",
+    keywords: [{ type: "comeback", side: 2 }],
   },
   {
     id: "glowcap",
@@ -107,6 +128,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "fox",
     edges: [1, 1, 3, 3],
     description: "A spark with a very impressive tail.",
+    keywords: [{ type: "head-start", side: 0 }],
   },
   {
     id: "moonwatch",
@@ -123,6 +145,7 @@ export const STARTER_STONES: Stone[] = [
     creature: "turtle",
     edges: [3, 1, 1, 3],
     description: "A patient traveler with a sea-glass shell.",
+    keywords: [{ type: "comeback", side: 1 }],
   },
   {
     id: "stardust",
@@ -147,6 +170,27 @@ export const COORDINATES = [
   "C3",
 ];
 
+// This result is computed before placement and retained on the placed stone.
+export function evaluateKeywords(
+  stone: Stone,
+  board: Board,
+  player: Owner,
+): {
+  edges: Edges;
+  activeKeywords: StoneKeyword[];
+} {
+  const scores = score(board);
+  const rival = player === 0 ? 1 : 0;
+  const activeKeywords = (stone.keywords || []).filter((keyword) =>
+    keyword.type === "head-start"
+      ? scores[player] > scores[rival]
+      : scores[player] < scores[rival],
+  );
+  const edges = [...stone.edges] as Edges;
+  for (const keyword of activeKeywords) edges[keyword.side] += 1;
+  return { edges, activeKeywords };
+}
+
 export function placeStone(
   board: Board,
   index: number,
@@ -162,8 +206,9 @@ export function placeStone(
   ) {
     throw new Error("Choose an empty square on the board.");
   }
+  const resolved = evaluateKeywords(stone, board, owner);
   const next = board.map((cell) => (cell ? { ...cell } : null));
-  next[index] = { stone, owner };
+  next[index] = { stone, owner, playedBy: owner, ...resolved };
   const captured: number[] = [];
   const row = Math.floor(index / 3);
   const col = index % 3;
@@ -178,7 +223,8 @@ export function placeStone(
     if (
       target &&
       target.owner !== owner &&
-      stone.edges[direction] > target.stone.edges[(direction + 2) % 4]
+      resolved.edges[direction] >
+        (target.edges || target.stone.edges)[(direction + 2) % 4]
     ) {
       next[neighbor] = { ...target, owner };
       captured.push(neighbor);
@@ -220,19 +266,22 @@ export function chooseMove(
             );
         }),
       );
-      const exposed = stone.edges.reduce((sum, edge, direction) => {
-        const row = Math.floor(index / 3),
-          col = index % 3;
-        const spots = [
-          row > 0 ? index - 3 : -1,
-          col < 2 ? index + 1 : -1,
-          row < 2 ? index + 3 : -1,
-          col > 0 ? index - 1 : -1,
-        ];
-        return (
-          sum + (spots[direction] >= 0 && !board[spots[direction]] ? edge : 0)
-        );
-      }, 0);
+      const exposed = move.board[index]!.edges!.reduce(
+        (sum, edge, direction) => {
+          const row = Math.floor(index / 3),
+            col = index % 3;
+          const spots = [
+            row > 0 ? index - 3 : -1,
+            col < 2 ? index + 1 : -1,
+            row < 2 ? index + 3 : -1,
+            col > 0 ? index - 1 : -1,
+          ];
+          return (
+            sum + (spots[direction] >= 0 && !board[spots[direction]] ? edge : 0)
+          );
+        },
+        0,
+      );
       const value =
         move.captured.length * 10 -
         worstReply * 7 +
@@ -272,9 +321,31 @@ export function validateStone(value: unknown): value is Stone {
     s.edges.reduce((a, b) => a + b, 0) <= 12 &&
     typeof s.description === "string" &&
     s.description.length <= 120 &&
+    (s.keywords === undefined || validateKeywords(s.keywords)) &&
     (s.image === undefined ||
       (typeof s.image === "string" &&
         /^data:image\/(png|jpeg|webp);base64,/.test(s.image) &&
         s.image.length < 3_000_000))
   );
+}
+
+export function validateKeywords(value: unknown): value is StoneKeyword[] {
+  if (!Array.isArray(value) || value.length > 8) return false;
+  const seen = new Set<string>();
+  return value.every((keyword) => {
+    if (
+      !keyword ||
+      typeof keyword !== "object" ||
+      typeof keyword.type !== "string" ||
+      !Object.hasOwn(KEYWORD_RULES, keyword.type) ||
+      !Number.isInteger(keyword.side) ||
+      keyword.side < 0 ||
+      keyword.side > 3
+    )
+      return false;
+    const key = `${keyword.type}:${keyword.side}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

@@ -41,7 +41,19 @@ Select a stone from your hand, then an empty square on the 3×3 board. A higher 
 - In **Collection**, choose exactly five distinct stones for your next game. Deck changes do not modify a match in progress.
 - In **Card studio**, name your stone, select a creature and element, or upload a PNG, JPEG, or WebP image up to 2 MB. Set each edge from 0–5, with a total budget of 12 points.
 - Save your creation, then add it to your deck in Collection. Elements are cosmetic.
+- Hover over a card in your hand or on the board for an enlarged card, edge strengths, keyword explanations, and backstory. Keyboard focus also opens the larger view. On touch screens, tap a board card, or select a hand card and choose **Inspect selected**.
 - Download card images as PNG files. Export and import `.skystone.json` card files to back up or share playable cards.
+
+## Keywords
+
+Assign **Head Start** or **Comeback** to one or more named edges in the card studio. Some original cards also have these keywords.
+
+- **Head Start:** the specified edge gains **+1 pip** if the player is winning immediately before playing that card.
+- **Comeback:** the specified edge gains **+1 pip** if the player is losing immediately before playing that card.
+- Compare the number of controlled stones on the board **before placement**. A tie activates neither keyword.
+- Check each keyword **once** when the card is played. Activated bonuses stay on that card for the rest of the match, including after captures or score changes. Inactive keywords never activate later.
+- Activated pips count for both capturing and defending. Green edge numbers show the resolved bonus; the enlarged view also shows the base value and whether each keyword activated. Bonuses can raise an edge from 5 to 6 and do not spend printed-stat budget points.
+- The same keyword cannot appear twice on the same edge. Cards without keywords, including older card-file exports, still work.
 
 Custom cards, deck selection, and sound preference are saved in this browser's local storage. Matches start fresh on reload. An incomplete saved deck uses the starter deck for the initial practice match; select five cards before starting another match. Clearing site data removes the collection, so export any creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
@@ -50,8 +62,11 @@ Custom cards, deck selection, and sound preference are saved in this browser's l
 - `src/game.ts`: pure rules, scoring, computer strategy, and imported-card validation.
 - `src/Artwork.tsx`: original SVG creature illustrations and card rendering.
 - `src/App.tsx`: game table, collection, card studio, persistence, and dialogs.
+- `src/CardInspection.tsx` and `src/KeywordEditor.tsx`: enlarged card rules and directional keyword editing.
 - `tests/game.test.ts`: isolated rules and validation checks.
+- `tests/keywords.test.ts`: keyword timing, capture and defense bonuses, permanent activation, and import validation.
 - `tests/browser/app.spec.ts`: Playwright browser workflows.
+- `tests/browser/keywords.spec.ts`: mouse, keyboard and touch inspection, keyword editing, saved cards, and card-file sharing.
 
 To refresh the downloadable ZIP after changing the app, run `npm run package:download`. This rebuilds the standalone HTML and packages it in `downloads/Skystones.zip`; Python 3 is needed only for the packaging step. Commit the updated ZIP with the source changes.
 
