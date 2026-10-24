@@ -429,6 +429,11 @@ export function StoneCard({
                   className={`stone-keyword keyword-${type}`}
                 >
                   {KEYWORD_RULES[type].name}
+                  {type === "sunder" &&
+                  matches[0]?.type === "sunder" &&
+                  (matches[0].amount ?? 1) > 1
+                    ? ` ${matches[0].amount}`
+                    : ""}
                   {type === "resonance" &&
                     (() => {
                       const elements = [
@@ -447,7 +452,9 @@ export function StoneCard({
                       .map((keyword) =>
                         keyword.type === "silence"
                           ? "ON PLAY"
-                          : SIDE_LETTERS[keyword.side],
+                          : keyword.side === "any"
+                            ? "ANY EDGE"
+                            : SIDE_LETTERS[keyword.side],
                       )
                       .join("/")}
                   </b>

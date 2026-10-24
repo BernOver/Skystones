@@ -79,7 +79,10 @@ export function KeywordDetails({
                 (effect.type === "silence" ||
                   keywords.some(
                     (keyword) =>
-                      keyword.type === "sunder" && keyword.side === effect.side,
+                      keyword.type === "sunder" &&
+                      (keyword.side === "any"
+                        ? effect.flexible
+                        : !effect.flexible && keyword.side === effect.side),
                   )),
             );
             return (
@@ -98,22 +101,52 @@ export function KeywordDetails({
                 </div>
                 <p>
                   {type === "sunder" ? (
-                    <>
-                      Choose a card already on the board. Its{" "}
-                      <strong>
-                        {keywords
-                          .flatMap((keyword) =>
-                            keyword.type === "sunder"
-                              ? [SIDE_NAMES[keyword.side]]
-                              : [],
-                          )
-                          .join(", ")}{" "}
-                        edge{keywords.length > 1 ? "s each lose" : " loses"} 1
-                        pip
-                      </strong>
-                      , to a minimum of zero. Choose a target for each listed
-                      edge.
-                    </>
+                    keywords.some(
+                      (keyword) =>
+                        keyword.type === "sunder" && keyword.side === "any",
+                    ) ? (
+                      <>
+                        Choose <strong>any card anywhere on the board</strong>,
+                        from either player, then{" "}
+                        <strong>
+                          choose which edge loses up to{" "}
+                          {keywords[0].type === "sunder"
+                            ? (keywords[0].amount ?? 1)
+                            : 1}{" "}
+                          pip
+                          {keywords[0].type === "sunder" &&
+                          (keywords[0].amount ?? 1) > 1
+                            ? "s"
+                            : ""}
+                        </strong>
+                        . Choose the edge when played; it must have at least one
+                        pip. The reduction stays, to a minimum of zero.
+                      </>
+                    ) : (
+                      <>
+                        Choose a card already on the board. Its{" "}
+                        <strong>
+                          {keywords
+                            .flatMap((keyword) =>
+                              keyword.type === "sunder"
+                                ? [
+                                    keyword.side === "any"
+                                      ? "Chosen"
+                                      : SIDE_NAMES[keyword.side],
+                                  ]
+                                : [],
+                            )
+                            .join(", ")}{" "}
+                          edge{keywords.length > 1 ? "s each lose" : " loses"}{" "}
+                          {keywords[0].type === "sunder" &&
+                          (keywords[0].amount ?? 1) > 1
+                            ? `up to ${keywords[0].amount} pips`
+                            : "1 pip"}
+                        </strong>
+                        , to a minimum of zero. Choose a target for each listed
+                        edge.
+                      </>
+                    )
                   ) : (
                     <>
                       Choose a card already on the board.{" "}
@@ -131,7 +164,7 @@ export function KeywordDetails({
                       <span className="keyword-status is-active" key={i}>
                         <Check size={12} />
                         {effect.type === "sunder"
-                          ? `${SIDE_NAMES[effect.side]} −1 on`
+                          ? `${SIDE_NAMES[effect.side]} −${effect.amount ?? 1} on`
                           : "Silenced"}{" "}
                         {COORDINATES[effect.target]} · resolved when played
                       </span>

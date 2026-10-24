@@ -7,7 +7,7 @@ export type Side = 0 | 1 | 2 | 3;
 export type KeywordType =
   "head-start" | "comeback" | "resonance" | "sunder" | "silence";
 export type TargetKeyword =
-  { type: "sunder"; side: Side } | { type: "silence" };
+  { type: "sunder"; side: Side | "any"; amount?: number } | { type: "silence" };
 export type StoneKeyword =
   | { type: "head-start" | "comeback"; side: Side }
   | { type: "resonance"; side: Side; element: Element }
@@ -18,8 +18,17 @@ export type ActiveKeyword =
 export interface KeywordTarget {
   keywordIndex: number;
   boardIndex: number;
+  side?: Side;
 }
-export type TargetEffect = TargetKeyword & { target: number };
+export type TargetEffect =
+  | {
+      type: "sunder";
+      side: Side;
+      target: number;
+      flexible?: true;
+      amount?: number;
+    }
+  | { type: "silence"; target: number };
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
@@ -29,7 +38,7 @@ export const KEYWORD_RULES = {
   sunder: { name: "Sunder", condition: "on play" },
   silence: { name: "Silence", condition: "on play" },
 } as const;
-export const MAX_KEYWORDS = (Object.keys(KEYWORD_RULES).length - 1) * 4 + 1;
+export const MAX_KEYWORDS = (Object.keys(KEYWORD_RULES).length - 1) * 4 + 2;
 export function keywordKey(keyword: StoneKeyword): string {
   return keyword.type === "silence"
     ? "silence"
@@ -273,14 +282,25 @@ export function prepareTargeting(
   const used = new Set<number>();
   for (const [keywordIndex, keyword] of (stone.keywords || []).entries()) {
     if (keyword.type !== "sunder" && keyword.type !== "silence") continue;
-    const candidates = next.flatMap((cell, index) => {
+    const options: KeywordTarget[] = next.flatMap((cell, boardIndex) => {
       if (!cell) return [];
-      const valid =
-        keyword.type === "sunder"
-          ? (cell.edges || cell.stone.edges)[keyword.side] > 0
-          : !cell.silenced && !!cell.stone.keywords?.length;
-      return valid ? [index] : [];
+      if (keyword.type === "sunder") {
+        const edges = cell.edges || cell.stone.edges;
+        return keyword.side === "any"
+          ? edges.flatMap((edge, side) =>
+              edge > 0
+                ? [{ keywordIndex, boardIndex, side: side as Side }]
+                : [],
+            )
+          : edges[keyword.side] > 0
+            ? [{ keywordIndex, boardIndex }]
+            : [];
+      }
+      return !cell.silenced && cell.stone.keywords?.length
+        ? [{ keywordIndex, boardIndex }]
+        : [];
     });
+    const candidates = [...new Set(options.map((option) => option.boardIndex))];
     const choice = targets.find(
       (target) => target.keywordIndex === keywordIndex,
     );
@@ -294,21 +314,36 @@ export function prepareTargeting(
       return {
         board: next,
         effects,
-        pending: { keyword, keywordIndex, candidates },
+        pending: { keyword, keywordIndex, candidates, options },
       };
     }
-    if (!candidates.includes(choice.boardIndex))
-      throw new Error("Choose a valid card already on the board.");
+    if (
+      !options.some(
+        (option) =>
+          option.boardIndex === choice.boardIndex &&
+          option.side === choice.side,
+      )
+    )
+      throw new Error("Choose a valid card and edge already on the board.");
     used.add(keywordIndex);
     const cell = next[choice.boardIndex]!;
     if (keyword.type === "sunder") {
+      const side = keyword.side === "any" ? choice.side! : keyword.side;
       const reductions = [...(cell.reductions || [0, 0, 0, 0])] as Edges;
       const edges = [...(cell.edges || cell.stone.edges)] as Edges;
-      reductions[keyword.side]++;
-      edges[keyword.side]--;
+      const removed = Math.min(keyword.amount ?? 1, edges[side]);
+      reductions[side] += removed;
+      edges[side] -= removed;
       next = next.map((target, index) =>
         index === choice.boardIndex ? { ...cell, edges, reductions } : target,
       );
+      effects.push({
+        type: "sunder",
+        side,
+        target: choice.boardIndex,
+        ...(keyword.side === "any" ? { flexible: true as const } : {}),
+        ...(keyword.amount !== undefined ? { amount: removed } : {}),
+      });
     } else {
       const edges = cell.stone.edges.map((base, side) =>
         Math.max(0, base - (cell.reductions?.[side] || 0)),
@@ -318,8 +353,8 @@ export function prepareTargeting(
           ? { ...cell, edges, silenced: true, activeKeywords: [] }
           : target,
       );
+      effects.push({ type: "silence", target: choice.boardIndex });
     }
-    effects.push({ ...keyword, target: choice.boardIndex });
   }
   if (targets.some((target) => !used.has(target.keywordIndex)))
     throw new Error("Unexpected keyword target.");
@@ -362,14 +397,11 @@ export function chooseKeywordTargets(
   const edges = evaluateKeywords(stone, board, owner).edges;
   let state = prepareTargeting(board, stone, targets);
   while (state.pending) {
-    const { keywordIndex, candidates } = state.pending;
-    let best = candidates[0],
+    const { options } = state.pending;
+    let best = options[0],
       bestValue = -Infinity;
-    for (const boardIndex of candidates) {
-      const preview = prepareTargeting(board, stone, [
-        ...targets,
-        { keywordIndex, boardIndex },
-      ]);
+    for (const option of options) {
+      const preview = prepareTargeting(board, stone, [...targets, option]);
       const weakening = preview.board.reduce((sum, cell, spot) => {
         if (!cell) return sum;
         const before = state.board[spot]!;
@@ -384,11 +416,11 @@ export function chooseKeywordTargets(
       const value =
         capturesAt(preview.board, index, owner, edges).length * 10 + weakening;
       if (value > bestValue) {
-        best = boardIndex;
+        best = option;
         bestValue = value;
       }
     }
-    targets.push({ keywordIndex, boardIndex: best });
+    targets.push(best);
     state = prepareTargeting(board, stone, targets);
   }
   return targets;
@@ -571,15 +603,24 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
     if (
       keyword.type === "silence"
         ? keyword.side !== undefined
-        : !Number.isInteger(keyword.side) ||
-          keyword.side < 0 ||
-          keyword.side > 3
+        : !(keyword.type === "sunder" && keyword.side === "any") &&
+          (!Number.isInteger(keyword.side) ||
+            keyword.side < 0 ||
+            keyword.side > 3)
     )
       return false;
     if (
       keyword.type === "resonance" &&
       (typeof keyword.element !== "string" ||
         !Object.hasOwn(ELEMENTS, keyword.element))
+    )
+      return false;
+    if (
+      keyword.type === "sunder" &&
+      keyword.amount !== undefined &&
+      (!Number.isInteger(keyword.amount) ||
+        keyword.amount < 1 ||
+        keyword.amount > 99)
     )
       return false;
     const key = keywordKey(keyword);

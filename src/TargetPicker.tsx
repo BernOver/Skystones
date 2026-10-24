@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Scissors, VolumeX } from "lucide-react";
 import { StoneCard } from "./Artwork";
 import {
@@ -6,7 +7,7 @@ import {
   SIDE_NAMES,
   prepareTargeting,
 } from "./game";
-import type { Board, KeywordTarget, Stone } from "./game";
+import type { Board, KeywordTarget, Side, Stone } from "./game";
 
 export function TargetPicker({
   board,
@@ -22,12 +23,30 @@ export function TargetPicker({
   placement: number;
   targets: KeywordTarget[];
   names: string[];
-  onChoose: (index: number) => void;
+  onChoose: (index: number, side?: Side) => void;
   onCancel: () => void;
 }) {
   const state = prepareTargeting(board, stone, targets);
+  const [chosen, setChosen] = useState<{
+    keywordIndex: number;
+    boardIndex: number;
+  } | null>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const selectedTarget =
+    chosen?.keywordIndex === state.pending?.keywordIndex
+      ? (chosen?.boardIndex ?? null)
+      : null;
+  useEffect(() => {
+    optionsRef.current
+      ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
+      ?.focus();
+  }, [selectedTarget, state.pending?.keywordIndex]);
   if (!state.pending) return null;
   const { keyword, candidates } = state.pending;
+  const flexible = keyword.type === "sunder" && keyword.side === "any";
+  const amount = keyword.type === "sunder" ? (keyword.amount ?? 1) : 1;
+  const selectedCard =
+    selectedTarget !== null ? state.board[selectedTarget] : null;
   return (
     <>
       <span className="modal-illustration">
@@ -40,12 +59,33 @@ export function TargetPicker({
       <div className="eyebrow">
         {stone.name} → {COORDINATES[placement]}
       </div>
-      <h2>{KEYWORD_RULES[keyword.type].name}: choose a card</h2>
+      <h2 aria-live="polite">
+        {KEYWORD_RULES[keyword.type].name}: choose{" "}
+        {selectedCard ? "an edge" : "a card"}
+      </h2>
       <p className="dialog-intro">
         {keyword.type === "sunder" ? (
           <>
-            Remove <strong>1 {SIDE_NAMES[keyword.side]} pip</strong> from a card
-            already on the board.
+            {flexible ? (
+              <>
+                Choose <strong>any card anywhere on the board</strong>, then
+                choose which edge loses{" "}
+                <strong>
+                  up to {amount} pip{amount > 1 ? "s" : ""}
+                </strong>
+                .
+              </>
+            ) : (
+              <>
+                Remove{" "}
+                <strong>
+                  up to {amount}{" "}
+                  {keyword.side === "any" ? "chosen" : SIDE_NAMES[keyword.side]}{" "}
+                  pip{amount > 1 ? "s" : ""}
+                </strong>{" "}
+                from a card already on the board.
+              </>
+            )}
           </>
         ) : (
           <>
@@ -67,55 +107,113 @@ export function TargetPicker({
           . You can still cancel this play.
         </p>
       )}
-      <div
-        className="target-board"
-        role="group"
-        aria-label="Choose a keyword target on the board"
-      >
-        {state.board.map((cell, index) => {
-          const available = candidates.includes(index);
-          return (
-            <button
-              key={index}
-              disabled={!available}
-              className={`target-cell ${available ? "available" : "unavailable"}`}
-              aria-label={
-                cell
-                  ? `Target ${COORDINATES[index]}: ${cell.stone.name}, ${names[cell.owner]}`
-                  : `${COORDINATES[index]}, ${index === placement ? "placing here" : "empty"}`
-              }
-              onClick={() => onChoose(index)}
-            >
-              <span className="target-coordinate">
-                {COORDINATES[index]}
-                {cell ? ` · ${names[cell.owner]}` : ""}
-              </span>
-              {cell ? (
-                <>
-                  <StoneCard
-                    stone={cell.stone}
-                    owner={cell.owner}
-                    edges={cell.edges || cell.stone.edges}
-                    silenced={cell.silenced}
-                    compact
-                  />
-                  <span className="target-change">
-                    {available
-                      ? keyword.type === "sunder"
-                        ? `${SIDE_NAMES[keyword.side]} ${(cell.edges || cell.stone.edges)[keyword.side]} → ${(cell.edges || cell.stone.edges)[keyword.side] - 1}`
-                        : "Disable keywords"
-                      : "No valid effect"}
-                  </span>
-                </>
-              ) : (
-                <span className="target-empty">
-                  {index === placement ? "Your new card" : "Empty"}
+      {selectedCard && selectedTarget !== null ? (
+        <div className="target-edge-selection" ref={optionsRef}>
+          <p>
+            <strong>{selectedCard.stone.name}</strong> ·{" "}
+            {COORDINATES[selectedTarget]} · {names[selectedCard.owner]}
+          </p>
+          <div className="target-selected-card">
+            <StoneCard
+              stone={selectedCard.stone}
+              edges={selectedCard.edges || selectedCard.stone.edges}
+              silenced={selectedCard.silenced}
+              owner={selectedCard.owner}
+            />
+          </div>
+          <div
+            className="target-edge-options"
+            role="group"
+            aria-label="Choose the edge that loses pips"
+          >
+            {SIDE_NAMES.map((name, side) => {
+              const pips = (selectedCard.edges || selectedCard.stone.edges)[
+                side
+              ];
+              return (
+                <button
+                  key={side}
+                  className="button button-outline"
+                  disabled={pips <= 0}
+                  onClick={() => onChoose(selectedTarget, side as Side)}
+                  aria-label={`${name}: ${pips} → ${Math.max(0, pips - amount)}`}
+                >
+                  <span>{name}</span>
+                  <strong>
+                    {pips} → {Math.max(0, pips - amount)}
+                  </strong>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="text-button target-back"
+            onClick={() => setChosen(null)}
+          >
+            Choose another card
+          </button>
+        </div>
+      ) : (
+        <div
+          ref={optionsRef}
+          className="target-board"
+          role="group"
+          aria-label="Choose a keyword target on the board"
+        >
+          {state.board.map((cell, index) => {
+            const available = candidates.includes(index);
+            return (
+              <button
+                key={index}
+                disabled={!available}
+                className={`target-cell ${available ? "available" : "unavailable"}`}
+                aria-label={
+                  cell
+                    ? `Target ${COORDINATES[index]}: ${cell.stone.name}, ${names[cell.owner]}`
+                    : `${COORDINATES[index]}, ${index === placement ? "placing here" : "empty"}`
+                }
+                onClick={() =>
+                  flexible
+                    ? setChosen({
+                        keywordIndex: state.pending!.keywordIndex,
+                        boardIndex: index,
+                      })
+                    : onChoose(index)
+                }
+              >
+                <span className="target-coordinate">
+                  {COORDINATES[index]}
+                  {cell ? ` · ${names[cell.owner]}` : ""}
                 </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                {cell ? (
+                  <>
+                    <StoneCard
+                      stone={cell.stone}
+                      owner={cell.owner}
+                      edges={cell.edges || cell.stone.edges}
+                      silenced={cell.silenced}
+                      compact
+                    />
+                    <span className="target-change">
+                      {available
+                        ? keyword.type === "sunder"
+                          ? keyword.side === "any"
+                            ? "Choose an edge"
+                            : `${SIDE_NAMES[keyword.side]} ${(cell.edges || cell.stone.edges)[keyword.side]} → ${Math.max(0, (cell.edges || cell.stone.edges)[keyword.side] - amount)}`
+                          : "Disable keywords"
+                        : "No valid effect"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="target-empty">
+                    {index === placement ? "Your new card" : "Empty"}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <p className="field-note">
         {keyword.type === "sunder"
           ? "Pips cannot fall below zero. The reduction stays after captures or Silence."

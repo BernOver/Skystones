@@ -58,6 +58,7 @@ import type {
   Owner,
   Stone,
   KeywordTarget,
+  Side,
 } from "./game";
 import { createId } from "./id";
 import {
@@ -207,7 +208,7 @@ function applyMove(
         effects: move.effects
           .map(
             (effect) =>
-              `${KEYWORD_RULES[effect.type].name} → ${COORDINATES[effect.target]}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −1` : ""}`,
+              `${KEYWORD_RULES[effect.type].name} → ${COORDINATES[effect.target]}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
           )
           .join(" · "),
       },
@@ -537,15 +538,24 @@ export default function App() {
     setMatch(applyMove(match, index, selected));
     setSelected(null);
   }
-  function chooseTarget(boardIndex: number) {
+  function chooseTarget(boardIndex: number, side?: Side) {
     if (dialog?.kind !== "target") return;
     const stone = match.hands[match.current][dialog.cardIndex];
     const state = prepareTargeting(match.board, stone, dialog.targets);
-    if (!state.pending || !state.pending.candidates.includes(boardIndex))
+    if (
+      !state.pending ||
+      !state.pending.options.some(
+        (option) => option.boardIndex === boardIndex && option.side === side,
+      )
+    )
       return;
     const targets = [
       ...dialog.targets,
-      { keywordIndex: state.pending.keywordIndex, boardIndex },
+      {
+        keywordIndex: state.pending.keywordIndex,
+        boardIndex,
+        ...(side !== undefined ? { side } : {}),
+      },
     ];
     if (prepareTargeting(match.board, stone, targets).pending) {
       setDialog({ ...dialog, targets });
@@ -1895,6 +1905,7 @@ export default function App() {
           className="target-dialog"
         >
           <TargetPicker
+            key={dialog.targets.length}
             board={match.board}
             stone={match.hands[match.current][dialog.cardIndex]}
             placement={dialog.index}
@@ -1991,13 +2002,16 @@ export default function App() {
           <div className="rules-note keyword-rules-note">
             <Swords size={19} />
             <p>
-              <strong>Sunder</strong> removes 1 pip from a chosen board card’s
-              specified edge, down to zero. <strong>Silence</strong> disables a
-              chosen board card’s keywords and removes their bonuses for the
-              rest of the match. Choose either player’s card after picking your
-              placement. These effects resolve in listed order before captures;
-              no valid target means the effect is skipped. Earlier captures and
-              resolved effects stay.
+              <strong>Sunder</strong> removes its stated number of pips from a
+              chosen board card’s edge, down to zero. In Card studio, choose a
+              fixed edge or “Any · choose when played” to select the edge during
+              play. Set its pip amount from 1–99. It can target anywhere on the
+              board. <strong>Silence</strong> disables a chosen board card’s
+              keywords and removes their bonuses for the rest of the match.
+              Choose either player’s card after picking your placement. These
+              effects resolve in listed order before captures; no valid target
+              means the effect is skipped. Earlier captures and resolved effects
+              stay.
             </p>
           </div>
           <button

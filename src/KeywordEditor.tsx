@@ -30,7 +30,9 @@ export function KeywordEditor({
       setError(
         value.type === "silence"
           ? "Silence is already on this card."
-          : `${KEYWORD_RULES[value.type].name} is already assigned to ${SIDE_NAMES[value.side]}. Choose another edge.`,
+          : value.side === "any"
+            ? "Sunder with an edge chosen when played is already on this card."
+            : `${KEYWORD_RULES[value.type].name} is already assigned to ${SIDE_NAMES[value.side]}. Choose another edge.`,
       );
       return;
     }
@@ -39,13 +41,17 @@ export function KeywordEditor({
   }
   function add() {
     for (const type of Object.keys(KEYWORD_RULES) as KeywordType[]) {
-      for (let side = 0; side < 4; side++) {
+      for (const side of (type === "sunder"
+        ? [0, 1, 2, 3, "any"]
+        : [0, 1, 2, 3]) as (Side | "any")[]) {
         const value: StoneKeyword =
           type === "silence"
             ? { type }
-            : type === "resonance"
-              ? { type, side: side as Side, element: stone.element }
-              : { type, side: side as Side };
+            : type === "sunder"
+              ? { type, side }
+              : type === "resonance"
+                ? { type, side: side as Side, element: stone.element }
+                : { type, side: side as Side };
         if (
           !keywords.some((keyword) => keywordKey(keyword) === keywordKey(value))
         ) {
@@ -69,7 +75,7 @@ export function KeywordEditor({
       <div className="keyword-editor-list">
         {keywords.map((keyword, index) => (
           <div
-            className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "silence" ? "no-edge" : ""}`}
+            className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" ? "has-strength" : ""} ${keyword.type === "silence" ? "no-edge" : ""}`}
             key={index}
           >
             <div>
@@ -87,7 +93,11 @@ export function KeywordEditor({
                       : e.target.value === "resonance"
                         ? {
                             type: "resonance",
-                            side: keyword.type === "silence" ? 0 : keyword.side,
+                            side:
+                              keyword.type === "silence" ||
+                              keyword.side === "any"
+                                ? 0
+                                : keyword.side,
                             element:
                               keyword.type === "resonance"
                                 ? keyword.element
@@ -96,7 +106,11 @@ export function KeywordEditor({
                         : {
                             type: e.target.value as
                               "head-start" | "comeback" | "sunder",
-                            side: keyword.type === "silence" ? 0 : keyword.side,
+                            side:
+                              keyword.type === "silence" ||
+                              keyword.side === "any"
+                                ? 0
+                                : keyword.side,
                           },
                   )
                 }
@@ -106,7 +120,7 @@ export function KeywordEditor({
                     {type === "resonance"
                       ? "Resonance · count an element"
                       : type === "sunder"
-                        ? "Sunder · remove a pip"
+                        ? "Sunder · remove pips"
                         : type === "silence"
                           ? "Silence · disable keywords"
                           : `${rule.name} · while ${rule.condition}`}
@@ -124,10 +138,21 @@ export function KeywordEditor({
                   id={`keyword-side-${index}`}
                   value={keyword.side}
                   onChange={(e) =>
-                    update(index, {
-                      ...keyword,
-                      side: Number(e.target.value) as Side,
-                    })
+                    update(
+                      index,
+                      keyword.type === "sunder"
+                        ? {
+                            ...keyword,
+                            side:
+                              e.target.value === "any"
+                                ? "any"
+                                : (Number(e.target.value) as Side),
+                          }
+                        : {
+                            ...keyword,
+                            side: Number(e.target.value) as Side,
+                          },
+                    )
                   }
                 >
                   {SIDE_NAMES.map((side, i) => (
@@ -136,10 +161,13 @@ export function KeywordEditor({
                       {keyword.type === "resonance"
                         ? ""
                         : keyword.type === "sunder"
-                          ? " −1"
+                          ? ` −${keyword.amount ?? 1}`
                           : " +1"}
                     </option>
                   ))}
+                  {keyword.type === "sunder" && (
+                    <option value="any">Any · choose when played</option>
+                  )}
                 </select>
               </div>
             )}
@@ -164,6 +192,28 @@ export function KeywordEditor({
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+            {keyword.type === "sunder" && (
+              <div className="sunder-strength-field">
+                <label htmlFor={`keyword-amount-${index}`}>
+                  Pips removed {index + 1}
+                </label>
+                <input
+                  id={`keyword-amount-${index}`}
+                  type="number"
+                  min={1}
+                  max={99}
+                  step={1}
+                  value={keyword.amount ?? 1}
+                  onChange={(event) => {
+                    const amount = event.target.valueAsNumber;
+                    if (!Number.isInteger(amount) || amount < 1 || amount > 99)
+                      return;
+                    const { amount: _, ...base } = keyword;
+                    update(index, amount === 1 ? base : { ...base, amount });
+                  }}
+                />
               </div>
             )}
             <button
@@ -214,8 +264,9 @@ export function KeywordEditor({
             element already on the board, from either player.
           </p>
           <p>
-            <strong>Sunder</strong> removes one pip from a chosen board card’s
-            specified edge, down to zero.
+            <strong>Sunder</strong> removes your chosen number of pips from a
+            board card’s edge, down to zero. Set a fixed edge or choose it when
+            played; the target can be anywhere on the board.
           </p>
           <p>
             <strong>Silence</strong> disables a chosen board card’s keywords and
@@ -230,6 +281,11 @@ export function KeywordEditor({
           </small>
         </div>
       )}
+      <p className="field-note">
+        Set Sunder’s pip amount from 1–99. Its “Any · choose when played” option
+        lets the player pick any board card, then choose which edge loses pips.
+        Edges stop at zero.
+      </p>
       <p className="field-note">
         Keyword bonuses do not spend printed-stat points and can raise edges
         above 5. Different keywords on the same edge add together.
