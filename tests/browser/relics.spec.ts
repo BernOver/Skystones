@@ -87,7 +87,7 @@ test("choose a relic before rewards, pick two different cards, and resume betwee
   expect(saved.relics).toEqual(["fated-lens", "twin-sigil"]);
 });
 
-test("a relic event awards one-time gold, survives reload, and the guide explains all thirty relics", async ({
+test("a relic event awards one-time gold, survives reload, and the guide explains all thirty-one relics", async ({
   page,
 }) => {
   const run = enterAdventureNode(
@@ -113,10 +113,10 @@ test("a relic event awards one-time gold, survives reload, and the guide explain
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
   expect((await stored(page)).gold).toBe(160);
   await page
-    .getByRole("button", { name: "Relic guide · 30", exact: true })
+    .getByRole("button", { name: "Relic guide · 31", exact: true })
     .click();
   const dialog = page.getByRole("dialog", { name: "Relic guide" });
-  await expect(dialog.locator(".relic-card")).toHaveCount(30);
+  await expect(dialog.locator(".relic-card")).toHaveCount(31);
   await expect(dialog).toContainText("25% more gold");
   await expect(dialog).toContainText("two different card rewards");
   await page.setViewportSize({ width: 390, height: 844 });
@@ -126,7 +126,7 @@ test("a relic event awards one-time gold, survives reload, and the guide explain
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Relic guide · 30", exact: true }),
+    page.getByRole("button", { name: "Relic guide · 31", exact: true }),
   ).toBeFocused();
 });
 
@@ -154,7 +154,7 @@ test("larger belts and stronger healing, power and hex potions display and apply
   };
   await open(page, run);
   await expect(page.getByRole("region", { name: "Your relics" })).toContainText(
-    "Relics · 3/30",
+    "Relics · 3/31",
   );
   await expect(page.getByLabel("Potion belt")).toContainText("5/5 slots");
   await page

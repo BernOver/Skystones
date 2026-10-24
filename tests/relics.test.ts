@@ -87,9 +87,9 @@ function finish(run: Adventure, won = true): Adventure {
   );
 }
 
-test("all thirty unique relics have complete descriptions, reachable stable offers, and no duplicate drops", () => {
-  assert.equal(RELIC_IDS.length, 30);
-  assert.equal(new Set(RELIC_IDS.map((id) => RELICS[id].name)).size, 30);
+test("all thirty-one unique relics have complete descriptions, reachable stable offers, and no duplicate drops", () => {
+  assert.equal(RELIC_IDS.length, 31);
+  assert.equal(new Set(RELIC_IDS.map((id) => RELICS[id].name)).size, 31);
   const seen = new Set<RelicId>();
   for (let seed = 0; seed < 120; seed++) {
     const run = newAdventure(3, seed),
@@ -101,7 +101,7 @@ test("all thirty unique relics have complete descriptions, reachable stable offe
     const owned = { ...run, relics: offers };
     assert.ok(offerRelics(owned).every((id) => !offers.includes(id)));
   }
-  assert.equal(seen.size, 30);
+  assert.equal(seen.size, 31);
   assert.deepEqual(
     offerRelics({ ...newAdventure(3, 1), relics: RELIC_IDS }),
     [],

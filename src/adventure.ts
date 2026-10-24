@@ -1,10 +1,12 @@
 import {
   ELEMENTS,
+  KEYWORD_RULES,
   EMPTY_BOARD,
   STARTER_STONES,
   chooseMove,
   coordinate,
   handSize,
+  keywordKey,
   placeStone,
   score,
   validateKeywords,
@@ -17,6 +19,7 @@ import type {
   Edges,
   Element,
   KeywordTarget,
+  KeywordType,
   Owner,
   Side,
   Stone,
@@ -80,6 +83,13 @@ export const ROUTE: AdventureNode[][] = [
       description:
         "Claim a 12-pip Magic stone with Dizzy. Powerful attacks, unpredictable defenses.",
     },
+    {
+      id: "rune-shrine",
+      name: "The Runesmith’s Shrine",
+      kind: "event",
+      description:
+        "Choose one of three inscriptions to add to a stone for free.",
+    },
   ],
   [
     {
@@ -122,6 +132,13 @@ export const ROUTE: AdventureNode[][] = [
       kind: "event",
       description:
         "Choose one of three ancient relics to carry for the rest of your run.",
+    },
+    {
+      id: "fusion-forge",
+      name: "The Twinflame Forge",
+      kind: "event",
+      description:
+        "Combine two stones into one. Preview their merged pips and keywords before choosing.",
     },
   ],
   [
@@ -225,6 +242,10 @@ export interface Adventure {
   spentRelics?: RelicId[];
   relicOffers?: RelicId[];
   shopRelic?: RelicId | null;
+  shopRerolls?: number;
+  shopFreeRerollUsed?: boolean;
+  shopOffer?: WorkshopOffer;
+  lastShopKeyword?: KeywordType;
   rewardPicksRemaining?: number;
 }
 export const ADVENTURE_STORAGE = "skystones-adventure-v1";
@@ -382,6 +403,9 @@ function advance(run: Adventure): Adventure {
     shopCards: [],
     shopPotions: [],
     shopRelic: undefined,
+    shopRerolls: undefined,
+    shopFreeRerollUsed: undefined,
+    shopOffer: undefined,
     relicOffers: [],
     rewardPicksRemaining: 0,
   };
@@ -489,28 +513,32 @@ export function enterAdventureNode(run: Adventure, id: string): Adventure {
   if (!node) throw new Error("Choose a node on your current path.");
   if (["battle", "elite", "boss"].includes(node.kind))
     return beginBattle(run, node);
-  if (node.kind === "shop")
+  if (node.kind === "shop") {
+    // Older saves already beyond the first merchant have no offer history.
+    // Recover that shop's original roll so the next merchant still differs.
+    const previousKeyword =
+      run.lastShopKeyword ??
+      (run.floor > 2
+        ? rollWorkshopOffer({ seed: run.seed, floor: 2 }).keyword.type
+        : undefined);
+    const shopOffer = rollWorkshopOffer(
+      run,
+      0,
+      previousKeyword ? [previousKeyword] : [],
+    );
     return {
       ...run,
       node,
       phase: "shop",
       gold: run.gold + (hasRelic(run, "quiet-coin") ? earnedGold(run, 15) : 0),
-      shopCards: rewardCards(
-        run,
-        false,
-        hasRelic(run, "market-map") ? 4 : 3,
-      ).map((stone, i) => ({
-        ...stone,
-        id: `custom-run-${run.seed}-shop-${run.floor}-${i}`,
-      })),
-      shopPotions: [
-        { id: `${run.floor}-power`, type: "power" },
-        { id: `${run.floor}-hex`, type: "hex" },
-        { id: `${run.floor}-heal`, type: "heal" },
-      ],
-      shopRelic: offerRelics(run, 1, 0x73686f70)[0] || null,
+      ...shopStock(run, 0),
+      shopOffer,
+      lastShopKeyword: shopOffer.keyword.type,
+      shopRerolls: 0,
+      shopFreeRerollUsed: false,
       message: "Improve your stones, stock up, or save your gold for later.",
     };
+  }
   return {
     ...run,
     node,
@@ -789,13 +817,112 @@ export function dizzyEventCard(run: Adventure): Stone {
     custom: true,
   };
 }
+export function adventureInscriptionOffers(
+  run: Pick<Adventure, "seed" | "floor">,
+): StoneKeyword[] {
+  const offers: StoneKeyword[] = [];
+  for (let i = 0; i < 3; i++) {
+    offers.push(
+      rollWorkshopOffer(
+        { ...run, seed: run.seed ^ 0x72756e65 },
+        i,
+        offers.map((keyword) => keyword.type),
+      ).keyword,
+    );
+  }
+  return offers;
+}
+export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
+  if (base.id === donor.id)
+    throw new Error("Choose two different stones to combine.");
+  const edges = base.edges.map((edge, side) =>
+    Math.min(5, Math.max(edge, donor.edges[side])),
+  ) as Edges;
+  // Combine the stronger edges, sharing any reductions across the highest
+  // edges until the printed total fits. The UI previews this exact result.
+  let total = edges.reduce((a, b) => a + b, 0);
+  while (total > 12) {
+    edges[edges.indexOf(Math.max(...edges))]--;
+    total--;
+  }
+  const keywords: StoneKeyword[] = (base.keywords || []).map((keyword) => ({
+    ...keyword,
+  }));
+  for (const keyword of donor.keywords || []) {
+    const existing = keywords.findIndex(
+      (candidate) => keywordKey(candidate) === keywordKey(keyword),
+    );
+    if (existing === -1) keywords.push({ ...keyword });
+    else if (keyword.type === "sunder") {
+      const current = keywords[existing];
+      if (
+        current.type === "sunder" &&
+        (keyword.amount ?? 1) > (current.amount ?? 1)
+      )
+        keywords[existing] = { ...keyword };
+    }
+  }
+  return {
+    ...base,
+    name: `Fused ${base.name.replace(/^Fused /, "")}`.slice(0, 24),
+    edges,
+    keywords,
+    description: `Forged from ${base.name} and ${donor.name}.`.slice(0, 120),
+  };
+}
 export function resolveAdventureEvent(
   run: Adventure,
   choice: string,
   cardId?: string,
+  secondCardId?: string,
 ): Adventure {
   if (run.phase !== "event" || !run.node)
     throw new Error("There is no event to resolve.");
+  if (run.node.id === "rune-shrine" && /^inscribe:[0-2]$/.test(choice)) {
+    const stone = run.inventory.find((card) => card.id === cardId);
+    if (!stone) throw new Error("Choose a stone in your pack.");
+    const keyword = adventureInscriptionOffers(run)[Number(choice.slice(-1))];
+    const keywords = [...(stone.keywords || []), keyword];
+    if (!validateKeywords(keywords))
+      throw new Error(
+        "That stone already has this inscription. Choose a different stone or keyword.",
+      );
+    return advance({
+      ...run,
+      inventory: run.inventory.map((card) =>
+        card.id === stone.id ? { ...stone, keywords } : card,
+      ),
+      message: `${stone.name} gains ${KEYWORD_RULES[keyword.type].name} for free.`,
+    });
+  }
+  if (run.node.id === "fusion-forge" && choice === "combine") {
+    if (run.inventory.length <= handSize(run.size))
+      throw new Error(
+        "Keep enough stones for a full battle hand. You need a reserve stone to combine cards.",
+      );
+    const base = run.inventory.find((card) => card.id === cardId);
+    const donor = run.inventory.find((card) => card.id === secondCardId);
+    if (!base || !donor) throw new Error("Choose two stones in your pack.");
+    const combined = adventureFusionPreview(base, donor);
+    const inventory = run.inventory
+      .filter((card) => card.id !== donor.id)
+      .map((card) => (card.id === base.id ? combined : card));
+    // Preserve deck order and replace a consumed selected card with the fused
+    // stone. If both inputs were selected, fill the remaining slot from reserves.
+    const deck = [
+      ...new Set(run.deck.map((id) => (id === donor.id ? base.id : id))),
+    ];
+    for (const card of inventory) {
+      if (deck.length >= run.deck.length) break;
+      if (!deck.includes(card.id)) deck.push(card.id);
+    }
+    return advance({
+      ...run,
+      inventory,
+      deck,
+      message: `${base.name} and ${donor.name} combine into ${combined.name}. Your selected deck has been updated.`,
+    });
+  }
   if (run.node.id === "whirling-idol" && choice === "dizzy-card") {
     const stone = dizzyEventCard(run);
     return advance({
@@ -863,24 +990,24 @@ export function resolveAdventureEvent(
   throw new Error("Choose an available event option.");
 }
 export const SERVICE_PRICES = { pip: 25, element: 20, keyword: 35 };
-export function adventureWorkshopOffer(
+export interface WorkshopOffer {
+  pipSide: Side;
+  keyword: StoneKeyword;
+}
+function rollWorkshopOffer(
   run: Pick<Adventure, "seed" | "floor">,
-): { pipSide: Side; keyword: StoneKeyword } {
-  // Deriving offers from the run seed and stop keeps existing saves compatible
-  // and prevents purchases, card selection, or reloads from rerolling a shop.
+  reroll = 0,
+  excluded: KeywordType[] = [],
+): WorkshopOffer {
   const rng = random(
     Math.imul(run.seed ^ 0xa511e9b3, 0x9e3779b1) ^
-      Math.imul(run.floor + 1, 0x85ebca6b),
+      Math.imul(run.floor + 1, 0x85ebca6b) ^
+      Math.imul(reroll, 0x27d4eb2d),
   );
   const pipSide = Math.floor(rng() * 4) as Side;
-  const types = [
-    "head-start",
-    "comeback",
-    "resonance",
-    "sunder",
-    "silence",
-    "dizzy",
-  ] as const;
+  const types = (Object.keys(KEYWORD_RULES) as KeywordType[]).filter(
+    (type) => !excluded.includes(type),
+  );
   const type = types[Math.floor(rng() * types.length)];
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
@@ -893,6 +1020,80 @@ export function adventureWorkshopOffer(
           ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
           : { type, side };
   return { pipSide, keyword };
+}
+export function adventureWorkshopOffer(
+  run: Pick<Adventure, "seed" | "floor"> &
+    Partial<Pick<Adventure, "shopOffer" | "shopRerolls">>,
+): WorkshopOffer {
+  // Keep a purchased shop roll stable through purchases and reloads. Older
+  // saves retain the same initial offer they saw before rerolls existed.
+  return run.shopOffer || rollWorkshopOffer(run, run.shopRerolls || 0);
+}
+function shopStock(run: Adventure, reroll: number) {
+  const stockRun = {
+    ...run,
+    seed: (run.seed ^ Math.imul(reroll, 0x27d4eb2d)) >>> 0,
+  };
+  const relicOptions = offerRelics(
+    run,
+    2,
+    0x73686f70 ^ Math.imul(reroll, 0x85ebca6b),
+  );
+  return {
+    shopCards: rewardCards(
+      stockRun,
+      false,
+      hasRelic(run, "market-map") ? 4 : 3,
+    ).map((stone, i) => ({
+      ...stone,
+      id:
+        reroll === 0
+          ? `custom-run-${run.seed}-shop-${run.floor}-${i}`
+          : `custom-run-${run.seed}-shop-${run.floor}-roll-${reroll}-${i}`,
+    })),
+    shopPotions: (["power", "hex", "heal"] as Potion[]).map((type) => ({
+      id:
+        reroll === 0
+          ? `${run.floor}-${type}`
+          : `${run.floor}-roll-${reroll}-${type}`,
+      type,
+    })),
+    shopRelic:
+      (reroll > 0
+        ? relicOptions.find((id) => id !== run.shopRelic)
+        : relicOptions[0]) ||
+      relicOptions[0] ||
+      null,
+  };
+}
+export const SHOP_REROLL_PRICE = 20;
+export function adventureShopRerollPrice(run: Adventure): number {
+  return hasRelic(run, "merchants-die") && !run.shopFreeRerollUsed
+    ? 0
+    : shopPrice(run, SHOP_REROLL_PRICE);
+}
+export function rerollAdventureShop(run: Adventure): Adventure {
+  if (run.phase !== "shop")
+    throw new Error("Visit a shop before rerolling its stock.");
+  const price = adventureShopRerollPrice(run);
+  if (run.gold < price)
+    throw new Error("You need more gold to reroll this shop.");
+  const rerolls = (run.shopRerolls || 0) + 1;
+  if (!Number.isSafeInteger(rerolls))
+    throw new Error("This shop cannot be rerolled again.");
+  const offer = rollWorkshopOffer(run, rerolls, [
+    adventureWorkshopOffer(run).keyword.type,
+  ]);
+  return {
+    ...run,
+    ...shopStock(run, rerolls),
+    gold: run.gold - price,
+    shopRerolls: rerolls,
+    shopFreeRerollUsed: run.shopFreeRerollUsed || price === 0,
+    shopOffer: offer,
+    lastShopKeyword: offer.keyword.type,
+    message: `Shop refreshed${price === 0 ? " for free with Merchant’s Die" : ` for ${price} gold`}. New cards, relic, and workshop offers; potions restocked.`,
+  };
 }
 export type WorkshopOrder =
   | { type: "pip"; cardId: string }
@@ -1003,6 +1204,7 @@ export function leaveAdventureShop(run: Adventure): Adventure {
     : 0;
   return advance({
     ...run,
+    lastShopKeyword: adventureWorkshopOffer(run).keyword.type,
     gold: run.gold + interest,
     message: interest ? `Rainy Day Bank pays ${interest} gold.` : run.message,
   });
@@ -1174,6 +1376,31 @@ function validPlaced(value: unknown, length: number): boolean {
 export function validateAdventure(value: unknown): value is Adventure {
   if (!value || typeof value !== "object") return false;
   const run = value as Adventure;
+  if (
+    run.shopRerolls !== undefined &&
+    (!Number.isSafeInteger(run.shopRerolls) || run.shopRerolls < 0)
+  )
+    return false;
+  if (
+    run.shopFreeRerollUsed !== undefined &&
+    typeof run.shopFreeRerollUsed !== "boolean"
+  )
+    return false;
+  if (
+    run.lastShopKeyword !== undefined &&
+    !Object.hasOwn(KEYWORD_RULES, run.lastShopKeyword)
+  )
+    return false;
+  if (
+    run.shopOffer !== undefined &&
+    (!run.shopOffer ||
+      typeof run.shopOffer !== "object" ||
+      !Number.isInteger(run.shopOffer.pipSide) ||
+      run.shopOffer.pipSide < 0 ||
+      run.shopOffer.pipSide > 3 ||
+      !validateKeywords([run.shopOffer.keyword]))
+  )
+    return false;
   if (
     run.relics !== undefined &&
     (!Array.isArray(run.relics) ||

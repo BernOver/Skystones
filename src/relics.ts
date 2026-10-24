@@ -143,6 +143,11 @@ export const RELICS = {
     name: "Oracle\u2019s Eye",
     description: "Reveal the keeper\u2019s remaining hand during every battle.",
   },
+  "merchants-die": {
+    name: "Merchant’s Die",
+    description:
+      "Your first shop reroll at each merchant is free. Refreshes all stock and workshop offers. The free reroll resets at the next shop.",
+  },
 } as const;
 export type RelicId = keyof typeof RELICS;
 export const RELIC_IDS = Object.keys(RELICS) as RelicId[];

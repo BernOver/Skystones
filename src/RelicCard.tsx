@@ -14,6 +14,7 @@ import {
   HeartPulse,
   Dices,
   ScanEye,
+  RefreshCw,
   Backpack,
   Flag as Banner,
   Coins,
@@ -64,6 +65,7 @@ export const RELIC_ICONS = {
   "stout-heart": HeartPulse,
   "loaded-dice": Dices,
   "oracles-eye": ScanEye,
+  "merchants-die": RefreshCw,
 };
 export function RelicCard({
   id,

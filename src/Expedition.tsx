@@ -14,7 +14,9 @@ import {
   X,
   Sparkles,
   Flame,
+  RefreshCw,
 } from "lucide-react";
+import { InscriptionEvent, FusionEvent } from "./AdventureEvents";
 import { StoneCard } from "./Artwork";
 import {
   CardInspector,
@@ -48,6 +50,8 @@ import {
   ROUTE,
   SERVICE_PRICES,
   adventureWorkshopOffer,
+  adventureShopRerollPrice,
+  rerollAdventureShop,
   adventureEnemyMove,
   buyAdventureCard,
   buyAdventurePotion,
@@ -942,6 +946,32 @@ export function Expedition() {
                   Leave the idol
                 </button>
               </div>
+            ) : run.node.id === "rune-shrine" ? (
+              <InscriptionEvent
+                run={run}
+                onInspect={setCard}
+                onLeave={() =>
+                  act((current) => resolveAdventureEvent(current, "leave"))
+                }
+                onClaim={(id, index) =>
+                  act((current) =>
+                    resolveAdventureEvent(current, `inscribe:${index}`, id),
+                  )
+                }
+              />
+            ) : run.node.id === "fusion-forge" ? (
+              <FusionEvent
+                run={run}
+                onInspect={setCard}
+                onLeave={() =>
+                  act((current) => resolveAdventureEvent(current, "leave"))
+                }
+                onCombine={(base, donor) =>
+                  act((current) =>
+                    resolveAdventureEvent(current, "combine", base, donor),
+                  )
+                }
+              />
             ) : run.node.id === "reliquary" ? (
               relicChoices(true)
             ) : run.node.kind === "camp" ? (
@@ -1032,6 +1062,34 @@ export function Expedition() {
               <h2>{run.node?.name}</h2>
               <p>Cards, bottled surprises, and a better stone for the road.</p>
             </div>
+          </div>
+          <div className="shop-reroll-panel" aria-label="Refresh shop stock">
+            <div>
+              <h3>A fresh selection</h3>
+              <p>
+                Refresh all cards, the relic, and workshop offers. Restock all
+                potions. Your bought cards and upgrades stay with you.
+              </p>
+              <small>
+                {run.shopRerolls || 0} reroll
+                {(run.shopRerolls || 0) === 1 ? "" : "s"} used at this shop
+                {hasRelic(run, "merchants-die")
+                  ? run.shopFreeRerollUsed
+                    ? " · Free reroll used"
+                    : " · Merchant’s Die: one free reroll ready"
+                  : ""}
+              </small>
+            </div>
+            <button
+              className="button button-outline"
+              disabled={run.gold < adventureShopRerollPrice(run)}
+              onClick={() => act(rerollAdventureShop)}
+            >
+              <RefreshCw size={16} />
+              {adventureShopRerollPrice(run) === 0
+                ? "Reroll shop · Free"
+                : `Reroll shop · ${adventureShopRerollPrice(run)} gold`}
+            </button>
           </div>
           <h3>Stones for sale</h3>
           <div
@@ -1163,8 +1221,8 @@ export function Expedition() {
                   {KEYWORD_RULES[offeredKeyword.type].name} · {keywordDirection}
                 </h4>
                 <p>
-                  Randomly rolled for this shop visit. Choose a stone to receive
-                  this exact keyword and direction.{" "}
+                  Randomly rolled on entering or rerolling this shop. Choose a
+                  stone to receive this exact keyword and direction.{" "}
                   {hasRelic(run, "rune-echo") &&
                     "Rune Echo also inscribes the opposite edge when available."}
                 </p>
@@ -1427,7 +1485,7 @@ export function Expedition() {
       )}
       {relicGuide && (
         <RunDialog title="Relic guide" onClose={() => setRelicGuide(false)}>
-          <div className="eyebrow">FIFTEEN ANCIENT TREASURES</div>
+          <div className="eyebrow">{RELIC_IDS.length} ANCIENT TREASURES</div>
           <h2>Relics for the road.</h2>
           <p>
             Earn relics from your first victory, secured chests, elite
