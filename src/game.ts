@@ -1,6 +1,31 @@
-export type Element = "fire" | "life" | "water" | "air" | "magic" | "earth";
+export type Element =
+  | "fire"
+  | "life"
+  | "water"
+  | "air"
+  | "magic"
+  | "earth"
+  | "tech"
+  | "undead"
+  | "neutral";
 export type Creature =
-  "dragon" | "turtle" | "whale" | "owl" | "fox" | "golem" | "mushroom" | "cat";
+  | "dragon"
+  | "turtle"
+  | "whale"
+  | "owl"
+  | "fox"
+  | "golem"
+  | "mushroom"
+  | "cat"
+  | "slime"
+  | "bat"
+  | "spider"
+  | "robot"
+  | "griffin"
+  | "crab"
+  | "serpent"
+  | "chest";
+export type BoardSize = 3 | 4;
 export type Owner = 0 | 1;
 export type Edges = [number, number, number, number]; // North, east, south, west.
 export type Side = 0 | 1 | 2 | 3;
@@ -78,6 +103,7 @@ export interface Stone {
   description: string;
   custom?: boolean;
   image?: string;
+  origin?: "giants";
   keywords?: StoneKeyword[];
 }
 export interface PlacedStone {
@@ -107,6 +133,14 @@ export const ELEMENTS: Record<
   air: { name: "Air", color: "#a2a7be", pale: "#e4e5ed", ink: "#696783" },
   magic: { name: "Magic", color: "#a08aaa", pale: "#e9dfea", ink: "#795780" },
   earth: { name: "Earth", color: "#b69a6a", pale: "#e9dfc7", ink: "#7b633c" },
+  tech: { name: "Tech", color: "#c69d49", pale: "#f2e5bb", ink: "#896520" },
+  undead: { name: "Undead", color: "#9a8fa5", pale: "#e8e0ee", ink: "#65536f" },
+  neutral: {
+    name: "Neutral",
+    color: "#a5a38c",
+    pale: "#eeead9",
+    ink: "#78735c",
+  },
 };
 
 export const STARTER_STONES: Stone[] = [
@@ -217,7 +251,13 @@ export const STARTER_STONES: Stone[] = [
   },
 ];
 export const DEFAULT_DECK = STARTER_STONES.slice(0, 5).map((s) => s.id);
-export const EMPTY_BOARD = (): Board => Array.from({ length: 9 }, () => null);
+export const EMPTY_BOARD = (size: BoardSize = 3): Board =>
+  Array.from({ length: size * size }, () => null);
+export const boardSize = (board: Board): BoardSize =>
+  board.length === 16 ? 4 : 3;
+export const handSize = (size: BoardSize): number => (size === 4 ? 8 : 5);
+export const coordinate = (index: number, size: BoardSize = 3): string =>
+  `${String.fromCharCode(65 + Math.floor(index / size))}${(index % size) + 1}`;
 export const COORDINATES = [
   "A1",
   "A2",
@@ -367,12 +407,13 @@ function capturesAt(
   owner: Owner,
   edges: Edges,
 ): number[] {
-  const row = Math.floor(index / 3),
-    col = index % 3;
+  const size = boardSize(board);
+  const row = Math.floor(index / size),
+    col = index % size;
   const neighbors = [
-    row > 0 ? index - 3 : -1,
-    col < 2 ? index + 1 : -1,
-    row < 2 ? index + 3 : -1,
+    row > 0 ? index - size : -1,
+    col < size - 1 ? index + 1 : -1,
+    row < size - 1 ? index + size : -1,
     col > 0 ? index - 1 : -1,
   ];
   return neighbors.filter((neighbor, direction) => {
@@ -434,10 +475,10 @@ export function placeStone(
   targets: KeywordTarget[] = [],
 ): Move {
   if (
-    board.length !== 9 ||
+    (board.length !== 9 && board.length !== 16) ||
     !Number.isInteger(index) ||
     index < 0 ||
-    index > 8 ||
+    index >= board.length ||
     board[index]
   ) {
     throw new Error("Choose an empty square on the board.");
@@ -511,12 +552,13 @@ export function chooseMove(
       );
       const exposed = move.board[index]!.edges!.reduce(
         (sum, edge, direction) => {
-          const row = Math.floor(index / 3),
-            col = index % 3;
+          const size = boardSize(board);
+          const row = Math.floor(index / size),
+            col = index % size;
           const spots = [
-            row > 0 ? index - 3 : -1,
-            col < 2 ? index + 1 : -1,
-            row < 2 ? index + 3 : -1,
+            row > 0 ? index - size : -1,
+            col < size - 1 ? index + 1 : -1,
+            row < size - 1 ? index + size : -1,
             col > 0 ? index - 1 : -1,
           ];
           return (
@@ -562,7 +604,7 @@ export function validateStone(value: unknown): value is Stone {
     s.id.startsWith("custom-") &&
     typeof s.name === "string" &&
     s.name.trim().length > 0 &&
-    s.name.length <= 24 &&
+    s.name.length <= (s.origin === "giants" ? 40 : 24) &&
     typeof s.element === "string" &&
     Object.hasOwn(ELEMENTS, s.element) &&
     [
@@ -574,11 +616,19 @@ export function validateStone(value: unknown): value is Stone {
       "golem",
       "mushroom",
       "cat",
+      "slime",
+      "bat",
+      "spider",
+      "robot",
+      "griffin",
+      "crab",
+      "serpent",
+      "chest",
     ].includes(String(s.creature)) &&
     Array.isArray(s.edges) &&
     s.edges.length === 4 &&
     s.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 5) &&
-    s.edges.reduce((a, b) => a + b, 0) <= 12 &&
+    s.edges.reduce((a, b) => a + b, 0) <= (s.origin === "giants" ? 16 : 12) &&
     typeof s.description === "string" &&
     s.description.length <= 120 &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&

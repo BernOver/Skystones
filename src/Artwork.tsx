@@ -1,5 +1,15 @@
 import { useId } from "react";
-import { Droplets, Flame, Leaf, Mountain, Sparkles, Wind } from "lucide-react";
+import {
+  Droplets,
+  Flame,
+  Leaf,
+  Mountain,
+  Sparkles,
+  Wind,
+  Cog,
+  Skull,
+  CircleDot,
+} from "lucide-react";
 import { ELEMENTS, KEYWORD_RULES, SIDE_LETTERS, keywordGroups } from "./game";
 import type { Creature, Edges, Element, Stone } from "./game";
 
@@ -10,6 +20,9 @@ export const ELEMENT_ICONS = {
   air: Wind,
   magic: Sparkles,
   earth: Mountain,
+  tech: Cog,
+  undead: Skull,
+  neutral: CircleDot,
 };
 
 export function CreatureArt({
@@ -362,6 +375,145 @@ export function CreatureArt({
             />
           </>
         )}
+        {creature === "slime" && (
+          <g>
+            <path
+              d="M47 127c0-24 22-55 51-55s56 31 56 55c0 28-108 29-107 0Z"
+              fill={color}
+            />
+            <path
+              d="M70 89c8-13 20-19 32-17"
+              stroke="#fff8df"
+              strokeWidth="7"
+            />
+            <ellipse cx="83" cy="117" rx="5" ry="7" fill={dark} />
+            <ellipse cx="118" cy="117" rx="5" ry="7" fill={dark} />
+            <path d="M94 130q8 9 16-1" />
+            <circle cx="64" cy="51" r="9" fill={color} />
+            <circle cx="128" cy="48" r="5" fill={color} />
+          </g>
+        )}
+        {creature === "bat" && (
+          <g>
+            <path
+              d="M86 97Q53 52 29 63l13 27-10 24 25-2 22 27M114 97q33-45 57-34l-13 27 10 24-25-2-22 27"
+              fill={color}
+            />
+            <path d="m78 85 3-34 19 17 20-17 3 34" fill={color} />
+            <ellipse cx="101" cy="111" rx="29" ry="38" fill={color} />
+            <circle cx="90" cy="97" r="5" fill="#fff6d9" />
+            <circle cx="112" cy="97" r="5" fill="#fff6d9" />
+            <path d="m92 115 4 9 5-8 6 8 4-9" fill="#fff6d9" />
+          </g>
+        )}
+        {creature === "spider" && (
+          <g>
+            {[0, 1, 2, 3].map((i) => (
+              <g key={i}>
+                <path
+                  d={`M80 ${90 + i * 12} 53 ${67 + i * 20} 32 ${90 + i * 18}`}
+                  strokeWidth="6"
+                />
+                <path
+                  d={`M120 ${90 + i * 12} 147 ${67 + i * 20} 168 ${90 + i * 18}`}
+                  strokeWidth="6"
+                />
+              </g>
+            ))}
+            <ellipse cx="100" cy="100" rx="35" ry="38" fill={color} />
+            <ellipse cx="100" cy="129" rx="26" ry="23" fill={color} />
+            <circle cx="89" cy="128" r="7" fill="#fff6d9" />
+            <circle cx="112" cy="128" r="7" fill="#fff6d9" />
+            <circle cx="90" cy="130" r="3" fill={dark} />
+            <circle cx="111" cy="130" r="3" fill={dark} />
+            <path d="M94 145q7 5 13-1" />
+          </g>
+        )}
+        {creature === "robot" && (
+          <g>
+            <path d="M100 46v17" strokeWidth="5" />
+            <circle cx="100" cy="40" r="7" fill={color} />
+            <rect x="65" y="63" width="70" height="51" rx="12" fill={color} />
+            <rect x="73" y="74" width="54" height="22" rx="5" fill="#fff4d9" />
+            <circle cx="87" cy="85" r="5" fill={dark} />
+            <circle cx="113" cy="85" r="5" fill={dark} />
+            <rect x="72" y="118" width="56" height="33" rx="5" fill={color} />
+            <path
+              d="M62 119 48 136m89-17 15 17M85 151v12m30-12v12"
+              strokeWidth="9"
+            />
+            <path d="M88 132h24m-12-7v14" stroke="#fff6d9" strokeWidth="4" />
+          </g>
+        )}
+        {creature === "griffin" && (
+          <g>
+            <path
+              d="M86 118 43 58l7 45-15-3 39 42m39-24 44-60-8 45 16-3-40 42"
+              fill={color}
+            />
+            <ellipse cx="100" cy="124" rx="32" ry="28" fill={color} />
+            <path d="m76 94 4-29 18 12 20-11 7 28" fill="#fff0cf" />
+            <ellipse cx="101" cy="96" rx="27" ry="24" fill="#fff0cf" />
+            <path d="m96 101 9 14 10-17Z" fill="#dfaf55" />
+            <circle cx="87" cy="91" r="4" fill={dark} />
+            <circle cx="115" cy="89" r="4" fill={dark} />
+            <path d="M83 147v13m32-13v13" strokeWidth="7" />
+          </g>
+        )}
+        {creature === "crab" && (
+          <g>
+            <path d="M72 120 45 100 36 78m92 42 27-20 9-22" strokeWidth="7" />
+            <path
+              d="m30 72-9-19 21 5 4-19 10 26-14 16Zm140 0 9-19-21 5-4-19-10 26 14 16Z"
+              fill={color}
+            />
+            <ellipse cx="100" cy="125" rx="42" ry="27" fill={color} />
+            <path d="m77 104-4-18m50 18 4-18" strokeWidth="5" />
+            <circle cx="72" cy="82" r="8" fill="#fff5d7" />
+            <circle cx="128" cy="82" r="8" fill="#fff5d7" />
+            <circle cx="73" cy="83" r="3" fill={dark} />
+            <circle cx="127" cy="83" r="3" fill={dark} />
+            <path
+              d="m69 139-20 16m33-9-9 18m45-18 9 18m4-25 20 16"
+              strokeWidth="5"
+            />
+            <path d="M90 131q10 8 20 0" />
+          </g>
+        )}
+        {creature === "serpent" && (
+          <g>
+            <path
+              d="M60 145c-29-16-4-42 31-23s63 21 56-6c-7-29-59-8-61-34-3-24 31-35 46-18"
+              stroke={color}
+              strokeWidth="22"
+            />
+            <path d="M60 145c-29-16-4-42 31-23" stroke={dark} strokeWidth="2" />
+            <ellipse cx="130" cy="68" rx="25" ry="20" fill={color} />
+            <circle cx="137" cy="61" r="6" fill="#fff7d8" />
+            <circle cx="139" cy="62" r="3" fill={dark} />
+            <path d="m150 75 12 2 5-6m-5 6 6 5" stroke="#c77965" />
+            <path d="m108 55 3-17 16 11" fill={color} />
+          </g>
+        )}
+        {creature === "chest" && (
+          <g>
+            <path d="M49 89c0-32 102-32 102 0v19H49Z" fill={color} />
+            <rect x="49" y="107" width="102" height="47" rx="8" fill={color} />
+            <path
+              d="M65 73v80m69-80v80M49 105h102"
+              stroke="#e8c565"
+              strokeWidth="8"
+            />
+            <rect x="89" y="99" width="22" height="27" rx="4" fill="#e8c565" />
+            <circle cx="100" cy="110" r="4" fill={dark} />
+            <path d="M100 113v6" strokeWidth="3" />
+            <path
+              d="m82 42 4-13 4 13 13 4-13 4-4 13-4-13-13-4Zm47 9 3-8 3 8 8 3-8 3-3 8-3-8-8-3Z"
+              fill="#e8c565"
+              stroke="none"
+            />
+          </g>
+        )}
       </g>
       <circle cx="100" cy="88" r="73" fill={`url(#${id}-grain)`} opacity=".5" />
     </svg>
@@ -400,7 +552,11 @@ export function StoneCard({
     >
       <div className="stone-art">
         {stone.image ? (
-          <img src={stone.image} alt="" className="uploaded-art" />
+          <img
+            src={stone.image}
+            alt=""
+            className={`uploaded-art ${stone.origin === "giants" ? "giants-art" : ""}`}
+          />
         ) : (
           <CreatureArt creature={stone.creature} element={stone.element} />
         )}

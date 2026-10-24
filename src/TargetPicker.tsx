@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Scissors, VolumeX } from "lucide-react";
 import { StoneCard } from "./Artwork";
 import {
-  COORDINATES,
+  coordinate,
+  boardSize,
   KEYWORD_RULES,
   SIDE_NAMES,
   prepareTargeting,
@@ -27,6 +28,7 @@ export function TargetPicker({
   onCancel: () => void;
 }) {
   const state = prepareTargeting(board, stone, targets);
+  const size = boardSize(board);
   const [chosen, setChosen] = useState<{
     keywordIndex: number;
     boardIndex: number;
@@ -57,7 +59,7 @@ export function TargetPicker({
         )}
       </span>
       <div className="eyebrow">
-        {stone.name} → {COORDINATES[placement]}
+        {stone.name} → {coordinate(placement, size)}
       </div>
       <h2 aria-live="polite">
         {KEYWORD_RULES[keyword.type].name}: choose{" "}
@@ -101,7 +103,7 @@ export function TargetPicker({
           {state.effects
             .map(
               (effect) =>
-                `${KEYWORD_RULES[effect.type].name} → ${COORDINATES[effect.target]}`,
+                `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, size)}`,
             )
             .join(" · ")}
           . You can still cancel this play.
@@ -111,7 +113,7 @@ export function TargetPicker({
         <div className="target-edge-selection" ref={optionsRef}>
           <p>
             <strong>{selectedCard.stone.name}</strong> ·{" "}
-            {COORDINATES[selectedTarget]} · {names[selectedCard.owner]}
+            {coordinate(selectedTarget, size)} · {names[selectedCard.owner]}
           </p>
           <div className="target-selected-card">
             <StoneCard
@@ -156,7 +158,7 @@ export function TargetPicker({
       ) : (
         <div
           ref={optionsRef}
-          className="target-board"
+          className={`target-board target-board-${size}`}
           role="group"
           aria-label="Choose a keyword target on the board"
         >
@@ -169,8 +171,8 @@ export function TargetPicker({
                 className={`target-cell ${available ? "available" : "unavailable"}`}
                 aria-label={
                   cell
-                    ? `Target ${COORDINATES[index]}: ${cell.stone.name}, ${names[cell.owner]}`
-                    : `${COORDINATES[index]}, ${index === placement ? "placing here" : "empty"}`
+                    ? `Target ${coordinate(index, size)}: ${cell.stone.name}, ${names[cell.owner]}`
+                    : `${coordinate(index, size)}, ${index === placement ? "placing here" : "empty"}`
                 }
                 onClick={() =>
                   flexible
@@ -182,7 +184,7 @@ export function TargetPicker({
                 }
               >
                 <span className="target-coordinate">
-                  {COORDINATES[index]}
+                  {coordinate(index, size)}
                   {cell ? ` · ${names[cell.owner]}` : ""}
                 </span>
                 {cell ? (

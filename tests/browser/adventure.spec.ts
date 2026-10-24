@@ -1,0 +1,408 @@
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import {
+  ADVENTURE_STORAGE,
+  enterAdventureNode,
+  newAdventure,
+  resolveAdventureEvent,
+} from "../../src/adventure.ts";
+import type { Adventure } from "../../src/adventure.ts";
+import { chooseMove, coordinate, STARTER_STONES } from "../../src/game.ts";
+import type { BoardSize } from "../../src/game.ts";
+
+async function stored(page: Page): Promise<Adventure> {
+  return page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!),
+    ADVENTURE_STORAGE,
+  );
+}
+async function openRun(page: Page, run: Adventure) {
+  await page.addInitScript(
+    ({ key, run }) => {
+      if (!localStorage.getItem(key))
+        localStorage.setItem(key, JSON.stringify(run));
+    },
+    { key: ADVENTURE_STORAGE, run },
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "Adventure", exact: true }).click();
+}
+
+test("normal four-by-four games use eight-card decks, finish sixteen squares, and persist board settings", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New match", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("Board size", { exact: true })
+    .selectOption("4");
+  await page.getByRole("button", { name: /Bring a friend/ }).click();
+  await page.getByRole("button", { name: "Find a little magic" }).click();
+  await expect(page.locator(".board-cell")).toHaveCount(16);
+  await expect(page.locator(".hand-card-button")).toHaveCount(8);
+  for (let turn = 0; turn < 16; turn++) {
+    await page.locator(".hand-card-button").first().click();
+    await page.locator(".board-cell.empty:enabled").first().click();
+  }
+  await expect(page.locator(".board-cell.filled")).toHaveCount(16);
+  await expect(page.locator(".result-card")).toBeVisible();
+  await expect(page.locator(".board-progress")).toContainText("16 of 16");
+  await expect(page.locator("#board-15")).toHaveAccessibleName(/^D4:/);
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("skystones-library-v1")!),
+  );
+  expect(saved.boardSize).toBe(4);
+  expect(saved.deck).toHaveLength(8);
+  await page.getByRole("button", { name: /^Collection/ }).click();
+  await expect(page.locator(".deck-count")).toContainText("8 / 8");
+  await page.getByLabel("Deck board size").selectOption("3");
+  await expect(page.locator(".deck-count")).toContainText("5 / 5");
+});
+
+test("Giants catalogue has 81 playable stones, original images, strong original stats, and eight extra art presets", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Collection/ }).click();
+  await page.getByRole("button", { name: /^Giants/ }).click();
+  await expect(page.locator(".collection-card-button")).toHaveCount(81);
+  await expect(page.locator(".giants-reference-note")).toContainText(
+    "Bark Demon",
+  );
+  await page
+    .getByRole("button", { name: "View CONQUERTRON", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator(".edge b")).toHaveText(["4", "4", "4", "4"]);
+  expect(
+    await dialog
+      .locator("img.giants-art")
+      .evaluate(
+        (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+      ),
+  ).toBe(true);
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export card file" }).click();
+  const stream = await (await pending).createReadStream(),
+    chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(chunk);
+  const buffer = Buffer.concat(chunks);
+  expect(JSON.parse(buffer.toString()).card.edges).toEqual([4, 4, 4, 4]);
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page
+    .getByLabel("Import card file")
+    .setInputFiles({
+      name: "conquertron.skystone.json",
+      mimeType: "application/json",
+      buffer,
+    });
+  await expect(
+    page.getByRole("button", { name: "View CONQUERTRON", exact: true }),
+  ).toHaveCount(1);
+  await page.getByRole("button", { name: "Card studio", exact: true }).click();
+  for (const name of [
+    "Slime",
+    "Bat",
+    "Spider",
+    "Robot",
+    "Griffin",
+    "Crab",
+    "Serpent",
+    "Treasure chest",
+  ]) {
+    await page
+      .getByRole("button", { name: `Choose ${name} artwork`, exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: `Choose ${name} artwork`, exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await page.locator(".preview-card .creature-art path").count(),
+    ).toBeGreaterThan(2);
+  }
+});
+
+test("start, play and resume a four-by-four adventure, use a potion, claim a reward, and enter a chest event", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openRun(page, newAdventure(4, 102));
+  await expect(page.locator(".run-toolbar")).toContainText("8/8");
+  await page.getByRole("button", { name: /Mossy Footpath/ }).click();
+  await expect(page.locator(".adventure-square")).toHaveCount(16);
+  const original = await stored(page);
+  await page
+    .getByRole("button", { name: "Use Power Tonic", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Empower/ })
+    .first()
+    .click();
+  let current = await stored(page);
+  expect(current.battle!.hands[0][0].edges).toEqual(
+    original.battle!.hands[0][0].edges.map((edge) => edge + 1),
+  );
+  expect(current.battle!.turns).toBe(0);
+  expect(current.potions).toHaveLength(1);
+  for (let moveNumber = 0; moveNumber < 8; moveNumber++) {
+    await expect(page.locator(".run-hand-card").first()).toBeEnabled();
+    current = await stored(page);
+    const battle = current.battle!,
+      move = chooseMove(battle.board, battle.hands[0], battle.hands[1], 0);
+    await page.locator(".run-hand-card").nth(move.cardIndex).click();
+    await page
+      .getByRole("button", {
+        name: `${coordinate(move.index, 4)}, empty adventure square`,
+        exact: true,
+      })
+      .click();
+    if (moveNumber === 0) {
+      await expect.poll(async () => (await stored(page)).battle!.turns).toBe(2);
+      await page.reload();
+      await page
+        .getByRole("button", { name: "Adventure", exact: true })
+        .click();
+      await expect(page.locator(".adventure-square.occupied")).toHaveCount(2);
+    }
+    if (moveNumber < 7)
+      await expect(page.locator(".run-hand-card").first()).toBeEnabled();
+  }
+  await expect.poll(async () => (await stored(page)).phase).toBe("reward");
+  current = await stored(page);
+  if (current.rewards.length) {
+    expect(current.rewards[0].edges.reduce((a, b) => a + b, 0)).toBe(4);
+    await page
+      .getByRole("button", { name: /^Take / })
+      .first()
+      .click();
+    await expect(page.locator(".run-card-grid")).toBeVisible();
+    await page.getByRole("button", { name: "Close deck", exact: true }).click();
+  } else
+    await page
+      .getByRole("button", { name: "Continue expedition", exact: true })
+      .click();
+  await page.getByRole("button", { name: /The Brass Chest/ }).click();
+  await page
+    .getByRole("button", { name: /Challenge the chest keeper/ })
+    .click();
+  await expect(page.locator(".run-objective")).toContainText("B2");
+  await expect(page.locator(".adventure-square.occupied")).toHaveCount(1);
+  await expect(page.locator(".objective-badge")).toHaveText("CHEST");
+  expect(errors).toEqual([]);
+});
+
+test("shop purchases, all three workshop services, deck changes, and gold survive reload", async ({
+  page,
+}) => {
+  const run = enterAdventureNode(
+    { ...newAdventure(3, 14), floor: 2, gold: 220, potions: [] },
+    "shop-one",
+  );
+  await openRun(page, run);
+  await page
+    .getByRole("button", { name: /^Buy card/ })
+    .first()
+    .click();
+  let current = await stored(page);
+  expect(current.inventory).toHaveLength(run.inventory.length + 1);
+  expect(current.shopCards).toHaveLength(2);
+  const purchased = current.inventory.at(-1)!;
+  await page
+    .getByRole("button", { name: /^Buy potion/ })
+    .first()
+    .click();
+  expect((await stored(page)).potions).toEqual(["power"]);
+  const id = run.inventory[0].id;
+  await page.getByLabel("Workshop card").selectOption(id);
+  await page.getByLabel("Workshop edge").selectOption("0");
+  await page
+    .getByRole("button", { name: "Buy upgrade · 25 gold", exact: true })
+    .click();
+  expect((await stored(page)).inventory[0].edges[0]).toBe(
+    run.inventory[0].edges[0] + 1,
+  );
+  await page.getByLabel("Workshop service").selectOption("element");
+  const element = run.inventory[0].element === "water" ? "fire" : "water";
+  await page.getByLabel("Workshop element").selectOption(element);
+  await page
+    .getByRole("button", { name: "Buy upgrade · 20 gold", exact: true })
+    .click();
+  await page.getByLabel("Workshop service").selectOption("keyword");
+  await page
+    .getByLabel("Workshop keyword", { exact: true })
+    .selectOption("sunder");
+  await page.getByLabel("Workshop edge").selectOption("any");
+  await page.getByLabel("Workshop Sunder strength").fill("3");
+  await page
+    .getByRole("button", { name: "Buy upgrade · 35 gold", exact: true })
+    .click();
+  current = await stored(page);
+  expect(current.inventory[0].element).toBe(element);
+  expect(current.inventory[0].keywords).toEqual([
+    { type: "sunder", side: "any", amount: 3 },
+  ]);
+  expect(current.gold).toBe(220 - 38 - 25 - 25 - 20 - 35);
+  await page.reload();
+  await page.getByRole("button", { name: "Adventure", exact: true }).click();
+  expect((await stored(page)).gold).toBe(current.gold);
+  await page.getByRole("button", { name: /^Expedition deck/ }).click();
+  await page
+    .getByRole("button", {
+      name: `Remove ${run.inventory[0].name} ${id} from expedition deck`,
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: `Add ${purchased.name} ${purchased.id} to expedition deck`,
+      exact: true,
+    })
+    .click();
+  expect((await stored(page)).deck).toContain(purchased.id);
+  await page.getByRole("button", { name: "Close deck", exact: true }).click();
+  await page.getByRole("button", { name: "Leave shop", exact: true }).click();
+  await expect(page.locator(".run-map")).toBeVisible();
+  expect((await stored(page)).floor).toBe(3);
+});
+
+function almostDone(
+  kind: "chest" | "boss",
+  throneHeld = true,
+  size: BoardSize = 3,
+): Adventure {
+  let run = { ...newAdventure(size, 40), floor: kind === "boss" ? 8 : 1 };
+  run = enterAdventureNode(run, kind === "boss" ? "warden" : "chest-one");
+  if (kind === "chest") run = resolveAdventureEvent(run, "fight");
+  const battle = run.battle!,
+    objective = battle.objective!;
+  const board = battle.board.map((cell, index) =>
+    index === size ** 2 - 1
+      ? null
+      : {
+          stone: cell?.stone || {
+            ...STARTER_STONES[0],
+            id: `custom-test-board-${index}`,
+            keywords: [],
+            edges: [0, 0, 0, 0] as [number, number, number, number],
+          },
+          owner: (index === objective && !throneHeld ? 1 : 0) as 0 | 1,
+          playedBy: cell?.playedBy || 0,
+          edges: [0, 0, 0, 0] as [number, number, number, number],
+          activeKeywords: [],
+        },
+  );
+  return {
+    ...run,
+    battle: {
+      ...battle,
+      board,
+      current: 0,
+      hands: [
+        [{ ...run.inventory[0], edges: [0, 0, 0, 0], keywords: [] }],
+        [run.inventory[0]],
+      ],
+      turns: size ** 2 - 1 - (kind === "boss" ? 2 : 1),
+    },
+  };
+}
+test("holding the chest pays extra gold, and claiming its reward cannot pay twice", async ({
+  page,
+}) => {
+  await openRun(page, almostDone("chest"));
+  await page.locator(".run-hand-card").first().click();
+  await page
+    .getByRole("button", { name: "C3, empty adventure square", exact: true })
+    .click();
+  await expect(page.locator(".run-message")).toContainText(
+    "Chest secured: +45 bonus gold",
+  );
+  expect((await stored(page)).gold).toBe(135);
+  await page
+    .getByRole("button", { name: /^Take / })
+    .first()
+    .click();
+  await page.reload();
+  await page.getByRole("button", { name: "Adventure", exact: true }).click();
+  expect((await stored(page)).gold).toBe(135);
+  expect((await stored(page)).floor).toBe(2);
+});
+for (const held of [true, false])
+  test(`boss ending ${held ? "wins with" : "requires"} throne control as well as the score`, async ({
+    page,
+  }) => {
+    await openRun(page, almostDone("boss", held, 4));
+    await expect(page.locator(".run-objective")).toContainText("throne at B2");
+    await page.locator(".run-hand-card").first().click();
+    await page
+      .getByRole("button", { name: "D4, empty adventure square", exact: true })
+      .click();
+    if (held) {
+      await expect(
+        page.getByRole("heading", {
+          name: "A little legend, crowned.",
+          exact: true,
+        }),
+      ).toBeVisible();
+      expect((await stored(page)).victory).toBe(true);
+    } else {
+      await expect(page.locator(".run-message")).toContainText(
+        "You did not secure the throne",
+      );
+      expect((await stored(page)).lives).toBe(2);
+      await page
+        .getByRole("button", { name: "Continue expedition", exact: true })
+        .click();
+      expect((await stored(page)).floor).toBe(8);
+      await expect(page.locator(".run-map-row.current")).toContainText(
+        "The Crown Warden",
+      );
+    }
+  });
+
+test("adventure map, battle, chest and shop fit a phone and malformed saves recover", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const run = enterAdventureNode(
+    { ...newAdventure(4, 81), floor: 2, gold: 200 },
+    "shop-one",
+  );
+  await openRun(page, run);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "Leave shop", exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: /Tideglass Crossing/ }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.locator(".run-hand-card").first().click();
+  await page
+    .getByRole("button", { name: "A1, empty adventure square", exact: true })
+    .click();
+  await expect(page.locator(".adventure-square.occupied")).toHaveCount(2);
+  await page.locator(".adventure-square.occupied").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.evaluate(
+    (key) => localStorage.setItem(key, '{"version":1,"phase":"battle"}'),
+    ADVENTURE_STORAGE,
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Adventure", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Start adventure", exact: true }),
+  ).toBeVisible();
+});

@@ -1,6 +1,6 @@
 # Skystones
 
-A browser game inspired by classic Skylanders Skystones, with original illustrated creatures and a custom card studio. Built with React, TypeScript, and Vite. Everything runs in the browser; no account, API keys, or backend is needed.
+A browser game inspired by classic Skylanders Skystones, with a Giants card catalogue, sixteen illustrated creature presets, a custom card studio, and a roguelike Adventure mode. Built with React, TypeScript, and Vite. Everything runs in the browser; no account, API keys, or backend is needed.
 
 ## Download and play
 
@@ -8,7 +8,7 @@ A browser game inspired by classic Skylanders Skystones, with original illustrat
 2. Extract the ZIP into a folder on your computer.
 3. Double-click **Skystones.html** and open it in Chrome or Microsoft Edge.
 
-The download contains the whole game. No installation, terminal, or server is required. Use **Card studio** to make cards, then add them to your deck in **Collection**.
+The download contains the whole game. No installation, terminal, or server is required. Use **Card studio** to make cards, then add them to your deck in **Collection**. Choose **Adventure** to start or resume a roguelike run.
 
 ## Run
 
@@ -34,15 +34,37 @@ Browser tests use system Chromium when available. Otherwise install the browser 
 
 ## Play
 
-Select a stone from your hand, then an empty square on the 3×3 board. A higher facing edge captures an adjacent opposing stone. Ties leave ownership unchanged. There are no diagonal or chain captures. After nine moves, the player controlling more stones wins; unplayed cards do not count.
+Select a stone from your hand, then an empty square. A higher facing edge captures an adjacent opposing stone. Equal facing edges leave ownership unchanged. There are no diagonal or chain captures. When the board fills, the player controlling more stones wins; unplayed cards do not count. Equal final scores on 4×4 are a draw.
 
 - Play against Willow, a computer rival that weighs captures and possible counterattacks.
-- Choose **New match → Bring a friend** for local two-player play. Player one uses your selected deck; player two receives five shuffled original stones.
-- In **Collection**, choose exactly five distinct stones for your next game. Deck changes do not modify a match in progress.
+- Choose **New match → Bring a friend** for local two-player play. Player one uses your selected deck; player two receives a shuffled original deck.
+- Choose **3×3** for five-card hands and nine squares, or **4×4** for eight-card hands and sixteen squares. Both computer and local play support either board. Choose the board size in New match or Collection; a complete deck automatically expands or trims when switching size.
+- In **Collection**, choose exactly five or eight distinct stones for your next game, depending on the board size. Deck changes do not modify a match in progress.
 - In **Card studio**, name your stone, select a creature and element, or upload a PNG, JPEG, or WebP image up to 2 MB. Set each edge from 0–5, with a total budget of 12 points.
 - Save your creation, then add it to your deck in Collection. Elements determine Resonance counts; captures still compare facing pips.
 - Hover over a card in your hand or on the board for an enlarged card, edge strengths, keyword explanations, and backstory. Keyboard focus also opens the larger view. On touch screens, tap a board card, or select a hand card and choose **Inspect selected**.
 - Download card images as PNG files. Export and import `.skystone.json` card files to back up or share playable cards.
+
+## Giants collection and artwork
+
+The **Giants** collection tab contains all 81 entries in the linked community reference, including rank variants. It preserves their names, elements, and directional pips. Neutral represents the reference's `None` element; Tech and Undead are available too. 80 cards use bundled original game images. Bark Demon uses an illustrated golem because its image is absent from the reference. The catalogue is a community transcription, not an independently verified official database. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the exact source revision and artwork attribution.
+
+Original Conquertron keeps its 4/4/4/4 stats. Giants-origin card-file exports can retain a 16-pip budget and 40-character names; ordinary custom cards retain their 12-pip budget and 24-character names.
+
+The studio now offers sixteen presets. The eight additions are **Slime, Bat, Spider, Robot, Griffin, Crab, Serpent, and Treasure chest**, all original SVG illustrations that work offline and in card image exports.
+
+## Adventure
+
+Choose **Adventure** and select a 3×3 or 4×4 board before starting. The run uses a separate deck and purse, starts with **3 lives, 60 gold, a Power Tonic, and a Healing Draught**, and saves after every move and choice. Starting cards and the first enemies have mostly 0/1 edges. Take exactly five or eight cards from your traveling pack into each battle. Rewards join the pack; use **Expedition deck** to swap them into the active deck.
+
+- Follow a nine-stop route with branching battles, events, two merchants, an elite keeper, a campfire, and the final boss. A lost battle costs one life; a normal draw does not. Losing the last life ends the run. Regular victories award 25 + 5 per floor in gold; elites add 20. Choose one of three card rewards, with printed budgets growing gradually from 4 to 12 as the route advances. Some wins also award a potion if the three-slot belt has room.
+- **The Brass Chest / Gilded Cache:** challenge a keeper with a guarded chest already on a central square (B2 on either board). Control it when the board fills for **45 extra gold**, even if you lose the overall score. If the keeper recaptures it before the finish, there is no bonus. You may also leave the chest alone.
+- **Events:** the Whispering Well heals one life or exchanges a life for 40 gold; the Alchemist offers a free potion; the campfire heals a life or permanently adds a pip to one chosen stone.
+- **Shops:** buy any of three displayed stones, stock up on potions, or visit the workshop. **Sharpen (25 gold)** adds a pip to a chosen edge. **Reforge (20)** changes a chosen card's element. **Inscribe (35)** adds a specific keyword with its edge, element, or Sunder strength settings. Upgrades last for the adventure and use the normal 5-per-edge / 12-total printed-stat limits. Invalid purchases and duplicate keywords spend no gold. Bought cards must be swapped into the battle deck.
+- **Potions:** Power Tonic gives a chosen hand card +1 on all edges for that battle; Hex Vial removes one pip from every edge of a chosen enemy board card, stopping at zero; Healing Draught restores one life, up to three. Combat potions require your turn and do not consume it. Healing works between encounters too. Potions are consumed once and the belt holds three.
+- **Crown Warden:** the boss begins with two enemy guards already on the board. Its central throne has weak north/south edges. To win the run you must **control the throne and have the higher score** when the board fills. A higher score alone is not enough. If you survive a failed attempt, you may revise your deck and try the boss again.
+
+Changing pages pauses the adventure; returning resumes it. Normal games and the custom card collection remain separate from the run. Progress is browser-local; clearing browser storage removes it.
 
 ## Keywords
 
@@ -59,7 +81,7 @@ Add keywords in the card studio. For Resonance, choose the element to count. For
 - Activated pips count for both capturing and defending. Green edge numbers show the resolved strength; the enlarged view shows the base value, total bonus, and each Resonance count. Different keywords on the same edge add together. Bonuses can raise an edge above 5 and do not spend printed-stat budget points.
 - The same keyword cannot appear twice on the same edge; Silence appears at most once per card. Cards without keywords, including older card-file exports, still work. Hover inspection shows reduced edges, Silence status, and the targets of resolved effects. The computer also selects targets when simulating moves.
 
-Custom cards, deck selection, and sound preference are saved in this browser's local storage. Matches start fresh on reload. An incomplete saved deck uses the starter deck for the initial practice match; select five cards before starting another match. Clearing site data removes the collection, so export any creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
+Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
 ## Project
 
@@ -67,10 +89,13 @@ Custom cards, deck selection, and sound preference are saved in this browser's l
 - `src/Artwork.tsx`: original SVG creature illustrations and card rendering.
 - `src/App.tsx`: game table, collection, card studio, persistence, and dialogs.
 - `src/CardInspection.tsx` and `src/KeywordEditor.tsx`: enlarged card rules and directional keyword editing.
+- `src/adventure.ts` and `src/Expedition.tsx`: saved adventure state, rewards, encounters, potions, merchants, boss conditions, and adventure interface.
+- `src/giants-data.json`, `src/giants.ts`, and `src/assets/giants`: the sourced Giants card catalogue and bundled artwork.
 - `tests/game.test.ts`: isolated rules and validation checks.
 - `tests/keywords.test.ts`: keyword timing, capture and defense bonuses, permanent activation, and import validation.
 - `tests/browser/app.spec.ts`: Playwright browser workflows.
 - `tests/browser/keywords.spec.ts`: mouse, keyboard and touch inspection, keyword editing, saved cards, and card-file sharing.
+- `tests/adventure.test.ts` and `tests/browser/adventure.spec.ts`: both board sizes, card catalogue, run progression, purchases, potion use, chest money, boss objectives, persistence, and phone layouts.
 
 To refresh the downloadable ZIP after changing the app, run `npm run package:download`. This rebuilds the standalone HTML and packages it in `downloads/Skystones.zip`; Python 3 is needed only for the packaging step. Commit the updated ZIP with the source changes.
 

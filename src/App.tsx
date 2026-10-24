@@ -37,7 +37,9 @@ import {
 } from "lucide-react";
 import { CreatureArt, ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
-  COORDINATES,
+  coordinate,
+  boardSize,
+  handSize,
   DEFAULT_DECK,
   ELEMENTS,
   EMPTY_BOARD,
@@ -59,6 +61,7 @@ import type {
   Stone,
   KeywordTarget,
   Side,
+  BoardSize,
 } from "./game";
 import { createId } from "./id";
 import {
@@ -69,8 +72,10 @@ import {
 import type { Inspection } from "./CardInspection";
 import { KeywordEditor } from "./KeywordEditor";
 import { TargetPicker } from "./TargetPicker";
+import { Expedition } from "./Expedition";
+import { GIANTS_STONES, GIANTS_REFERENCE } from "./giants";
 
-type Page = "table" | "collection" | "studio";
+type Page = "table" | "collection" | "studio" | "run";
 type Mode = "computer" | "local";
 type DialogState =
   | { kind: "rules" | "new" }
@@ -87,6 +92,7 @@ interface Library {
   custom: Stone[];
   deck: string[];
   sound: boolean;
+  boardSize: BoardSize;
 }
 interface JournalEntry {
   id: number;
@@ -116,6 +122,14 @@ const CREATURE_NAMES: Record<Creature, string> = {
   golem: "Golem",
   mushroom: "Mushroom",
   cat: "Cloud cat",
+  slime: "Slime",
+  bat: "Bat",
+  spider: "Spider",
+  robot: "Robot",
+  griffin: "Griffin",
+  crab: "Crab",
+  serpent: "Serpent",
+  chest: "Treasure chest",
 };
 const freshDraft = (): Stone => ({
   id: "custom-draft",
@@ -135,20 +149,23 @@ function readLibrary(): Library {
       const custom: Stone[] = value.custom
         .filter(validateStone)
         .map((s: Stone) => ({ ...s, custom: true }));
-      const ids = new Set([...STARTER_STONES, ...custom].map((s) => s.id));
+      const ids = new Set(
+        [...STARTER_STONES, ...GIANTS_STONES, ...custom].map((s) => s.id),
+      );
+      const size: BoardSize = value.boardSize === 4 ? 4 : 3;
       const deck = [
         ...new Set<string>(
           value.deck.filter(
             (id: unknown) => typeof id === "string" && ids.has(id),
           ),
         ),
-      ].slice(0, 5);
-      return { custom, deck, sound: value.sound === true };
+      ].slice(0, handSize(size));
+      return { custom, deck, sound: value.sound === true, boardSize: size };
     }
   } catch {
     /* A malformed local save should never prevent the app from opening. */
   }
-  return { custom: [], deck: DEFAULT_DECK, sound: false };
+  return { custom: [], deck: DEFAULT_DECK, sound: false, boardSize: 3 };
 }
 
 function createMatch(
@@ -156,21 +173,28 @@ function createMatch(
   mode: Mode = "computer",
   first: Owner = 0,
 ): Match {
-  const collection = [...STARTER_STONES, ...library.custom];
+  const collection = [...STARTER_STONES, ...GIANTS_STONES, ...library.custom];
   // A half-edited saved deck must not strand the initial practice match.
-  const deck = library.deck.length === 5 ? library.deck : DEFAULT_DECK;
+  const count = handSize(library.boardSize);
+  const deck =
+    library.deck.length === count
+      ? library.deck
+      : STARTER_STONES.slice(0, count).map((s) => s.id);
   const human = deck
     .map((id) => collection.find((s) => s.id === id))
     .filter((s): s is Stone => !!s);
-  const pool = [...STARTER_STONES.slice(5)];
+  const pool =
+    library.boardSize === 4
+      ? [...STARTER_STONES.slice(5), ...STARTER_STONES.slice(0, 5)]
+      : [...STARTER_STONES.slice(5)];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const opponent = pool.slice(0, 5);
+  const opponent = pool.slice(0, count);
   return {
     id: createId(),
-    board: EMPTY_BOARD(),
+    board: EMPTY_BOARD(library.boardSize),
     hands: [human, opponent],
     current: first,
     mode,
@@ -203,12 +227,12 @@ function applyMove(
       {
         id: match.moves,
         owner: match.current,
-        text: `${stone.name} → ${COORDINATES[index]}`,
+        text: `${stone.name} → ${coordinate(index, boardSize(match.board))}`,
         captured: move.captured.length,
         effects: move.effects
           .map(
             (effect) =>
-              `${KEYWORD_RULES[effect.type].name} → ${COORDINATES[effect.target]}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
+              `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, boardSize(match.board))}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
           )
           .join(" · "),
       },
@@ -319,6 +343,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [elementFilter, setElementFilter] = useState("all");
   const [onlyCustom, setOnlyCustom] = useState(false);
+  const [onlyGiants, setOnlyGiants] = useState(false);
   const [draft, setDraft] = useState<Stone>(freshDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -331,9 +356,12 @@ export default function App() {
   const detailRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const lastSound = useRef("");
-  const collection = [...STARTER_STONES, ...library.custom];
+  const collection = [...STARTER_STONES, ...GIANTS_STONES, ...library.custom];
   const scores = score(match.board);
-  const done = match.moves === 9;
+  const size = boardSize(match.board);
+  const capacity = handSize(library.boardSize);
+  const done = match.board.every(Boolean);
+  const tied = scores[0] === scores[1];
   const aiTurn = match.mode === "computer" && match.current === 1 && !done;
   const names =
     match.mode === "computer"
@@ -345,10 +373,12 @@ export default function App() {
   const visible = collection.filter(
     (s) =>
       (!onlyCustom || s.custom) &&
+      (!onlyGiants || onlyCustom || s.origin === "giants") &&
       (elementFilter === "all" || s.element === elementFilter) &&
       s.name.toLowerCase().includes(query.toLowerCase()),
   );
   const totalPoints = draft.edges.reduce((a, b) => a + b, 0);
+  const draftBudget = draft.origin === "giants" ? 16 : 12;
   const winner = scores[0] > scores[1] ? 0 : 1;
 
   useEffect(() => {
@@ -383,7 +413,11 @@ export default function App() {
     const id = match.id;
     const timer = setTimeout(() => {
       setMatch((current) => {
-        if (current.id !== id || current.current !== 1 || current.moves === 9)
+        if (
+          current.id !== id ||
+          current.current !== 1 ||
+          current.board.every(Boolean)
+        )
           return current;
         const move = chooseMove(
           current.board,
@@ -470,6 +504,7 @@ export default function App() {
       silenced: cell?.silenced,
       reductions: cell?.reductions,
       effects: cell?.effects,
+      size,
     };
   }
   function showInspection(
@@ -516,9 +551,9 @@ export default function App() {
     navigate("studio");
   }
   function startMatch() {
-    if (library.deck.length !== 5) {
+    if (library.deck.length !== capacity) {
       setToast(
-        "Choose exactly five stones in your collection to start a match.",
+        `Choose exactly ${capacity} stones in your collection to start a match.`,
       );
       return;
     }
@@ -567,9 +602,9 @@ export default function App() {
   }
   function toggleDeck(stone: Stone) {
     const included = library.deck.includes(stone.id);
-    if (!included && library.deck.length >= 5) {
+    if (!included && library.deck.length >= capacity) {
       setToast(
-        "Five stones make a deck. Remove one first to make room for a new friend.",
+        `${capacity} stones make a deck. Remove one first to make room for a new friend.`,
       );
       return;
     }
@@ -580,6 +615,15 @@ export default function App() {
         : [...library.deck, stone.id],
     });
   }
+  function changeBoardSize(next: BoardSize) {
+    const count = handSize(next);
+    let deck = library.deck.slice(0, count);
+    if (library.deck.length === capacity)
+      deck = [
+        ...new Set([...deck, ...collection.map((stone) => stone.id)]),
+      ].slice(0, count);
+    saveLibrary({ ...library, boardSize: next, deck });
+  }
   function saveDraft(event: React.FormEvent) {
     event.preventDefault();
     const stone: Stone = {
@@ -589,7 +633,9 @@ export default function App() {
       custom: true,
     };
     if (!validateStone(stone)) {
-      setToast("Give your stone a name and use no more than 12 edge points.");
+      setToast(
+        `Give your stone a name and use no more than ${draftBudget} edge points.`,
+      );
       return;
     }
     const custom = editingId
@@ -688,7 +734,7 @@ export default function App() {
       }
     } catch {
       setToast(
-        "This is not a valid Skystones card file. Import a .skystone.json export with at most 12 edge points.",
+        "This is not a valid Skystones card file. Import a .skystone.json export with valid edge stats and keywords.",
       );
     }
   }
@@ -748,6 +794,13 @@ export default function App() {
               <WandSparkles size={18} />
               <span>Card studio</span>
             </button>
+            <button
+              className={page === "run" ? "active" : ""}
+              onClick={() => navigate("run")}
+            >
+              <Swords size={17} />
+              <span>Adventure</span>
+            </button>
           </nav>
           <div className="header-actions">
             <button
@@ -773,6 +826,7 @@ export default function App() {
       </header>
 
       <main className={`main-content page-${page}`}>
+        {page === "run" && <Expedition />}
         {page === "table" && (
           <>
             <div className="page-heading">
@@ -864,9 +918,9 @@ export default function App() {
                     <span className="board-decoration decoration-one">✧</span>
                     <span className="board-decoration decoration-two">✦</span>
                     <div
-                      className={`game-board ${selected !== null && !aiTurn && !done ? "ready-to-place" : ""}`}
+                      className={`game-board board-size-${size} ${selected !== null && !aiTurn && !done ? "ready-to-place" : ""}`}
                       role="group"
-                      aria-label="Game board, three rows and three columns"
+                      aria-label={`Game board, ${size === 3 ? "three rows and three columns" : "four rows and four columns"}`}
                     >
                       {match.board.map((cell, index) => (
                         <button
@@ -875,8 +929,8 @@ export default function App() {
                           className={`board-cell ${cell ? "filled" : "empty"} ${match.lastCaptured.includes(index) ? "just-captured" : ""} ${match.lastPlaced === index ? "just-placed" : ""}`}
                           aria-label={
                             cell
-                              ? `${COORDINATES[index]}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}.${cell.silenced ? " Silenced." : ""} Inspect card.`
-                              : `${COORDINATES[index]}, empty square`
+                              ? `${coordinate(index, size)}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}.${cell.silenced ? " Silenced." : ""} Inspect card.`
+                              : `${coordinate(index, size)}, empty square`
                           }
                           disabled={
                             !cell && (aiTurn || done || selected === null)
@@ -935,7 +989,7 @@ export default function App() {
                           ) : (
                             <>
                               <span className="cell-coordinate">
-                                {COORDINATES[index]}
+                                {coordinate(index, size)}
                               </span>
                               <Plus
                                 className="cell-plus"
@@ -958,16 +1012,19 @@ export default function App() {
                             A GOOD GAME, WELL PLAYED
                           </span>
                           <h2>
-                            {winner === 0
-                              ? match.mode === "computer"
-                                ? "Your little victory."
-                                : "Player one wins!"
-                              : match.mode === "computer"
-                                ? "Willow takes this one."
-                                : "Player two wins!"}
+                            {tied
+                              ? "An even match."
+                              : winner === 0
+                                ? match.mode === "computer"
+                                  ? "Your little victory."
+                                  : "Player one wins!"
+                                : match.mode === "computer"
+                                  ? "Willow takes this one."
+                                  : "Player two wins!"}
                           </h2>
                           <p>
-                            {names[winner]} controlled {scores[winner]} of 9
+                            {tied ? "Each player" : names[winner]} controlled{" "}
+                            {scores[winner]} of {match.board.length}
                             stones.
                             <br />
                             There’s always another story to tell.
@@ -1069,7 +1126,7 @@ export default function App() {
                       <ArrowUpRight size={14} />
                     </button>
                   </div>
-                  <div className="hand-cards">
+                  <div className={`hand-cards hand-size-${handSize(size)}`}>
                     {shownHand.map((stone, index) => (
                       <button
                         id={`hand-${stone.id}`}
@@ -1167,15 +1224,15 @@ export default function App() {
                   </div>
                   <div
                     className="score-track"
-                    aria-label={`${scores[0]} blue stones, ${scores[1]} orange stones, ${9 - match.moves} empty squares`}
+                    aria-label={`${scores[0]} blue stones, ${scores[1]} orange stones, ${match.board.length - match.moves} empty squares`}
                   >
-                    {Array.from({ length: 9 }, (_, i) => (
+                    {Array.from({ length: match.board.length }, (_, i) => (
                       <span
                         key={i}
                         className={
                           i < scores[0]
                             ? "blue"
-                            : i >= 9 - scores[1]
+                            : i >= match.board.length - scores[1]
                               ? "orange"
                               : ""
                         }
@@ -1183,9 +1240,13 @@ export default function App() {
                     ))}
                   </div>
                   <div className="board-progress">
-                    <span>{match.moves} of 9 squares filled</span>
                     <span>
-                      {done ? "Complete" : `${9 - match.moves} to go`}
+                      {match.moves} of {match.board.length} squares filled
+                    </span>
+                    <span>
+                      {done
+                        ? "Complete"
+                        : `${match.board.length - match.moves} to go`}
                     </span>
                   </div>
                 </section>
@@ -1290,9 +1351,7 @@ export default function App() {
                 <h1>
                   A curious collection<span className="orange-period">.</span>
                 </h1>
-                <p>
-                  Old friends, new legends, and the five you take to the table.
-                </p>
+                <p>Old friends, new legends, and your next deck.</p>
               </div>
               <div className="heading-actions">
                 <button
@@ -1315,21 +1374,34 @@ export default function App() {
             <section className="deck-shelf">
               <div className="deck-intro">
                 <span className="eyebrow">YOUR NEXT ADVENTURE</span>
-                <h2>Five good friends.</h2>
+                <h2>{capacity === 5 ? "Five" : "Eight"} good friends.</h2>
+                <label className="board-size-label">
+                  Deck board size
+                  <select
+                    aria-label="Deck board size"
+                    value={library.boardSize}
+                    onChange={(event) =>
+                      changeBoardSize(Number(event.target.value) as BoardSize)
+                    }
+                  >
+                    <option value="3">3×3 · 5 cards</option>
+                    <option value="4">4×4 · 8 cards</option>
+                  </select>
+                </label>
                 <p>
                   Build your deck for the next match.
                   <br />
                   Your current game stays as it is.
                 </p>
                 <span
-                  className={`deck-count ${library.deck.length < 5 ? "incomplete" : ""}`}
+                  className={`deck-count ${library.deck.length < capacity ? "incomplete" : ""}`}
                 >
                   <Layers size={15} />
-                  {library.deck.length} / 5 stones selected
+                  {library.deck.length} / {capacity} stones selected
                 </span>
               </div>
               <div className="deck-slots">
-                {Array.from({ length: 5 }, (_, index) => {
+                {Array.from({ length: capacity }, (_, index) => {
                   const stone = collection.find(
                     (s) => s.id === library.deck[index],
                   );
@@ -1355,7 +1427,7 @@ export default function App() {
               </div>
               <button
                 className="button button-dark deck-play"
-                disabled={library.deck.length !== 5}
+                disabled={library.deck.length !== capacity}
                 onClick={() => setDialog({ kind: "new" })}
               >
                 Let’s play
@@ -1366,10 +1438,22 @@ export default function App() {
             <div className="collection-toolbar">
               <div className="collection-tabs">
                 <button
-                  className={!onlyCustom ? "active" : ""}
-                  onClick={() => setOnlyCustom(false)}
+                  className={!onlyCustom && !onlyGiants ? "active" : ""}
+                  onClick={() => {
+                    setOnlyCustom(false);
+                    setOnlyGiants(false);
+                  }}
                 >
                   All stones<span>{collection.length}</span>
+                </button>
+                <button
+                  className={onlyGiants && !onlyCustom ? "active" : ""}
+                  onClick={() => {
+                    setOnlyGiants(true);
+                    setOnlyCustom(false);
+                  }}
+                >
+                  Giants<span>{GIANTS_STONES.length}</span>
                 </button>
                 <button
                   className={onlyCustom ? "active" : ""}
@@ -1405,6 +1489,16 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {onlyGiants && !onlyCustom && (
+              <p className="giants-reference-note">
+                81 Giants Skystones, including rank variants. 80 use original
+                game art; Bark Demon uses an illustrated stand-in.{" "}
+                <a href={GIANTS_REFERENCE} target="_blank" rel="noreferrer">
+                  Community card reference
+                </a>
+              </p>
+            )}
             {visible.length ? (
               <div className="collection-grid">
                 {visible.map((stone) => {
@@ -1419,6 +1513,8 @@ export default function App() {
                               <Sparkles size={11} />
                               MADE BY YOU
                             </>
+                          ) : stone.origin === "giants" ? (
+                            "SKYLANDERS GIANTS"
                           ) : (
                             "THE ORIGINALS"
                           )}
@@ -1540,12 +1636,16 @@ export default function App() {
                   </div>
                   <div className="field-group">
                     <label htmlFor="stone-name">
-                      Stone name<span>{draft.name.length}/24</span>
+                      Stone name
+                      <span>
+                        {draft.name.length}/
+                        {draft.origin === "giants" ? 40 : 24}
+                      </span>
                     </label>
                     <input
                       id="stone-name"
                       placeholder="What shall we call you?"
-                      maxLength={24}
+                      maxLength={draft.origin === "giants" ? 40 : 24}
                       value={draft.name}
                       required
                       onChange={(e) =>
@@ -1712,7 +1812,8 @@ export default function App() {
                               type="button"
                               aria-label={`Increase ${["north", "east", "south", "west"][index]} strength`}
                               disabled={
-                                draft.edges[index] === 5 || totalPoints >= 12
+                                draft.edges[index] === 5 ||
+                                totalPoints >= draftBudget
                               }
                               onClick={() =>
                                 setDraft({
@@ -1735,11 +1836,11 @@ export default function App() {
                       <span>YOUR POINT BUDGET</span>
                       <strong>
                         {totalPoints}
-                        <span> / 12</span>
+                        <span> / {draftBudget}</span>
                       </strong>
                     </div>
                     <div className="budget-track">
-                      {Array.from({ length: 12 }, (_, i) => (
+                      {Array.from({ length: draftBudget }, (_, i) => (
                         <span
                           className={i < totalPoints ? "used" : ""}
                           key={i}
@@ -1747,8 +1848,8 @@ export default function App() {
                       ))}
                     </div>
                     <p>
-                      Up to 5 per edge, 12 in total. A clever stone has a
-                      weakness, too.
+                      Up to 5 per edge, {draftBudget} in total. A clever stone
+                      has a weakness, too.
                     </p>
                   </div>
                 </section>
@@ -1812,7 +1913,7 @@ export default function App() {
                     Download card image
                   </button>
                   <p className="preview-note">
-                    Save your stone, then add it to your five-card
+                    Save your stone, then add it to your battle
                     <br />
                     deck in the collection to bring it into play.
                   </p>
@@ -1932,7 +2033,8 @@ export default function App() {
             <br />A clever little game.
           </h2>
           <p className="dialog-intro">
-            Five stones each. Nine squares. Make them yours.
+            Choose 3×3 with five cards each, or 4×4 with eight. Make the board
+            yours.
           </p>
           <ol className="rules-list">
             <li>
@@ -1972,8 +2074,9 @@ export default function App() {
               <div>
                 <h3>Own a little more of the board.</h3>
                 <p>
-                  When all nine squares are filled, whoever controls the most
-                  stones wins. The last unused card doesn’t count.
+                  When all squares are filled, whoever controls the most stones
+                  wins. Unused cards do not count. Equal final scores on 4×4 are
+                  a draw.
                 </p>
               </div>
             </li>
@@ -2039,7 +2142,8 @@ export default function App() {
             <br />A new adventure.
           </h2>
           <p className="dialog-intro">
-            Your five stones. A whole board of possibilities.
+            Your {capacity} stones. A {library.boardSize}×{library.boardSize}{" "}
+            board of possibilities.
           </p>
           <div className="mode-options">
             <button
@@ -2062,6 +2166,19 @@ export default function App() {
             </button>
           </div>
           <div className="first-player-field">
+            <label htmlFor="normal-board-size">Board size</label>
+            <select
+              id="normal-board-size"
+              value={library.boardSize}
+              onChange={(event) =>
+                changeBoardSize(Number(event.target.value) as BoardSize)
+              }
+            >
+              <option value="3">3×3 · 5 cards per player</option>
+              <option value="4">4×4 · 8 cards per player</option>
+            </select>
+          </div>
+          <div className="first-player-field">
             <label htmlFor="first-player">Who makes the first move?</label>
             <select
               id="first-player"
@@ -2082,18 +2199,19 @@ export default function App() {
           </div>
           {newMode === "local" && (
             <p className="dialog-small-note">
-              Player one uses your selected deck. Player two gets five original
-              stones. Pass the screen after each move.
+              Player one uses your selected deck. Player two gets {capacity}{" "}
+              original stones. Pass the screen after each move.
             </p>
           )}
-          {library.deck.length !== 5 && (
+          {library.deck.length !== capacity && (
             <p className="inline-warning">
-              Your deck needs five stones. Visit your collection to finish it.
+              Your deck needs {capacity} stones. Visit your collection to finish
+              it.
             </p>
           )}
           <button
             className="button button-dark full-width"
-            disabled={library.deck.length !== 5}
+            disabled={library.deck.length !== capacity}
             onClick={startMatch}
           >
             Find a little magic
@@ -2121,7 +2239,9 @@ export default function App() {
           <div className="eyebrow">
             {dialog.stone.custom
               ? "ONE OF YOUR OWN"
-              : "THE ORIGINAL COLLECTION"}
+              : dialog.stone.origin === "giants"
+                ? "SKYLANDERS GIANTS"
+                : "THE ORIGINAL COLLECTION"}
           </div>
           <h2>{dialog.stone.name}</h2>
           <p className="dialog-intro">

@@ -1,0 +1,1298 @@
+[
+  {
+    "id": "giants-drow-lance-master",
+    "name": "Drow Lance Master",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      0,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-lance-master"
+  },
+  {
+    "id": "giants-drow-lance-master-2",
+    "name": "Drow Lance Master 2",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      0,
+      0,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-lance-master-2"
+  },
+  {
+    "id": "giants-drow-lance-master-3",
+    "name": "Drow Lance Master 3",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      3,
+      0,
+      0,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-lance-master-3"
+  },
+  {
+    "id": "giants-drow-lance-master-4",
+    "name": "Drow Lance Master 4",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      3,
+      1,
+      1,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-lance-master-4"
+  },
+  {
+    "id": "giants-mohawk-cyclops",
+    "name": "Mohawk Cyclops",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      1,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mohawk-cyclops"
+  },
+  {
+    "id": "giants-mohawk-cyclops-2",
+    "name": "Mohawk Cyclops 2",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      2,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mohawk-cyclops-2"
+  },
+  {
+    "id": "giants-mohawk-cyclops-3",
+    "name": "Mohawk Cyclops 3",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      3,
+      3,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mohawk-cyclops-3"
+  },
+  {
+    "id": "giants-mohawk-cyclops-4",
+    "name": "Mohawk Cyclops 4",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      3,
+      3,
+      1,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mohawk-cyclops-4"
+  },
+  {
+    "id": "giants-mace-major",
+    "name": "Mace Major",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      0,
+      1,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mace-major"
+  },
+  {
+    "id": "giants-mace-major-2",
+    "name": "Mace Major 2",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      0,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mace-major-2"
+  },
+  {
+    "id": "giants-mace-major-3",
+    "name": "Mace Major 3",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      0,
+      3,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mace-major-3"
+  },
+  {
+    "id": "giants-mace-major-4",
+    "name": "Mace Major 4",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      1,
+      3,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "mace-major-4"
+  },
+  {
+    "id": "giants-drow-archer",
+    "name": "Drow Archer",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-archer"
+  },
+  {
+    "id": "giants-drow-archer-2",
+    "name": "Drow Archer 2",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      0,
+      2,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-archer-2"
+  },
+  {
+    "id": "giants-drow-archer-3",
+    "name": "Drow Archer 3",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      3,
+      0,
+      3,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "drow-archer-3"
+  },
+  {
+    "id": "giants-blaster-troll",
+    "name": "Blaster Troll",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      0,
+      1,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "blaster-troll"
+  },
+  {
+    "id": "giants-blaster-troll-2",
+    "name": "Blaster Troll 2",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      0,
+      2,
+      0,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "blaster-troll-2"
+  },
+  {
+    "id": "giants-blaster-troll-3",
+    "name": "Blaster Troll 3",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      0,
+      3,
+      0,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "blaster-troll-3"
+  },
+  {
+    "id": "giants-chompy-bot-9000",
+    "name": "Chompy Bot 9000",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      1,
+      0,
+      1,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-bot-9000"
+  },
+  {
+    "id": "giants-chompy-bot-9000-2",
+    "name": "Chompy Bot 9000 2",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-bot-9000-2"
+  },
+  {
+    "id": "giants-chompy-bot-9000-3",
+    "name": "Chompy Bot 9000 3",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      2,
+      1,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-bot-9000-3"
+  },
+  {
+    "id": "giants-chompy-bot-9000-4",
+    "name": "Chompy Bot 9000 4",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-bot-9000-4"
+  },
+  {
+    "id": "giants-chompy-bot-9000-5",
+    "name": "Chompy Bot 9000 5",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      3,
+      2,
+      3,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-bot-9000-5"
+  },
+  {
+    "id": "giants-chompy-bot-9000-6",
+    "name": "Chompy Bot 9000 6",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-bot-9000-6"
+  },
+  {
+    "id": "giants-arkeyan-jouster",
+    "name": "Arkeyan Jouster",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-jouster"
+  },
+  {
+    "id": "giants-arkeyan-jouster-2",
+    "name": "Arkeyan Jouster 2",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      3,
+      1,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-jouster-2"
+  },
+  {
+    "id": "giants-arkeyan-jouster-3",
+    "name": "Arkeyan Jouster 3",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      3,
+      2,
+      0,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-jouster-3"
+  },
+  {
+    "id": "giants-arkeyan-jouster-4",
+    "name": "Arkeyan Jouster 4",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      3,
+      2,
+      1,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-jouster-4"
+  },
+  {
+    "id": "giants-arkeyan-jouster-5",
+    "name": "Arkeyan Jouster 5",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      3,
+      2,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-jouster-5"
+  },
+  {
+    "id": "giants-inhuman-shield",
+    "name": "Inhuman Shield",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      1,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "inhuman-shield"
+  },
+  {
+    "id": "giants-inhuman-shield-2",
+    "name": "Inhuman Shield 2",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      1,
+      3,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "inhuman-shield-2"
+  },
+  {
+    "id": "giants-inhuman-shield-3",
+    "name": "Inhuman Shield 3",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      2,
+      3,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "inhuman-shield-3"
+  },
+  {
+    "id": "giants-inhuman-shield-4",
+    "name": "Inhuman Shield 4",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      2,
+      3,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "inhuman-shield-4"
+  },
+  {
+    "id": "giants-inhuman-shield-5",
+    "name": "Inhuman Shield 5",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      2,
+      3,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "inhuman-shield-5"
+  },
+  {
+    "id": "giants-d-riveter",
+    "name": "D. Riveter",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      1,
+      0,
+      1,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "d-riveter"
+  },
+  {
+    "id": "giants-d-riveter-2",
+    "name": "D. Riveter 2",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      1,
+      0,
+      1,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "d-riveter-2"
+  },
+  {
+    "id": "giants-d-riveter-3",
+    "name": "D. Riveter 3",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      2,
+      0,
+      2,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "d-riveter-3"
+  },
+  {
+    "id": "giants-d-riveter-4",
+    "name": "D. Riveter 4",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      2,
+      1,
+      2,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "d-riveter-4"
+  },
+  {
+    "id": "giants-d-riveter-5",
+    "name": "D. Riveter 5",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      2,
+      2,
+      2,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "d-riveter-5"
+  },
+  {
+    "id": "giants-jawbreaker",
+    "name": "Jawbreaker",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      2,
+      1,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "jawbreaker"
+  },
+  {
+    "id": "giants-jawbreaker-2",
+    "name": "Jawbreaker 2",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      1,
+      3,
+      1,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "jawbreaker-2"
+  },
+  {
+    "id": "giants-jawbreaker-3",
+    "name": "Jawbreaker 3",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      3,
+      2,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "jawbreaker-3"
+  },
+  {
+    "id": "giants-jawbreaker-4",
+    "name": "Jawbreaker 4",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      3,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "jawbreaker-4"
+  },
+  {
+    "id": "giants-jawbreaker-5",
+    "name": "Jawbreaker 5",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      2,
+      3,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "jawbreaker-5"
+  },
+  {
+    "id": "giants-enfuego-chompy",
+    "name": "Enfuego Chompy",
+    "element": "fire",
+    "creature": "slime",
+    "edges": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "enfuego-chompy"
+  },
+  {
+    "id": "giants-enfuego-chompy-2",
+    "name": "Enfuego Chompy 2",
+    "element": "fire",
+    "creature": "slime",
+    "edges": [
+      2,
+      0,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "enfuego-chompy-2"
+  },
+  {
+    "id": "giants-enfuego-chompy-3",
+    "name": "Enfuego Chompy 3",
+    "element": "fire",
+    "creature": "slime",
+    "edges": [
+      2,
+      1,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "enfuego-chompy-3"
+  },
+  {
+    "id": "giants-frigid-chompy",
+    "name": "Frigid Chompy",
+    "element": "water",
+    "creature": "slime",
+    "edges": [
+      0,
+      0,
+      1,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "frigid-chompy"
+  },
+  {
+    "id": "giants-frigid-chompy-2",
+    "name": "Frigid Chompy 2",
+    "element": "water",
+    "creature": "slime",
+    "edges": [
+      0,
+      0,
+      2,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "frigid-chompy-2"
+  },
+  {
+    "id": "giants-frigid-chompy-3",
+    "name": "Frigid Chompy 3",
+    "element": "water",
+    "creature": "slime",
+    "edges": [
+      0,
+      1,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "frigid-chompy-3"
+  },
+  {
+    "id": "giants-spiderlings",
+    "name": "Spiderlings",
+    "element": "neutral",
+    "creature": "spider",
+    "edges": [
+      0,
+      1,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "spiderlings"
+  },
+  {
+    "id": "giants-spiderlings-2",
+    "name": "Spiderlings 2",
+    "element": "neutral",
+    "creature": "spider",
+    "edges": [
+      0,
+      2,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "spiderlings-2"
+  },
+  {
+    "id": "giants-spiderlings-3",
+    "name": "Spiderlings 3",
+    "element": "air",
+    "creature": "spider",
+    "edges": [
+      0,
+      3,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "spiderlings-3"
+  },
+  {
+    "id": "giants-chompy",
+    "name": "Chompy",
+    "element": "neutral",
+    "creature": "slime",
+    "edges": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy"
+  },
+  {
+    "id": "giants-chompy-2",
+    "name": "Chompy 2",
+    "element": "earth",
+    "creature": "slime",
+    "edges": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-2"
+  },
+  {
+    "id": "giants-chompy-3",
+    "name": "Chompy 3",
+    "element": "earth",
+    "creature": "slime",
+    "edges": [
+      1,
+      0,
+      1,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "chompy-3"
+  },
+  {
+    "id": "giants-axecutioner",
+    "name": "Axecutioner",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "axecutioner"
+  },
+  {
+    "id": "giants-arkeyan-duelist",
+    "name": "Arkeyan Duelist",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      4,
+      0,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-duelist"
+  },
+  {
+    "id": "giants-bag-o-boom",
+    "name": "Bag O' Boom",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      4,
+      0,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "bag-o-boom"
+  },
+  {
+    "id": "giants-shadow-duke",
+    "name": "Shadow Duke",
+    "element": "neutral",
+    "creature": "fox",
+    "edges": [
+      0,
+      0,
+      4,
+      0
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "shadow-duke"
+  },
+  {
+    "id": "giants-arkeyan-sniper",
+    "name": "Arkeyan Sniper",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      0,
+      0,
+      0,
+      4
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-sniper"
+  },
+  {
+    "id": "giants-conquertron",
+    "name": "CONQUERTRON",
+    "element": "neutral",
+    "creature": "robot",
+    "edges": [
+      4,
+      4,
+      4,
+      4
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "conquertron"
+  },
+  {
+    "id": "giants-arkeyan-bomber",
+    "name": "Arkeyan Bomber",
+    "element": "air",
+    "creature": "robot",
+    "edges": [
+      2,
+      0,
+      1,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-bomber"
+  },
+  {
+    "id": "giants-boulder-bowler",
+    "name": "Boulder Bowler",
+    "element": "earth",
+    "creature": "fox",
+    "edges": [
+      2,
+      2,
+      0,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "boulder-bowler"
+  },
+  {
+    "id": "giants-boom-fiend",
+    "name": "Boom Fiend",
+    "element": "fire",
+    "creature": "fox",
+    "edges": [
+      2,
+      1,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "boom-fiend"
+  },
+  {
+    "id": "giants-armored-chompy",
+    "name": "Armored Chompy",
+    "element": "water",
+    "creature": "slime",
+    "edges": [
+      1,
+      1,
+      3,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "armored-chompy"
+  },
+  {
+    "id": "giants-life-spell-punk",
+    "name": "Life Spell Punk",
+    "element": "magic",
+    "creature": "fox",
+    "edges": [
+      2,
+      1,
+      0,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "life-spell-punk"
+  },
+  {
+    "id": "giants-grenade-general",
+    "name": "Grenade General",
+    "element": "tech",
+    "creature": "fox",
+    "edges": [
+      0,
+      3,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "grenade-general"
+  },
+  {
+    "id": "giants-root-runner",
+    "name": "Root Runner",
+    "element": "life",
+    "creature": "serpent",
+    "edges": [
+      2,
+      1,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "root-runner"
+  },
+  {
+    "id": "giants-bark-demon",
+    "name": "Bark Demon",
+    "element": "life",
+    "creature": "golem",
+    "edges": [
+      1,
+      3,
+      1,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": null
+  },
+  {
+    "id": "giants-trog-wanderer",
+    "name": "Trog Wanderer",
+    "element": "undead",
+    "creature": "fox",
+    "edges": [
+      1,
+      2,
+      1,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "trog-wanderer"
+  },
+  {
+    "id": "giants-dragonet",
+    "name": "Dragonet",
+    "element": "air",
+    "creature": "dragon",
+    "edges": [
+      1,
+      3,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "dragonet"
+  },
+  {
+    "id": "giants-crystal-golem",
+    "name": "Crystal Golem",
+    "element": "earth",
+    "creature": "golem",
+    "edges": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "crystal-golem"
+  },
+  {
+    "id": "giants-blazer-brewer",
+    "name": "Blazer Brewer",
+    "element": "fire",
+    "creature": "fox",
+    "edges": [
+      3,
+      1,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "blazer-brewer"
+  },
+  {
+    "id": "giants-slobbering-mutticus",
+    "name": "Slobbering Mutticus",
+    "element": "water",
+    "creature": "fox",
+    "edges": [
+      1,
+      3,
+      3,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "slobbering-mutticus"
+  },
+  {
+    "id": "giants-arkeyan-crackler",
+    "name": "Arkeyan Crackler",
+    "element": "magic",
+    "creature": "robot",
+    "edges": [
+      2,
+      3,
+      2,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-crackler"
+  },
+  {
+    "id": "giants-arkeyan-shield-juggernaut",
+    "name": "Arkeyan Shield Juggernaut",
+    "element": "tech",
+    "creature": "robot",
+    "edges": [
+      0,
+      1,
+      3,
+      3
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-shield-juggernaut"
+  },
+  {
+    "id": "giants-goliath-drow",
+    "name": "Goliath Drow",
+    "element": "life",
+    "creature": "fox",
+    "edges": [
+      4,
+      1,
+      0,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "goliath-drow"
+  },
+  {
+    "id": "giants-gargantula",
+    "name": "Gargantula",
+    "element": "undead",
+    "creature": "spider",
+    "edges": [
+      0,
+      1,
+      4,
+      1
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "gargantula"
+  },
+  {
+    "id": "giants-trogmander",
+    "name": "Trogmander",
+    "element": "magic",
+    "creature": "dragon",
+    "edges": [
+      1,
+      2,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "trogmander"
+  },
+  {
+    "id": "giants-arkeyan-ultron",
+    "name": "Arkeyan Ultron",
+    "element": "tech",
+    "creature": "robot",
+    "edges": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "description": "Original Giants Skystone. Edge stats use the community card reference.",
+    "origin": "giants",
+    "keywords": [],
+    "art": "arkeyan-ultron"
+  }
+]

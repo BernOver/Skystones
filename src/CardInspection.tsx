@@ -12,13 +12,19 @@ import {
 } from "lucide-react";
 import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
-  COORDINATES,
+  coordinate,
   ELEMENTS,
   KEYWORD_RULES,
   SIDE_NAMES,
   keywordGroups,
 } from "./game";
-import type { ActiveKeyword, Edges, Stone, TargetEffect } from "./game";
+import type {
+  ActiveKeyword,
+  Edges,
+  Stone,
+  TargetEffect,
+  BoardSize,
+} from "./game";
 
 export interface Inspection {
   stone: Stone;
@@ -33,6 +39,7 @@ export interface Inspection {
   silenced?: boolean;
   reductions?: Edges;
   effects?: TargetEffect[];
+  size?: BoardSize;
 }
 
 export function KeywordDetails({
@@ -41,12 +48,14 @@ export function KeywordDetails({
   played = false,
   silenced = false,
   effects,
+  size = 3,
 }: {
   stone: Stone;
   activeKeywords?: ActiveKeyword[];
   played?: boolean;
   silenced?: boolean;
   effects?: TargetEffect[];
+  size?: BoardSize;
 }) {
   return (
     <div className={`keyword-details ${silenced ? "keywords-disabled" : ""}`}>
@@ -166,7 +175,7 @@ export function KeywordDetails({
                         {effect.type === "sunder"
                           ? `${SIDE_NAMES[effect.side]} −${effect.amount ?? 1} on`
                           : "Silenced"}{" "}
-                        {COORDINATES[effect.target]} · resolved when played
+                        {coordinate(effect.target, size)} · resolved when played
                       </span>
                     ))
                   ) : (
@@ -398,6 +407,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         played={played}
         silenced={silenced}
         effects={effects}
+        size={inspection.size}
       />
       {stone.description && (
         <div className="inspection-story">

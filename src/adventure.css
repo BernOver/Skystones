@@ -1,0 +1,1184 @@
+.board-size-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+.stone-art > .giants-art {
+  position: absolute;
+  width: 166%;
+  height: 166%;
+  max-width: none;
+  left: -33%;
+  top: -33%;
+  object-fit: contain;
+}
+.giants-reference-note {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8f9a7d;
+  margin: 16px 0 25px;
+}
+.giants-reference-note a {
+  color: #a2844f;
+  text-decoration: underline;
+}
+.board-size-4 .stone-caption {
+  font-size: 8px;
+  min-height: 22px;
+  padding: 4px;
+}
+.board-size-4 .stone-keyword {
+  font-size: 5px;
+}
+.hand-size-8 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.hand-size-8 .hand-card-button {
+  width: 100%;
+  max-width: 145px;
+  margin: 0 auto;
+}
+.deck-shelf:has(.deck-slot:nth-child(8)) .deck-slots {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.board-size-label {
+  display: block;
+  font-size: 10px;
+  color: #788b69;
+  margin: 12px 0;
+}
+.board-size-label select {
+  display: block;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid #d5dcc4;
+  border-radius: 5px;
+  background: #f7f7ed;
+  color: #627b59;
+  max-width: 100%;
+}
+.target-board-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.target-board-4 .target-cell .stone-card {
+  height: 105px;
+}
+.target-board-4 .target-cell .stone-caption {
+  font-size: 7px;
+}
+.adventure {
+  --run-ink: #29413c;
+  --run-sage: #758c61;
+  --run-gold: #b28a3a;
+}
+.adventure-start {
+  max-width: 850px;
+  padding: 55px 0 70px;
+  margin: auto;
+}
+.adventure-start .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #a47a3e;
+}
+.adventure-start h1 {
+  margin: 22px 0;
+  font-family: var(--serif);
+  font-size: clamp(45px, 6vw, 76px);
+  line-height: 1.06;
+  letter-spacing: -3px;
+}
+.adventure-start > p {
+  max-width: 620px;
+  font-size: 15px;
+  line-height: 1.9;
+  color: #819172;
+}
+.adventure-promises {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin: 30px 0;
+}
+.adventure-promises span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 17px;
+  border: 1px solid #e0e4cf;
+  border-radius: 9px;
+  color: #7b8f64;
+  font-size: 12px;
+  background: #f4f5e9;
+}
+.adventure-promises svg {
+  width: 20px;
+  flex-shrink: 0;
+}
+.run-size-label {
+  display: block;
+  max-width: 380px;
+  font-size: 12px;
+  color: #788c66;
+  margin: 25px 0;
+}
+.run-size-label select {
+  display: block;
+  width: 100%;
+  margin-top: 9px;
+  padding: 13px;
+  background: #fafbf1;
+  border: 1px solid #d8dfc7;
+  border-radius: 7px;
+  color: #637a58;
+}
+.adventure-start > .button {
+  margin-bottom: 16px;
+}
+.adventure-start .field-note {
+  font-size: 11px;
+  margin-top: 16px;
+}
+.run-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  border: 1px solid #e0e2ce;
+  border-radius: 12px;
+  background: #faf9f0;
+}
+.run-toolbar > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #889273;
+}
+.run-toolbar > span strong {
+  font-family: var(--serif);
+  font-size: 25px;
+  font-weight: 400;
+  color: #5b765b;
+}
+.run-toolbar > span:nth-child(2) strong {
+  color: #b28a3a;
+}
+.run-toolbar > span:nth-child(2) svg {
+  color: #b28a3a;
+}
+.potion-belt {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.potion-belt button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d5ddc2;
+  background: #f1f5e5;
+  padding: 8px 9px;
+  border-radius: 6px;
+  font-size: 10px;
+  color: #7b8e65;
+  cursor: pointer;
+}
+.potion-belt button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.potion-belt small {
+  color: #98a085;
+  font-size: 10px;
+}
+.run-message {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #7e8d6a;
+  margin: 17px 0 25px;
+  padding: 0 5px;
+}
+.adventure-error {
+  color: #a76242;
+  background: #faeee1;
+  border: 1px solid #e6c6a9;
+  border-radius: 7px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 15px 0;
+}
+.run-panel {
+  background: #fffdf5;
+  border: 1px solid #e0e2ce;
+  border-radius: 13px;
+  padding: 28px;
+  margin: 22px 0;
+}
+.run-panel h2,
+.run-shop h2,
+.run-battle h2,
+.run-map h2 {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.8px;
+  color: #345047;
+}
+.run-panel > p,
+.run-shop p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #859373;
+  margin: 10px 0 18px;
+}
+.run-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.run-card-choice,
+.run-card-preview {
+  border: 0;
+  background: none;
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+}
+.run-card-choice .stone-card,
+.run-card-preview .stone-card {
+  width: 100%;
+  height: 195px;
+}
+.run-card-choice > span {
+  display: block;
+  font-size: 10px;
+  color: #8b9a73;
+  margin-top: 9px;
+}
+.run-card-choice.is-selected > span {
+  color: #698047;
+  font-weight: 600;
+}
+.run-pack-card > .text-button {
+  font-size: 10px;
+  margin: 8px auto;
+}
+.run-map {
+  max-width: 950px;
+  margin: 30px auto;
+}
+.run-map .section-heading {
+  margin-bottom: 24px;
+}
+.run-map-row {
+  display: flex;
+  gap: 22px;
+  align-items: stretch;
+  position: relative;
+  padding-bottom: 22px;
+}
+.run-map-row:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 32px;
+  bottom: -2px;
+  width: 1px;
+  background: #d7ddc5;
+}
+.floor-marker {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d8ddc6;
+  background: #f7f7ed;
+  border-radius: 50%;
+  color: #92a17c;
+  font-size: 12px;
+  position: relative;
+  z-index: 1;
+}
+.run-map-row.current .floor-marker {
+  background: #70855e;
+  color: #fff9e9;
+  border-color: #70855e;
+  box-shadow: 0 0 0 5px #dfe6cf;
+}
+.run-route-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+.run-route-options:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.run-node {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  min-width: 0;
+  padding: 20px;
+  background: #fbfbf2;
+  border: 1px solid #d9dfc8;
+  border-radius: 10px;
+  color: #829568;
+  cursor: pointer;
+}
+.run-node > svg {
+  flex-shrink: 0;
+}
+.run-node > span {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.run-node strong {
+  font-family: var(--serif);
+  font-size: 20px;
+  color: #617b55;
+  font-weight: 400;
+}
+.run-node small {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #91a17e;
+}
+.run-node > svg:last-child {
+  margin-left: auto;
+}
+.run-node.node-boss {
+  background: #f0e8ed;
+  border-color: #d5bdce;
+  color: #94728b;
+}
+.run-node.node-shop {
+  background: #faf2df;
+  border-color: #e0ce9f;
+  color: #b28d4e;
+}
+.run-node.node-chest {
+  background: #f6f0dd;
+  border-color: #e4d5a7;
+  color: #ae9249;
+}
+.run-map-row.current .run-node:hover {
+  box-shadow: 0 4px 15px #5e74551c;
+  transform: translateY(-2px);
+  border-color: #a7b98a;
+}
+.run-map-row.future {
+  opacity: 0.5;
+}
+.run-map-row.completed {
+  opacity: 0.35;
+}
+.run-node:disabled {
+  cursor: default;
+}
+.run-battle {
+  max-width: 850px;
+  margin: 25px auto;
+}
+.run-battle-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.run-battle-heading h2 {
+  margin: 6px 0;
+}
+.run-battle-heading p {
+  color: #8b9877;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.run-score {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+.run-score span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #8c967b;
+}
+.run-score strong {
+  font-family: var(--serif);
+  font-size: 42px;
+  color: #5e867e;
+  font-weight: 400;
+}
+.run-score span:last-child strong {
+  color: #c59167;
+}
+.run-objective {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #faf0da;
+  border: 1px solid #e3d1a4;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #9b7e3e;
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+.run-objective svg {
+  flex-shrink: 0;
+}
+.adventure-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  aspect-ratio: 1;
+  max-width: 570px;
+  margin: 0 auto 28px;
+  padding: 12px;
+  border-radius: 13px;
+  background: #e5e1d2;
+  border: 1px solid #d6d3bc;
+  box-shadow: 0 5px 0 #d6d0ba;
+}
+.adventure-board-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  max-width: 650px;
+}
+.adventure-square {
+  border: 0;
+  background: #efeddf;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+.adventure-square .stone-card {
+  height: 100%;
+  width: 100%;
+}
+.adventure-square.vacant {
+  border: 1px dashed #cfcdb7;
+}
+.adventure-square.vacant > span {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: #b3b69b;
+  font-size: 13px;
+}
+.adventure-square.vacant small {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.adventure-square.vacant:not(:disabled):hover {
+  background: #e0e8cf;
+  border-color: #9fb386;
+}
+.adventure-square:disabled {
+  cursor: default;
+}
+.adventure-square .stone-caption {
+  font-size: 10px;
+  min-height: 23px;
+  padding: 5px;
+}
+.adventure-square .stone-keyword {
+  font-size: 6px;
+}
+.objective-square {
+  box-shadow: 0 0 0 3px #c6a55d;
+}
+.objective-badge {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 6px;
+  letter-spacing: 1px;
+  background: #ac883d;
+  color: #fff8e1;
+  padding: 3px 7px;
+  border-radius: 3px;
+  z-index: 2;
+}
+.run-captured {
+  animation: run-capture 0.6s;
+}
+@keyframes run-capture {
+  50% {
+    box-shadow: 0 0 0 4px #b2c78e;
+  }
+}
+.run-hand-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin: 22px 0 15px;
+}
+.run-hand-heading h3 {
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 400;
+}
+.run-hand-heading > span {
+  font-size: 10px;
+  color: #98a185;
+}
+.run-hand {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 14px;
+}
+.run-hand-card {
+  background: none;
+  border: 0;
+  min-width: 0;
+  padding: 0;
+  cursor: pointer;
+  max-width: 160px;
+}
+.run-hand-card .stone-card {
+  width: 100%;
+  height: 170px;
+}
+.run-hand-card .stone-caption {
+  font-size: 9px;
+  min-height: 23px;
+}
+.run-hand-card .stone-keyword {
+  font-size: 6px;
+}
+.run-hand-card:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.run-hand-card[aria-pressed="true"] {
+  transform: translateY(-6px);
+}
+.run-journal {
+  margin-top: 22px;
+  border-top: 1px solid #e1e5d3;
+  padding-top: 15px;
+  color: #83936f;
+  font-size: 11px;
+}
+.run-journal summary {
+  cursor: pointer;
+}
+.run-journal p {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #9aa287;
+}
+.run-event {
+  max-width: 700px;
+  margin: 35px auto;
+}
+.event-symbol {
+  color: #9e9b60;
+  margin: 5px 0 20px;
+}
+.event-symbol svg {
+  width: 45px;
+  height: 45px;
+}
+.event-options {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 22px;
+}
+.event-options .button {
+  white-space: normal;
+  line-height: 1.5;
+}
+.event-options label {
+  color: #80906c;
+  font-size: 11px;
+}
+.event-options select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: #f8f9ef;
+  border: 1px solid #d9dfc9;
+  border-radius: 6px;
+  color: #738764;
+}
+.potion-event {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  text-align: left;
+}
+.potion-event span {
+  font-size: 11px;
+  font-weight: 400;
+  color: #95a180;
+}
+.run-shop {
+  padding: 30px;
+  background: linear-gradient(180deg, #efe0c6 0, #faf3e6 210px, #f8f6ed 100%);
+  border: 1px solid #e1d0b0;
+  border-radius: 13px;
+  margin-top: 25px;
+}
+.shop-banner {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  color: #a88348;
+  margin-bottom: 32px;
+}
+.shop-banner .eyebrow {
+  color: #a48654;
+  margin-bottom: 7px;
+}
+.shop-banner h2 {
+  color: #836941;
+}
+.shop-banner p {
+  margin-bottom: 0;
+}
+.run-shop > h3 {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 400;
+  color: #87734c;
+  margin: 25px 0 20px;
+}
+.shop-stock {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 25px;
+  max-width: 800px;
+  margin: auto;
+  padding: 28px;
+  border: 1px solid #c8a67766;
+  border-radius: 9px;
+  background: repeating-linear-gradient(
+    90deg,
+    #96694b12 0 8px,
+    #bda26a13 8px 16px
+  );
+}
+.shop-card {
+  min-width: 0;
+}
+.shop-card .run-card-preview {
+  max-width: 185px;
+  display: block;
+  margin: auto;
+}
+.shop-card .run-card-preview .stone-card {
+  height: 225px;
+}
+.shop-card > .button {
+  width: 100%;
+  margin-top: 18px;
+  font-size: 11px;
+  white-space: normal;
+}
+.shop-potions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.shop-potions article {
+  padding: 20px;
+  border: 1px solid #ded8bc;
+  border-radius: 9px;
+  background: #fcfaf0;
+  color: #89966e;
+}
+.shop-potions h4 {
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 400;
+  margin-top: 10px;
+  color: #7c8b62;
+}
+.shop-potions p {
+  font-size: 11px;
+  min-height: 60px;
+}
+.shop-potions .button {
+  width: 100%;
+  white-space: normal;
+  font-size: 11px;
+}
+.stone-workshop {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+  padding: 25px;
+  background: #f0f2e4;
+  border: 1px solid #d6ddc2;
+  border-radius: 10px;
+  margin-top: 28px;
+}
+.stone-workshop > div:first-child {
+  grid-column: 1/-1;
+}
+.stone-workshop h3 {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 400;
+  color: #687e55;
+  margin-top: 7px;
+}
+.stone-workshop p {
+  margin-bottom: 0;
+}
+.stone-workshop label {
+  font-size: 11px;
+  color: #7b9067;
+}
+.stone-workshop select,
+.stone-workshop input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  background: #fafbf3;
+  color: #6a815a;
+  border: 1px solid #d5dfc3;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.stone-workshop > .button {
+  align-self: end;
+  min-height: 41px;
+}
+.leave-shop {
+  display: flex;
+  margin: 25px 0 0 auto;
+}
+.reward-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 25px;
+  margin: 30px auto;
+  max-width: 760px;
+}
+.reward-options article {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+}
+.reward-options .run-card-preview {
+  max-width: 180px;
+}
+.reward-options .run-card-preview .stone-card {
+  height: 225px;
+}
+.reward-options article > span {
+  font-size: 11px;
+  color: #9b9d7c;
+}
+.reward-options .button {
+  font-size: 11px;
+  white-space: normal;
+  width: 100%;
+}
+.run-ending {
+  text-align: center;
+  padding: 50px 25px;
+}
+.run-ending > svg {
+  color: #b49a59;
+  margin: 0 auto 20px;
+}
+.run-ending h2 {
+  font-size: 42px;
+  margin: 17px 0;
+}
+.run-ending > .button {
+  margin: 20px auto 0;
+}
+.run-detail-card {
+  width: 190px;
+  height: 245px;
+  margin: 15px auto 25px;
+}
+.run-detail-card .stone-card {
+  height: 100%;
+}
+.expedition-dialog > h2 {
+  margin: 10px 0 15px;
+}
+.expedition-dialog > p {
+  font-size: 12px;
+  color: #879672;
+  line-height: 1.8;
+}
+.potion-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 22px 0;
+}
+.adventure-save-note {
+  margin: 25px 0;
+}
+@media (max-width: 760px) {
+  .main-nav {
+    margin-left: 0;
+  }
+  .main-nav > button {
+    min-width: 0;
+    flex: 1;
+  }
+  .main-nav {
+    gap: 0;
+  }
+  .main-nav button {
+    padding: 12px 10px;
+  }
+  .main-nav .nav-count {
+    display: none;
+  }
+  .adventure-promises {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .run-toolbar {
+    gap: 13px;
+    padding: 15px;
+  }
+  .potion-belt {
+    margin-left: 0;
+    width: 100%;
+  }
+  .run-route-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .run-node {
+    padding: 16px;
+  }
+  .run-map-row {
+    gap: 15px;
+  }
+  .run-node strong {
+    font-size: 20px;
+  }
+  .shop-potions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shop-potions p {
+    min-height: 0;
+  }
+  .shop-stock {
+    gap: 12px;
+    padding: 16px;
+  }
+  .shop-card .run-card-preview .stone-card {
+    height: 170px;
+  }
+  .shop-card .stone-caption {
+    font-size: 9px;
+  }
+  .run-shop {
+    padding: 20px;
+  }
+  .shop-banner {
+    gap: 15px;
+  }
+  .shop-banner h2 {
+    font-size: 26px;
+  }
+  .run-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 15px;
+  }
+  .reward-options {
+    gap: 15px;
+  }
+  .reward-options .run-card-preview .stone-card {
+    height: 170px;
+  }
+  .reward-options .stone-caption {
+    font-size: 9px;
+  }
+}
+@media (max-width: 480px) {
+  .main-nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: auto;
+    transform: none;
+  }
+  .main-nav > button {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+    padding: 9px 4px;
+    gap: 4px;
+  }
+  .main-nav button {
+    padding: 10px 7px;
+    gap: 5px;
+    font-size: 10px;
+  }
+  .main-nav button svg {
+    width: 14px;
+  }
+  .board-size-4 {
+    gap: 4px;
+    padding: 7px;
+  }
+  .board-size-4 .stone-card .stone-caption {
+    font-size: 5px;
+    min-height: 14px;
+    padding: 2px;
+  }
+  .board-size-4 .stone-caption svg {
+    display: none;
+  }
+  .board-size-4 .edge {
+    width: 13px;
+    height: 13px;
+  }
+  .board-size-4 .edge b {
+    font-size: 10px;
+  }
+  .board-size-4 .stone-keyword {
+    font-size: 4px;
+  }
+  .hand-size-8 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .hand-size-8 .hand-card-button {
+    height: 110px;
+  }
+  .hand-size-8 .stone-card .stone-caption {
+    font-size: 6px;
+  }
+  .target-board-4 {
+    gap: 4px;
+  }
+  .target-board-4 .target-cell {
+    padding: 3px;
+  }
+  .target-board-4 .target-cell .stone-card {
+    height: 79px;
+  }
+  .target-board-4 .target-coordinate {
+    font-size: 6px;
+  }
+  .target-board-4 .target-change {
+    font-size: 6px;
+  }
+  .adventure-start {
+    padding: 30px 0;
+  }
+  .adventure-start h1 {
+    letter-spacing: -1.8px;
+  }
+  .adventure-start > p {
+    font-size: 13px;
+  }
+  .adventure-promises span {
+    padding: 12px;
+    font-size: 10px;
+  }
+  .run-toolbar > .button {
+    width: 100%;
+    font-size: 11px;
+  }
+  .run-toolbar > span {
+    font-size: 11px;
+  }
+  .run-toolbar > span strong {
+    font-size: 24px;
+  }
+  .run-panel {
+    padding: 20px;
+  }
+  .run-panel h2 {
+    font-size: 27px;
+  }
+  .run-map-row {
+    gap: 12px;
+  }
+  .run-node {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+  .run-node > svg {
+    width: 19px;
+  }
+  .run-node strong {
+    font-size: 18px;
+  }
+  .run-node small {
+    font-size: 10px;
+  }
+  .run-battle-heading {
+    gap: 12px;
+  }
+  .run-battle-heading h2 {
+    font-size: 24px;
+  }
+  .run-battle-heading p {
+    font-size: 11px;
+  }
+  .run-score {
+    gap: 13px;
+  }
+  .run-score strong {
+    font-size: 32px;
+  }
+  .run-objective {
+    font-size: 11px;
+    padding: 10px;
+  }
+  .adventure-board {
+    gap: 5px;
+    padding: 8px;
+  }
+  .adventure-square .stone-card {
+    border-width: 2px;
+  }
+  .adventure-square .stone-caption {
+    font-size: 7px;
+    min-height: 19px;
+    padding: 3px;
+  }
+  .adventure-square .stone-caption svg {
+    display: none;
+  }
+  .adventure-square .stone-keyword {
+    font-size: 5px;
+  }
+  .adventure-board-4 .stone-caption {
+    font-size: 5px;
+    min-height: 14px;
+    padding: 2px;
+  }
+  .adventure-board-4 .stone-keyword {
+    font-size: 4px;
+  }
+  .adventure-board-4 .edge {
+    width: 14px;
+    height: 14px;
+  }
+  .adventure-board-4 .edge b {
+    font-size: 11px;
+  }
+  .adventure-square.vacant small {
+    display: none;
+  }
+  .run-hand {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 11px;
+  }
+  .run-hand-card .stone-card {
+    height: 135px;
+  }
+  .run-hand-card .stone-caption {
+    font-size: 7px;
+  }
+  .run-hand-heading h3 {
+    font-size: 19px;
+  }
+  .run-hand-heading > span {
+    font-size: 8px;
+  }
+  .run-shop {
+    padding: 16px;
+  }
+  .shop-stock {
+    padding: 10px;
+    gap: 8px;
+  }
+  .shop-card .run-card-preview .stone-card {
+    height: 130px;
+  }
+  .shop-card .stone-caption {
+    font-size: 6px;
+    min-height: 18px;
+    padding: 3px;
+  }
+  .shop-card > .button {
+    font-size: 9px;
+    padding: 9px 4px;
+  }
+  .shop-card .stone-keyword {
+    font-size: 5px;
+  }
+  .stone-workshop {
+    padding: 16px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stone-workshop > div:first-child {
+    grid-column: 1;
+  }
+  .stone-workshop h3 {
+    font-size: 24px;
+  }
+  .reward-options {
+    gap: 10px;
+  }
+  .reward-options .run-card-preview .stone-card {
+    height: 135px;
+  }
+  .reward-options .stone-caption {
+    font-size: 6px;
+    min-height: 18px;
+    padding: 3px;
+  }
+  .reward-options .stone-keyword {
+    font-size: 4px;
+  }
+  .reward-options .button {
+    padding: 9px 5px;
+    font-size: 9px;
+  }
+  .reward-options article > span {
+    font-size: 9px;
+  }
+  .run-ending h2 {
+    font-size: 32px;
+  }
+  .run-message {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .run-captured {
+    animation: none;
+  }
+  .run-map-row.current .run-node:hover {
+    transform: none;
+  }
+}
