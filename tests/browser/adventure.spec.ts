@@ -215,7 +215,7 @@ test("shop purchases, all three workshop services, deck changes, and gold surviv
     .getByRole("button", { name: /^Buy potion/ })
     .first()
     .click();
-  expect((await stored(page)).potions).toEqual(["power"]);
+  expect((await stored(page)).potions).toEqual([run.shopPotions[0].type]);
   const id = run.inventory[0].id;
   const offer = adventureWorkshopOffer(run);
   await page.getByLabel("Workshop card").selectOption(id);

@@ -34,10 +34,34 @@ import {
   offerRelics,
   maxLives,
   potionCapacity,
-  potionPotency,
   shopPrice,
 } from "./relics.ts";
 import type { RelicId } from "./relics.ts";
+import { transformedCard } from "./transformation.ts";
+import {
+  CURSE_NAMES,
+  SPIRE_CATALOG,
+  chooseSpireEvent,
+  curseStone,
+  getSpireEvent,
+  grantSpireRelics,
+  resolveSpireEvent,
+  spireMemoryCards as makeSpireMemoryCards,
+  validSpireState,
+} from "./spireEvents.ts";
+import type { SpireState, SpireServices } from "./spireEvents.ts";
+import { POTIONS, adventurePotionOffers } from "./potions.ts";
+import type { Potion } from "./potions.ts";
+export {
+  POTIONS,
+  POTION_IDS,
+  potionDescription,
+  useAdventurePotion,
+  adventurePotionOffers,
+  adventurePotionAvailability,
+  adventurePotionTargets,
+} from "./potions.ts";
+export type { Potion, PotionChoice } from "./potions.ts";
 
 export type NodeKind =
   "battle" | "elite" | "event" | "chest" | "shop" | "camp" | "boss";
@@ -90,6 +114,13 @@ export const ROUTE: AdventureNode[][] = [
       description:
         "Choose one of three inscriptions to add to a stone for free.",
     },
+    {
+      id: "spire-crossroads-1",
+      name: "Spire Crossroads · Act I",
+      kind: "event",
+      description:
+        "A random adapted Spire encounter. Choices, costs, and progress are saved.",
+    },
   ],
   [
     {
@@ -140,6 +171,13 @@ export const ROUTE: AdventureNode[][] = [
       description:
         "Combine two stones into one. Preview their merged pips and keywords before choosing.",
     },
+    {
+      id: "spire-crossroads-2",
+      name: "Spire Crossroads · Act II",
+      kind: "event",
+      description:
+        "A random adapted Spire encounter. Choices, costs, and progress are saved.",
+    },
   ],
   [
     {
@@ -170,6 +208,13 @@ export const ROUTE: AdventureNode[][] = [
       kind: "camp",
       description: "Recover a life or permanently add a pip to one stone.",
     },
+    {
+      id: "spire-crossroads-3",
+      name: "Spire Crossroads · Act III",
+      kind: "event",
+      description:
+        "A random adapted Spire encounter. Choices, costs, and progress are saved.",
+    },
   ],
   [
     {
@@ -181,30 +226,6 @@ export const ROUTE: AdventureNode[][] = [
     },
   ],
 ];
-export type Potion = "power" | "heal" | "hex";
-export const POTIONS: Record<
-  Potion,
-  { name: string; description: string; price: number }
-> = {
-  power: {
-    name: "Power Tonic",
-    description:
-      "Choose a card in your hand. All four edges gain +1 for this battle. Does not use your turn.",
-    price: 25,
-  },
-  heal: {
-    name: "Healing Draught",
-    description:
-      "Recover one life, up to ${maxLives(run)}. Can be used between battles too.",
-    price: 25,
-  },
-  hex: {
-    name: "Hex Vial",
-    description:
-      "Choose an enemy board card. All four edges lose 1 pip, stopping at zero. Does not use your turn.",
-    price: 30,
-  },
-};
 export interface AdventureBattle {
   board: Board;
   hands: [Stone[], Stone[]];
@@ -218,6 +239,13 @@ export interface AdventureBattle {
   vanguardUsed?: boolean;
   captures?: number;
   potionSaved?: boolean;
+  potionsUsed?: number;
+  kind?: "battle" | "elite" | "boss";
+  eventRelic?: RelicId;
+  eventRelics?: number;
+  eventGold?: number;
+  eventHeal?: number;
+  eventContinue?: boolean;
   bracerUsed?: boolean;
 }
 export interface Adventure {
@@ -247,8 +275,15 @@ export interface Adventure {
   shopOffer?: WorkshopOffer;
   lastShopKeyword?: KeywordType;
   rewardPicksRemaining?: number;
+  spireEvent?: SpireState;
+  seenSpireEvents?: string[];
+  curses?: string[];
+  maxLifeBonus?: number;
+  healingLocked?: boolean;
+  note?: Stone;
 }
 export const ADVENTURE_STORAGE = "skystones-adventure-v1";
+export const ADVENTURE_NOTE_STORAGE = "skystones-event-note-v1";
 const ART: Creature[] = [
   "slime",
   "robot",
@@ -356,6 +391,7 @@ export function rewardCards(
 export function newAdventure(
   size: BoardSize,
   seed = Math.floor(Math.random() * 2 ** 30),
+  note?: Stone,
 ): Adventure {
   const inventory = Array.from({ length: handSize(size) + 2 }, (_, i) =>
     makeRunCard(seed + i * 53, i % 3 === 0 ? 5 : 4, `${seed}-start-${i}`),
@@ -371,6 +407,7 @@ export function newAdventure(
   });
   return {
     version: 1,
+    ...(note && validateStone(note) ? { note } : {}),
     seed,
     size,
     floor: 0,
@@ -406,6 +443,7 @@ function advance(run: Adventure): Adventure {
     shopRerolls: undefined,
     shopFreeRerollUsed: undefined,
     shopOffer: undefined,
+    spireEvent: undefined,
     relicOffers: [],
     rewardPicksRemaining: 0,
   };
@@ -423,7 +461,19 @@ export function setAdventureDeck(run: Adventure, id: string): Adventure {
     );
   return { ...run, deck: [...run.deck, id] };
 }
-function beginBattle(run: Adventure, node: AdventureNode): Adventure {
+function beginBattle(
+  run: Adventure,
+  node: AdventureNode,
+  options?: {
+    kind: "battle" | "elite" | "boss";
+    eventRelic?: RelicId;
+    eventRelics?: number;
+    eventGold?: number;
+    eventHeal?: number;
+    eventContinue?: boolean;
+  },
+): Adventure {
+  const kind = options?.kind || node.kind;
   if (run.deck.length !== handSize(run.size))
     throw new Error(
       `Choose ${handSize(run.size)} cards in your expedition deck first.`,
@@ -432,19 +482,19 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
     middle = run.size === 3 ? 4 : 5;
   let objective: number | undefined,
     objectiveKind: "chest" | "throne" | undefined;
-  if (node.kind === "chest" || node.kind === "boss") {
+  if (kind === "chest" || kind === "boss") {
     objective = middle;
-    objectiveKind = node.kind === "chest" ? "chest" : "throne";
+    objectiveKind = kind === "chest" ? "chest" : "throne";
     const stone: Stone = {
       ...STARTER_STONES[5],
       id: `custom-run-objective-${node.id}`,
-      name: node.kind === "chest" ? "Guarded Treasure" : "The Crown Throne",
-      creature: node.kind === "chest" ? "chest" : "robot",
+      name: kind === "chest" ? "Guarded Treasure" : "The Crown Throne",
+      creature: kind === "chest" ? "chest" : "robot",
       element: "tech",
-      edges: node.kind === "chest" ? [1, 1, 1, 1] : [0, 3, 0, 3],
+      edges: kind === "chest" ? [1, 1, 1, 1] : [0, 3, 0, 3],
       keywords: [],
       description:
-        node.kind === "chest"
+        kind === "chest"
           ? "Control this chest at the finish for 45 extra gold."
           : "You must control the throne and win the score.",
     };
@@ -460,10 +510,8 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
   // has the final move on an even board. Ease its pip curve by one point.
   const budget = Math.max(
     1,
-    Math.min(
-      7,
-      2 + Math.floor(run.floor * 0.5) + (node.kind === "elite" ? 1 : 0),
-    ) - (run.size === 4 ? 1 : 0),
+    Math.min(7, 2 + Math.floor(run.floor * 0.5) + (kind === "elite" ? 1 : 0)) -
+      (run.size === 4 ? 1 : 0),
   );
   const enemies = Array.from({ length: handSize(run.size) }, (_, i) =>
     makeRunCard(
@@ -480,14 +528,21 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
       if (run.size === 3) edges[(i + 1) % 4] = 1;
       stone.edges = edges;
     });
+  const normalHand = run.deck.map((id) =>
+    run.inventory.find((stone) => stone.id === id)!,
+  );
+  const curseCards = (run.curses || [])
+    .slice(0, Math.max(0, normalHand.length - 1))
+    .map((name, index) => curseStone(name, index, run.seed));
   return {
     ...run,
     node,
     phase: "battle",
     battle: {
+      ...(options || {}),
       board,
       hands: [
-        run.deck.map((id) => run.inventory.find((stone) => stone.id === id)!),
+        normalHand.map((stone, index) => curseCards[index] || stone),
         enemies,
       ],
       current: 0,
@@ -499,9 +554,9 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
       log: [],
     },
     message:
-      node.kind === "boss"
+      kind === "boss"
         ? "Only the throne starts on the board. Win the score AND hold it."
-        : node.kind === "chest"
+        : kind === "chest"
           ? "Hold the chest at the finish for 45 extra gold, even if you lose the score."
           : "Higher facing pips capture adjacent enemy stones.",
   };
@@ -511,6 +566,17 @@ export function enterAdventureNode(run: Adventure, id: string): Adventure {
     throw new Error("Finish your current encounter first.");
   const node = ROUTE[run.floor].find((node) => node.id === id);
   if (!node) throw new Error("Choose a node on your current path.");
+  if (node.id.startsWith("spire-crossroads-")) {
+    const event = chooseSpireEvent(run);
+    return {
+      ...run,
+      node,
+      phase: "event",
+      spireEvent: { id: event.id, stage: 0, visits: 0 },
+      seenSpireEvents: [...(run.seenSpireEvents || []), event.id],
+      message: event.text,
+    };
+  }
   if (["battle", "elite", "boss"].includes(node.kind))
     return beginBattle(run, node);
   if (node.kind === "shop") {
@@ -544,11 +610,15 @@ export function enterAdventureNode(run: Adventure, id: string): Adventure {
     node,
     phase: "event",
     lives:
-      node.kind === "camp" && hasRelic(run, "restful-ember")
+      node.kind === "camp" &&
+      hasRelic(run, "restful-ember") &&
+      !run.healingLocked
         ? Math.min(maxLives(run), run.lives + 1)
         : run.lives,
     message:
-      node.kind === "camp" && hasRelic(run, "restful-ember")
+      node.kind === "camp" &&
+      hasRelic(run, "restful-ember") &&
+      !run.healingLocked
         ? "Restful Ember restores 1 life on arrival. Choose your camp reward."
         : node.description,
     relicOffers: node.id === "reliquary" ? offerRelics(run, 3, 0x73687269) : [],
@@ -560,23 +630,20 @@ function receiveFreePotions(run: Adventure, types: Potion[]): Potion[] {
     : types;
   return [...run.potions, ...drops].slice(0, potionCapacity(run));
 }
-export function potionDescription(run: Adventure, type: Potion): string {
-  const strength = potionPotency(run);
-  return type === "power"
-    ? `Choose a card in your hand. All four edges gain +${strength} for this battle. Does not use your turn.`
-    : type === "hex"
-      ? `Choose an enemy board card. All four edges lose ${strength} pip${strength === 1 ? "" : "s"}, stopping at zero. Does not use your turn.`
-      : `Recover ${strength} ${strength === 1 ? "life" : "lives"}, up to ${maxLives(run)}. Can be used between battles too.`;
-}
 function addRelic(run: Adventure, id: RelicId): Adventure {
   if (!Object.hasOwn(RELICS, id) || hasRelic(run, id))
     throw new Error("Choose an unowned relic.");
   let next: Adventure = { ...run, relics: [...(run.relics || []), id] };
   if (id === "stout-heart")
-    next = { ...next, lives: Math.min(maxLives(next), next.lives + 1) };
+    next = {
+      ...next,
+      lives: next.healingLocked
+        ? next.lives
+        : Math.min(maxLives(next), next.lives + 1),
+    };
   if (id === "merchants-purse") next = { ...next, gold: next.gold + 100 };
   if (id === "pilgrims-flask") {
-    const types: Potion[] = ["power", "hex", "heal"];
+    const types = adventurePotionOffers(next, potionCapacity(next), 0x66696c6c);
     next = {
       ...next,
       potions: receiveFreePotions(
@@ -661,9 +728,10 @@ function finishBattle(run: Adventure): Adventure {
   const earned = earnedGold(
     run,
     (won
-      ? 25 +
+      ? (battle.eventGold || 0) +
+        25 +
         run.floor * 5 +
-        (run.node?.kind === "elite" ? 20 : 0) +
+        ((battle.kind || run.node?.kind) === "elite" ? 20 : 0) +
         (hasRelic(run, "victory-medallion") ? 10 : 0)
       : draw
         ? 10
@@ -676,6 +744,7 @@ function finishBattle(run: Adventure): Adventure {
     revived = false;
   if (
     lives === 0 &&
+    !run.healingLocked &&
     hasRelic(run, "phoenix-feather") &&
     !spentRelics.includes("phoenix-feather")
   ) {
@@ -683,15 +752,17 @@ function finishBattle(run: Adventure): Adventure {
     revived = true;
     spentRelics = [...spentRelics, "phoenix-feather"];
   }
-  if (won && hasRelic(run, "campfire-charm"))
+  if (won && !run.healingLocked && hasRelic(run, "campfire-charm"))
     lives = Math.min(maxLives(run), lives + 1);
+  if (won && battle.eventHeal && !run.healingLocked)
+    lives = Math.min(maxLives(run), lives + battle.eventHeal);
   const victory = throne && won;
-  const message = `${won ? "Victory" : draw ? "A draw" : "Battle lost"} · ${you}–${enemy}. +${earned} gold.${chest ? ` Chest secured: +${chest} bonus gold included.` : battle.objectiveKind === "chest" ? " The chest stayed with the keeper." : ""}${throne && !held ? " You did not secure the throne." : ""}${!won && !draw ? " One life lost." : ""}${revived ? " Phoenix Feather restores you to 1 life. The feather is now spent." : ""}${won && hasRelic(run, "campfire-charm") ? " Campfire Charm restores 1 life, up to your maximum lives." : ""}`;
+  const message = `${won ? "Victory" : draw ? "A draw" : "Battle lost"} · ${you}–${enemy}. +${earned} gold.${chest ? ` Chest secured: +${chest} bonus gold included.` : battle.objectiveKind === "chest" ? " The chest stayed with the keeper." : ""}${throne && !held ? " You did not secure the throne." : ""}${!won && !draw ? " One life lost." : ""}${revived ? " Phoenix Feather restores you to 1 life. The feather is now spent." : ""}${won && !run.healingLocked && hasRelic(run, "campfire-charm") ? " Campfire Charm restores 1 life, up to your maximum lives." : ""}`;
   const potions =
     won && (run.floor % 3 === 0 || hasRelic(run, "herbalists-lens"))
-      ? receiveFreePotions(run, [run.floor % 2 === 0 ? "hex" : "power"])
+      ? receiveFreePotions(run, adventurePotionOffers(run, 1, 0x64726f70))
       : [...run.potions];
-  const updated = {
+  let updated: Adventure = {
     ...run,
     gold: run.gold + earned,
     lives,
@@ -700,16 +771,34 @@ function finishBattle(run: Adventure): Adventure {
     potions,
     spentRelics,
   };
+  if (won && (battle.eventRelics || battle.eventRelic))
+    updated = grantSpireRelics(
+      updated,
+      battle.eventRelics || 1,
+      0x626f6e75,
+      spireServices(),
+      battle.eventRelic,
+    );
+  if (won && battle.eventContinue)
+    return {
+      ...updated,
+      phase: "event",
+      battle: undefined,
+      message:
+        "The warm-up keeper yields. Risk the main event or leave with your winnings.",
+    };
   return {
     ...updated,
     phase: victory || lives === 0 ? "ended" : "reward",
-    rewards: won && !throne ? rewardCards(run) : [],
-    rewardPicksRemaining: won && !throne ? cardRewardPicks(run) : 0,
+    rewards: won && !throne ? rewardCards(updated) : [],
+    rewardPicksRemaining: won && !throne ? cardRewardPicks(updated) : 0,
     relicOffers:
       !victory &&
       lives > 0 &&
-      ((won && (run.floor === 0 || run.node?.kind === "elite")) || chest > 0)
-        ? offerRelics(run, 3, 0x62617474)
+      ((won &&
+        (run.floor === 0 || (battle.kind || run.node?.kind) === "elite")) ||
+        chest > 0)
+        ? offerRelics(updated, 3, 0x62617474)
         : [],
   };
 }
@@ -878,6 +967,19 @@ export function resolveAdventureEvent(
 ): Adventure {
   if (run.phase !== "event" || !run.node)
     throw new Error("There is no event to resolve.");
+  if (run.node.id.startsWith("spire-crossroads-"))
+    return resolveSpireEvent(
+      run,
+      choice,
+      { first: cardId, second: secondCardId },
+      spireServices(),
+    );
+  if (
+    (run.node.id === "well" || run.node.kind === "camp") &&
+    choice === "heal" &&
+    run.healingLocked
+  )
+    throw new Error("Mind Bloom prevents healing.");
   if (run.node.id === "rune-shrine" && /^inscribe:[0-2]$/.test(choice)) {
     const stone = run.inventory.find((card) => card.id === cardId);
     if (!stone) throw new Error("Choose a stone in your pack.");
@@ -1051,7 +1153,7 @@ function shopStock(run: Adventure, reroll: number) {
           ? `custom-run-${run.seed}-shop-${run.floor}-${i}`
           : `custom-run-${run.seed}-shop-${run.floor}-roll-${reroll}-${i}`,
     })),
-    shopPotions: (["power", "hex", "heal"] as Potion[]).map((type) => ({
+    shopPotions: adventurePotionOffers(stockRun, 3, 0x73686f70).map((type) => ({
       id:
         reroll === 0
           ? `${run.floor}-${type}`
@@ -1209,82 +1311,6 @@ export function leaveAdventureShop(run: Adventure): Adventure {
     message: interest ? `Rainy Day Bank pays ${interest} gold.` : run.message,
   });
 }
-export function useAdventurePotion(
-  run: Adventure,
-  index: number,
-  target?: string | number,
-): Adventure {
-  const potion = run.potions[index];
-  if (!potion) throw new Error("Choose a potion in your belt.");
-  if (
-    run.phase === "ended" ||
-    (run.phase === "battle" && run.battle?.current !== 0)
-  )
-    throw new Error("Wait until your turn.");
-  let next: Adventure = run;
-  const strength = potionPotency(run);
-  if (potion === "heal") {
-    if (run.lives >= maxLives(run))
-      throw new Error("You are already at full life.");
-    next = { ...run, lives: Math.min(maxLives(run), run.lives + strength) };
-  } else {
-    if (run.phase !== "battle" || !run.battle)
-      throw new Error("Use that potion during a battle.");
-    const battle = run.battle;
-    if (potion === "power") {
-      const stone = battle.hands[0].find((s) => s.id === target);
-      if (!stone) throw new Error("Choose a card in your hand.");
-      const hands: [Stone[], Stone[]] = [
-        battle.hands[0].map((s) =>
-          s.id === target
-            ? { ...s, edges: s.edges.map((edge) => edge + strength) as Edges }
-            : s,
-        ),
-        battle.hands[1],
-      ];
-      next = { ...run, battle: { ...battle, hands } };
-    } else {
-      const at = Number(target),
-        cell = battle.board[at];
-      if (
-        typeof target !== "number" ||
-        !cell ||
-        cell.owner !== 1 ||
-        (cell.edges || cell.stone.edges).every((edge) => edge === 0)
-      )
-        throw new Error("Choose an enemy card with at least one pip.");
-      const edges = (cell.edges || cell.stone.edges).map((edge) =>
-        Math.max(0, edge - strength),
-      ) as Edges;
-      const reductions = (cell.reductions || [0, 0, 0, 0]).map(
-        (amount, side) =>
-          amount + (cell.edges || cell.stone.edges)[side] - edges[side],
-      ) as Edges;
-      next = {
-        ...run,
-        battle: {
-          ...battle,
-          board: battle.board.map((value, spot) =>
-            spot === at ? { ...cell, edges, reductions } : value,
-          ),
-        },
-      };
-    }
-  }
-  const saved =
-    run.phase === "battle" &&
-    !!run.battle &&
-    hasRelic(run, "bottomless-bottle") &&
-    !run.battle.potionSaved;
-  return {
-    ...next,
-    ...(saved && next.battle
-      ? { battle: { ...next.battle, potionSaved: true } }
-      : {}),
-    potions: saved ? run.potions : run.potions.filter((_, i) => i !== index),
-    message: `Used ${POTIONS[potion].name}.${saved ? " Bottomless Bottle keeps this potion." : ""}`,
-  };
-}
 function validBattleCard(value: unknown): value is Stone {
   if (!value || typeof value !== "object") return false;
   const stone = value as Stone;
@@ -1312,7 +1338,7 @@ function validBattleCard(value: unknown): value is Stone {
     Object.hasOwn(ELEMENTS, stone.element) &&
     Array.isArray(stone.edges) &&
     stone.edges.length === 4 &&
-    stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 20) &&
+    stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 64) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1376,6 +1402,33 @@ function validPlaced(value: unknown, length: number): boolean {
 export function validateAdventure(value: unknown): value is Adventure {
   if (!value || typeof value !== "object") return false;
   const run = value as Adventure;
+  if (run.spireEvent !== undefined && !validSpireState(run.spireEvent))
+    return false;
+  if (
+    run.seenSpireEvents !== undefined &&
+    (!Array.isArray(run.seenSpireEvents) ||
+      run.seenSpireEvents.length > SPIRE_CATALOG.length ||
+      new Set(run.seenSpireEvents).size !== run.seenSpireEvents.length ||
+      !run.seenSpireEvents.every((id) => !!getSpireEvent(id)))
+  )
+    return false;
+  if (
+    run.curses !== undefined &&
+    (!Array.isArray(run.curses) ||
+      run.curses.length > 30 ||
+      !run.curses.every((name) => CURSE_NAMES.includes(name)))
+  )
+    return false;
+  if (
+    run.maxLifeBonus !== undefined &&
+    (!Number.isInteger(run.maxLifeBonus) ||
+      run.maxLifeBonus < -20 ||
+      run.maxLifeBonus > 20)
+  )
+    return false;
+  if (run.healingLocked !== undefined && typeof run.healingLocked !== "boolean")
+    return false;
+  if (run.note !== undefined && !validateStone(run.note)) return false;
   if (
     run.shopRerolls !== undefined &&
     (!Number.isSafeInteger(run.shopRerolls) || run.shopRerolls < 0)
@@ -1512,6 +1565,15 @@ export function validateAdventure(value: unknown): value is Adventure {
           hand.every(validBattleCard),
       ) ||
       ![0, 1].includes(battle.current) ||
+      (battle.kind !== undefined &&
+        !["battle", "elite", "boss"].includes(battle.kind)) ||
+      (battle.eventRelic !== undefined &&
+        !Object.hasOwn(RELICS, battle.eventRelic)) ||
+      [battle.eventRelics, battle.eventGold, battle.eventHeal].some(
+        (n) => n !== undefined && (!Number.isInteger(n) || n < 0 || n > 500),
+      ) ||
+      (battle.eventContinue !== undefined &&
+        typeof battle.eventContinue !== "boolean") ||
       !Number.isInteger(battle.turns) ||
       battle.turns < 0 ||
       battle.turns > run.size ** 2 ||
@@ -1521,6 +1583,9 @@ export function validateAdventure(value: unknown): value is Adventure {
         (!Number.isInteger(battle.captures) ||
           battle.captures < 0 ||
           battle.captures > 64)) ||
+      (battle.potionsUsed !== undefined &&
+        (!Number.isSafeInteger(battle.potionsUsed) ||
+          battle.potionsUsed < 0)) ||
       (battle.potionSaved !== undefined &&
         typeof battle.potionSaved !== "boolean") ||
       (battle.bracerUsed !== undefined &&
@@ -1571,4 +1636,57 @@ export function restoreAdventure(value: unknown): Adventure | null {
       },
     };
   return run;
+}
+
+export function transformAdventureCards(
+  run: Adventure,
+  ids: string[],
+  salt = 0,
+): Adventure {
+  if (
+    !ids.length ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => !run.inventory.some((card) => card.id === id))
+  )
+    throw new Error("Choose distinct stones from your pack to transform.");
+  return {
+    ...run,
+    inventory: run.inventory.map((card) =>
+      ids.includes(card.id)
+        ? transformedCard(run, card, salt + ids.indexOf(card.id), makeRunCard)
+        : card,
+    ),
+  };
+}
+export function adventureSpireMemoryCards(run: Adventure): Stone[] {
+  return makeSpireMemoryCards(run, makeRunCard);
+}
+function spireServices(): SpireServices {
+  return {
+    card: makeRunCard,
+    transform: transformAdventureCards,
+    relic: addRelic,
+    potions: receiveFreePotions,
+    advance,
+    battle: (run, choice) =>
+      beginBattle(
+        {
+          ...run,
+          ...(choice.continueStage !== undefined
+            ? {
+                spireEvent: { ...run.spireEvent!, stage: choice.continueStage },
+              }
+            : {}),
+        },
+        run.node!,
+        {
+          kind: choice.battle!,
+          eventRelic: choice.winRelic,
+          eventRelics: choice.winRelics,
+          eventGold: choice.winGold,
+          eventHeal: choice.winHeal,
+          eventContinue: choice.continueStage !== undefined,
+        },
+      ),
+  };
 }

@@ -16,6 +16,11 @@ import {
   Flame,
   RefreshCw,
 } from "lucide-react";
+import { SpireEncounter, SpireEventGuide } from "./SpireEncounter";
+import { SPIRE_CATALOG, getSpireEvent } from "./spireEvents";
+import { validateStone } from "./game";
+import { PotionPicker, PotionGuide } from "./PotionPicker";
+import { adventurePotionAvailability, POTION_IDS } from "./potions";
 import { InscriptionEvent, FusionEvent } from "./AdventureEvents";
 import { StoneCard } from "./Artwork";
 import {
@@ -46,6 +51,7 @@ import type {
 } from "./game";
 import {
   ADVENTURE_STORAGE,
+  ADVENTURE_NOTE_STORAGE,
   POTIONS,
   ROUTE,
   SERVICE_PRICES,
@@ -182,6 +188,8 @@ export function Expedition() {
     [inspection, setInspection] = useState<Inspection | null>(null),
     [inspected, setInspected] = useState<Inspection | null>(null),
     [potionTarget, setPotionTarget] = useState<number | null>(null);
+  const [eventGuide, setEventGuide] = useState(false);
+  const [potionGuide, setPotionGuide] = useState(false);
   const [relicGuide, setRelicGuide] = useState(false),
     [relicDetail, setRelicDetail] = useState<RelicId | null>(null);
   const [target, setTarget] = useState<{
@@ -196,6 +204,8 @@ export function Expedition() {
     if (!run) return;
     try {
       localStorage.setItem(ADVENTURE_STORAGE, JSON.stringify(run));
+      if (run.note)
+        localStorage.setItem(ADVENTURE_NOTE_STORAGE, JSON.stringify(run.note));
       setStorageError("");
     } catch {
       setStorageError(
@@ -241,7 +251,16 @@ export function Expedition() {
     }
   }
   function start() {
-    setRun(newAdventure(size));
+    let note: Stone | undefined;
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(ADVENTURE_NOTE_STORAGE) || "null",
+      );
+      if (validateStone(saved)) note = saved;
+    } catch {
+      /* An old note never blocks a new run. */
+    }
+    setRun(newAdventure(size, undefined, note));
     setSetup(false);
     setSelected(null);
     setTarget(null);
@@ -441,7 +460,7 @@ export function Expedition() {
     }
   }
   function potion(index: number) {
-    if (run!.potions[index] === "heal")
+    if (POTIONS[run!.potions[index]].target === "none")
       act((current) => useAdventurePotion(current, index));
     else {
       setPotionTarget(index);
@@ -527,14 +546,9 @@ export function Expedition() {
           {run.potions.map((type, index) => (
             <button
               key={`${index}-${type}`}
-              title={potionDescription(run, type)}
+              title={`${potionDescription(run, type)} ${adventurePotionAvailability(run, index).reason}`}
               aria-label={`Use ${POTIONS[type].name}`}
-              disabled={
-                ai ||
-                run.phase === "ended" ||
-                (type === "heal" && run.lives >= maxLives(run)) ||
-                (type !== "heal" && run.phase !== "battle")
-              }
+              disabled={!adventurePotionAvailability(run, index).usable}
               onClick={() => potion(index)}
             >
               <FlaskConical size={17} />
@@ -545,8 +559,44 @@ export function Expedition() {
             {!run.potions.length ? "Empty potion belt · " : ""}
             {run.potions.length}/{beltSize} slots
           </small>
+          <button
+            className="potion-guide-button"
+            onClick={() => {
+              setInspection(null);
+              setPotionGuide(true);
+            }}
+          >
+            Potion guide · {POTION_IDS.length}
+          </button>
         </div>
       </div>
+      {(!!run.curses?.length || run.healingLocked) && (
+        <section className="run-curse-status" aria-label="Encounter conditions">
+          {!!run.curses?.length && (
+            <p>
+              <strong>Curses · {run.curses.length}</strong>{" "}
+              {run.curses.join(", ")}. Each curse replaces a normal hand stone
+              with a zero-pip stone in future battles, leaving at least one
+              normal stone. Purification removes curses.
+            </p>
+          )}
+          {run.healingLocked && (
+            <p>
+              <strong>Mind Bloom:</strong> healing and Phoenix Feather revival
+              are blocked for this run.
+            </p>
+          )}
+        </section>
+      )}
+      <button
+        className="text-button event-guide-link"
+        onClick={() => {
+          setInspection(null);
+          setEventGuide(true);
+        }}
+      >
+        Event guide · {SPIRE_CATALOG.length}
+      </button>
       <section className="relic-shelf" aria-label="Your relics">
         <div className="section-heading">
           <h2>
@@ -870,10 +920,29 @@ export function Expedition() {
       {run.phase === "event" && run.node && (
         <section className="run-panel run-event">
           <div className="event-symbol">{nodeIcon(run.node.kind)}</div>
-          <h2>{run.node.name}</h2>
-          <p>{run.node.description}</p>
+          <h2>
+            {run.spireEvent
+              ? getSpireEvent(run.spireEvent.id)!.sourceName
+              : run.node.name}
+          </h2>
+          <p>
+            {run.spireEvent
+              ? getSpireEvent(run.spireEvent.id)!.text
+              : run.node.description}
+          </p>
           <div className="event-options">
-            {run.node.kind === "chest" ? (
+            {run.spireEvent ? (
+              <SpireEncounter
+                key={`${run.spireEvent.id}-${run.spireEvent.stage}`}
+                run={run}
+                onInspect={setCard}
+                onResolve={(action, first, second) =>
+                  act((current) =>
+                    resolveAdventureEvent(current, action, first, second),
+                  )
+                }
+              />
+            ) : run.node.kind === "chest" ? (
               <>
                 <button
                   className="button button-dark"
@@ -898,7 +967,7 @@ export function Expedition() {
               <>
                 <button
                   className="button button-dark"
-                  disabled={run.lives >= maxLives(run)}
+                  disabled={run.lives >= maxLives(run) || run.healingLocked}
                   onClick={() =>
                     act((current) => resolveAdventureEvent(current, "heal"))
                   }
@@ -978,7 +1047,7 @@ export function Expedition() {
               <>
                 <button
                   className="button button-dark"
-                  disabled={run.lives >= maxLives(run)}
+                  disabled={run.lives >= maxLives(run) || run.healingLocked}
                   onClick={() =>
                     act((current) => resolveAdventureEvent(current, "heal"))
                   }
@@ -1402,52 +1471,36 @@ export function Expedition() {
           />
         </RunDialog>
       )}
-      {potionTarget !== null && battle && (
+      {potionTarget !== null && battle && run.potions[potionTarget] && (
         <RunDialog
           title="Choose potion target"
           onClose={() => setPotionTarget(null)}
         >
-          <h2>{POTIONS[run.potions[potionTarget]].name}</h2>
-          <p>{potionDescription(run, run.potions[potionTarget])}</p>
-          <div className="potion-targets">
-            {run.potions[potionTarget] === "power"
-              ? battle.hands[0].map((stone) => (
-                  <button
-                    className="button button-outline"
-                    key={stone.id}
-                    onClick={() => {
-                      act((current) =>
-                        useAdventurePotion(current, potionTarget, stone.id),
-                      );
-                      setPotionTarget(null);
-                    }}
-                  >
-                    Empower {stone.name}
-                  </button>
-                ))
-              : battle.board.flatMap((cell, index) =>
-                  cell?.owner === 1 &&
-                  (cell.edges || cell.stone.edges).some((edge) => edge > 0)
-                    ? [
-                        <button
-                          className="button button-outline"
-                          key={index}
-                          onClick={() => {
-                            act((current) =>
-                              useAdventurePotion(current, potionTarget, index),
-                            );
-                            setPotionTarget(null);
-                          }}
-                        >
-                          Hex {coordinate(index, run.size)} · {cell.stone.name}
-                        </button>,
-                      ]
-                    : [],
-                )}
-          </div>
-          <button className="text-button" onClick={() => setPotionTarget(null)}>
-            Cancel potion
-          </button>
+          <PotionPicker
+            key={`${potionTarget}-${run.potions[potionTarget]}`}
+            run={run}
+            index={potionTarget}
+            onCancel={() => setPotionTarget(null)}
+            onUse={(target, choice) => {
+              act((current) =>
+                useAdventurePotion(current, potionTarget, target, choice),
+              );
+              setPotionTarget(null);
+            }}
+          />
+        </RunDialog>
+      )}
+      {eventGuide && (
+        <RunDialog
+          title="Spire event guide"
+          onClose={() => setEventGuide(false)}
+        >
+          <SpireEventGuide />
+        </RunDialog>
+      )}
+      {potionGuide && (
+        <RunDialog title="Potion guide" onClose={() => setPotionGuide(false)}>
+          <PotionGuide run={run} />
         </RunDialog>
       )}
       {card && (
@@ -1520,6 +1573,8 @@ export function Expedition() {
         !target &&
         !card &&
         !inspected &&
+        !eventGuide &&
+        !potionGuide &&
         !relicGuide &&
         !relicDetail &&
         potionTarget === null && <CardInspector inspection={inspection} />}

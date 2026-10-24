@@ -204,6 +204,7 @@ test("relics can be bought in a shop and discounts affect relics, potions, cards
     "shop-one",
   );
   run.shopRelic = "travelers-satchel";
+  run.shopPotions = [{ id: "legacy-power", type: "power" }];
   await open(page, run);
   await page
     .getByRole("button", { name: "Buy relic · 60 gold", exact: true })

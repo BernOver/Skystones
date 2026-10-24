@@ -1584,3 +1584,199 @@
     gap: 8px;
   }
 }
+.potion-belt .potion-guide-button {
+  background: transparent;
+  border: 0;
+  color: #657c56;
+}
+.potion-detail-target {
+  margin: 20px 0;
+  text-align: center;
+}
+.potion-selected-card {
+  width: 170px;
+  margin: 0 auto 15px;
+}
+.potion-selected-card .stone-card {
+  width: 100%;
+}
+.potion-edge-choices,
+.potion-element-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.potion-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 25px 0 0;
+}
+.potion-guide-card {
+  padding: 20px;
+  border: 1px solid #d3dbc3;
+  border-radius: 10px;
+  background: #f7f9ee;
+  min-width: 0;
+}
+.potion-guide-card > svg {
+  color: #839c65;
+}
+.potion-guide-card h3 {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  margin: 12px 0;
+}
+.potion-guide-card p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #6c7e5b;
+}
+.potion-guide-card small {
+  font-size: 10px;
+  color: #8b7951;
+}
+@media (max-width: 480px) {
+  .potion-guide-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .potion-edge-choices .button {
+    padding: 10px 6px;
+    font-size: 11px;
+  }
+}
+.run-curse-status {
+  border: 1px solid #c7b3cf;
+  background: #efe7f3;
+  color: #715c79;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin: 20px 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.event-guide-link {
+  margin: 0 0 14px auto;
+  display: block;
+}
+.spire-encounter {
+  text-align: left;
+  width: 100%;
+}
+.spire-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin: 22px 0;
+}
+.spire-choice-list .button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.spire-choice-list small {
+  display: block;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: #a07959;
+}
+.spire-selection select,
+.spire-selection input,
+.expedition-dialog input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d3dcc3;
+  border-radius: 6px;
+  background: #fffdf6;
+  color: #4b6243;
+  margin: 8px 0 18px;
+}
+.spire-selection > .button {
+  margin-right: 15px;
+}
+.spire-selected-cards {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 25px 0;
+}
+.spire-selected-cards .run-card-preview {
+  width: 165px;
+  max-width: 45%;
+}
+.spire-selected-cards .stone-card {
+  width: 100%;
+}
+.spire-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+.spire-guide-grid article {
+  border: 1px solid #d5dcc8;
+  border-radius: 10px;
+  padding: 18px;
+  background: #f8faef;
+  min-width: 0;
+}
+.spire-guide-grid h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 21px;
+  margin: 10px 0;
+}
+.spire-guide-grid p,
+.spire-guide-grid li {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #768568;
+}
+.spire-guide-grid span,
+.spire-guide-grid summary {
+  font-size: 11px;
+  color: #8a7953;
+}
+.spire-guide-grid summary {
+  cursor: pointer;
+}
+.spire-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.memory-tile {
+  aspect-ratio: 0.72;
+  border: 1px solid #c9b68c;
+  background: #e8dbbc;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 0;
+}
+.memory-tile > span {
+  font-family: var(--serif);
+  font-size: 45px;
+  color: #9a885e;
+}
+.memory-tile.matched {
+  opacity: 0.65;
+}
+.memory-tile .stone-card {
+  width: 100%;
+}
+@media (max-width: 480px) {
+  .spire-guide-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .spire-memory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .spire-selection > .button {
+    margin: 12px 0;
+    width: 100%;
+  }
+}

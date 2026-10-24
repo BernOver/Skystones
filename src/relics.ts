@@ -31,7 +31,7 @@ export const RELICS = {
   "alchemists-mortar": {
     name: "Alchemist’s Mortar",
     description:
-      "Potions are one point stronger: Power Tonic adds 2 per edge, Hex Vial removes 2 per edge, and Healing Draught restores 2 lives.",
+      "Numeric potion effects are stronger: +1 to pip boosts, damage, repairs, reshaping gains, and healing; Liquid Gold grants 10 extra gold. Rotation, element changes, Silence, Resonance, and swaps keep their normal effect.",
   },
   "phoenix-feather": {
     name: "Phoenix Feather",
@@ -60,7 +60,7 @@ export const RELICS = {
   "pilgrims-flask": {
     name: "Pilgrim’s Flask",
     description:
-      "Immediately fill every empty potion slot with a mix of Power Tonics, Hex Vials, and Healing Draughts. Activates once.",
+      "Immediately fill every empty potion slot with a varied selection from all fifteen potions. Activates once.",
   },
   "treasure-magnet": {
     name: "Treasure Magnet",
@@ -151,11 +151,17 @@ export const RELICS = {
 } as const;
 export type RelicId = keyof typeof RELICS;
 export const RELIC_IDS = Object.keys(RELICS) as RelicId[];
-type RelicHolder = { relics?: RelicId[] };
+type RelicHolder = { relics?: RelicId[]; maxLifeBonus?: number };
 export const hasRelic = (run: RelicHolder, id: RelicId): boolean =>
   (run.relics || []).includes(id);
 export const maxLives = (run: RelicHolder): number =>
-  hasRelic(run, "stout-heart") ? 4 : 3;
+  Math.max(
+    1,
+    Math.min(
+      6,
+      3 + (hasRelic(run, "stout-heart") ? 1 : 0) + (run.maxLifeBonus || 0),
+    ),
+  );
 export const potionCapacity = (run: RelicHolder): number =>
   hasRelic(run, "travelers-satchel") ? 5 : 3;
 export const potionPotency = (run: RelicHolder): number =>

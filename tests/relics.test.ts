@@ -31,6 +31,7 @@ import {
   leaveAdventureShop,
   playAdventureCard,
   potionDescription,
+  POTIONS,
   resolveAdventureEvent,
   rewardCards,
   useAdventurePotion,
@@ -225,7 +226,9 @@ test("Traveler's Satchel raises capacity and Bubbling Flask doubles free potions
   };
   assert.equal(potionCapacity(base), 5);
   const won = finish(enterAdventureNode(base, "moss"));
-  assert.deepEqual(won.potions, ["hex", "hex"]);
+  assert.equal(won.potions.length, 2);
+  assert.equal(won.potions[0], won.potions[1]);
+  assert.ok(Object.hasOwn(POTIONS, won.potions[0]));
   const event = enterAdventureNode(
     { ...base, floor: 4, potions: ["power", "heal", "hex", "power"] },
     "alchemy",
@@ -244,7 +247,10 @@ test("Traveler's Satchel raises capacity and Bubbling Flask doubles free potions
   );
   const bought = buyAdventurePotion(shop, shop.shopPotions[0].id);
   assert.equal(bought.potions.length, 5);
-  assert.equal(bought.gold, 175);
+  assert.equal(
+    bought.gold,
+    shop.gold - POTIONS[shop.shopPotions[0].type].price,
+  );
   assert.throws(() => buyAdventurePotion(bought, bought.shopPotions[0].id));
   assert.equal(validateAdventure({ ...bought, relics: [] }), false);
 });
@@ -256,7 +262,8 @@ test("Pilgrim's Flask fills the belt once and saved games do not replay instant 
   };
   const filled = gift(base, "pilgrims-flask");
   assert.equal(filled.potions.length, 5);
-  assert.deepEqual(new Set(filled.potions), new Set(["power", "hex", "heal"]));
+  assert.equal(new Set(filled.potions).size, 5);
+  assert.ok(filled.potions.every((type) => Object.hasOwn(POTIONS, type)));
   assert.equal(validateAdventure(JSON.parse(JSON.stringify(filled))), true);
   assert.throws(() => gift(filled, "pilgrims-flask"));
   assert.equal(filled.potions.length, 5);
@@ -335,7 +342,10 @@ test("Haggler's Coin discounts every shop category consistently without double p
   assert.equal(shopPrice(shop, 35), 28);
   assert.equal(cardPrice(shop.shopCards[0], shop), 31);
   assert.equal(buyAdventureCard(shop, shop.shopCards[0].id).gold, 469);
-  assert.equal(buyAdventurePotion(shop, shop.shopPotions[0].id).gold, 480);
+  assert.equal(
+    buyAdventurePotion(shop, shop.shopPotions[0].id).gold,
+    500 - Math.ceil(POTIONS[shop.shopPotions[0].type].price * 0.8),
+  );
   assert.equal(
     buyAdventureService(shop, { type: "pip", cardId: id }).gold,
     480,

@@ -64,8 +64,44 @@ Choose **Adventure** and select a 3×3 or 4×4 board before starting. The run us
 - **Shop rerolls:** refresh the displayed cards, relic, and both workshop offers, and restock the three potions for **20 gold** (16 with Haggler’s Coin). Purchased cards, potions, and permanent upgrades remain yours. **Merchant’s Die** gives one free reroll per shop, including the shop where you buy it. Its used charge persists through reloads and resets on entering the next merchant. Rerolls do not trigger Quiet Coin or Rainy Day Bank payouts.
 - **The Runesmith’s Shrine:** an event choice at the second stop. Choose one of three distinct, fixed keyword offers and a stone in your pack to inscribe for free. Existing keywords and printed pips stay. Duplicate inscriptions cannot be added; choose a different card or offer, or leave. Rune Echo applies to shop inscriptions only.
 - **The Twinflame Forge:** an event choice at the fifth stop. Choose two different cards and inspect the combined result before confirming. The base keeps its element and artwork. Each edge starts at the stronger input value, capped at five; if the total exceeds twelve, the highest edges are reduced in turn until it fits. Keywords merge once per type and direction. Matching Sunder keeps the larger amount; conflicting Resonance counts keep the base card’s element setting. The inputs become one card, with no gold cost. You need at least one reserve card so the remaining pack can still form a full battle hand. Selected inputs are replaced by the combined stone and, when needed, a reserve; an incomplete deck keeps its previous card count. Both new events can be skipped, resolve once, and save their results.
-- **Potions:** Power Tonic gives a chosen hand card +1 on all edges for that battle; Hex Vial removes one pip from every edge of a chosen enemy board card, stopping at zero; Healing Draught restores one life, up to three. Combat potions require your turn and do not consume it. Healing works between encounters too. Potions are consumed once and the belt holds three.
+- **Potions:** there are now **15 potions**, including twelve new effects. Shops and rerolls offer three distinct random bottles from the whole set; free battle drops and Pilgrim’s Flask also use the whole set. The Alchemist lets you choose any potion. The belt holds three, or five with Traveler’s Satchel. Combat potions require your turn and never spend it. Healing Draught and Liquid Gold also work between encounters. The **Potion guide · 15** explains every effect and shows relic-adjusted values and prices. Directional effects ask you to choose an edge, Prismatic Phial asks for an element, and Transposition asks for two friendly cards. Canceling any picker keeps the potion.
 - **Crown Warden:** only the central throne starts on the board; the extra Crown Sentinel has been removed. The throne has weak north/south edges. To win the run you must **control the throne and have the higher score** when the board fills. A higher score alone is not enough. If you survive a failed attempt, you may revise your deck and try the boss again.
+
+## Potions
+
+| Potion              | Effect before Alchemist’s Mortar                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Power Tonic         | A hand card gains +1 on all edges for this battle.                                                                     |
+| Healing Draught     | Recover 1 life, up to your current maximum.                                                                            |
+| Hex Vial            | An enemy board card loses 1 on every edge, down to zero.                                                               |
+| Sharpening Oil      | A chosen hand-card edge gains +3.                                                                                      |
+| Fortress Brew       | A friendly board card gains +1 on every edge. The buff survives Silence.                                               |
+| Shatter Flask       | Remove up to 3 pips from one chosen enemy edge.                                                                        |
+| Hush Elixir         | Silence either player’s board card; restore printed pips minus recorded damage.                                        |
+| Compass Cordial     | Rotate a hand card and its directional keywords 90 degrees clockwise. Flexible Sunder stays flexible.                  |
+| Prismatic Phial     | Change a hand card’s element for this battle. Its Resonance count settings stay the same.                              |
+| Restoration Salve   | Repair up to 2 recorded pip damage per edge of a friendly board card. Removed keyword bonuses stay removed.            |
+| Frostfire Flask     | Every enemy card in one chosen row loses 1 per edge. Friendly cards are safe.                                          |
+| Echo Essence        | Add Resonance to a chosen hand-card edge, counting that card’s current element.                                        |
+| Gambler’s Brew      | Add 2 pips, then redistribute once with a 16-total / 4-per-edge ceiling. The new hand strengths are fixed immediately. |
+| Liquid Gold         | Gain 30 earned gold immediately; Gilded Compass applies. Base shop cost is 40.                                         |
+| Transposition Tonic | Swap two friendly board cards without captures or keyword retriggers. The chest and throne cannot move.                |
+
+Alchemist’s Mortar adds one to numeric pip, damage, repair, reshape-gain, and healing values; Liquid Gold grants 40 before Compass. Rotation, element changes, Silence, Resonance, and swaps keep their normal effect. Bubbling Flask doubles free bottles within capacity; Bottomless Bottle retains only the first successful combat use. Failed targets, duplicate inscriptions, or canceled pickers consume nothing. Pip damage and repairs use the same stored reductions as Sunder. Battle-only changes never rewrite the traveling pack.
+
+## Spire encounters and transformation
+
+The **Spire Crossroads** at stops 2, 5, and 8 choose a saved encounter from that act or the shared pool. Encounters do not repeat within one run. Existing Skystones events remain selectable alongside them. **Event guide · 54** lists and searches every adaptation and its choices.
+
+The catalogue covers **51 playable event names** from the pinned original-game reference, with three bonus adaptations: Neow’s opening blessing, the Spire Heart scene, and the unused Thinking with Puddles scene. The coverage manifest and source revision are in [tests/fixtures/spire-event-reference.json](tests/fixtures/spire-event-reference.json); [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) identifies the reference and license. Story text and illustrations are original. Costs and rewards are adapted to Skystones lives, pips, cards, potions, relics, and battles.
+
+- **Transformation** replaces selected stones with seeded random new forms while preserving their deck slots. Printed budgets keep pace with the route and remain within twelve. Transformed cards have a **90% chance of one or more keywords**, capped at **five distinct keyword types**; Runesmith’s Quill raises the nonempty chance to 100%. Among nonempty rolls, one keyword is most common and five is rare. Normal card rewards keep their existing keyword curve. Reloading does not reroll outcomes.
+- **Curses** persist until purified. Each puts a zero-pip cursed stone into your battle hand in place of a normal selected stone, leaving at least one normal stone. The traveling deck stays intact. Cleric, Purifier, Living Wall, Fountain of Cleansing, and other cleansing choices can remove curses. Curse cards can still benefit from combat potions.
+- **Match and Keep!** is a playable twelve-tile memory game with six pairs and five attempts. Reveals, attempts, matches, earned cards, and the curse pair save across reloads.
+- **Staged and repeated events** include the Golden Idol escape, Cursed Tome, Scrap Ooze, Dead Adventurer, Knowing Skull, and the Colosseum’s warm-up and optional elite fight. Battle rewards are paid only on victory; the Secret Portal can start the throne fight early.
+- **Persistent choices** include life-cap changes (maximum six), Mind Bloom’s permanent healing/revival lock, relic and potion sacrifices, card removal with deck repair, duplication, gambling, and A Note for Yourself. The note exchanges one stone and saves the offered stone for the next new adventure in this browser.
+
+All choices display costs, prerequisites, or disabled reasons. Card-target choices ask for distinct selections. Event state, charges, curses, transforms, and delayed battle rewards are validated when restoring a save. Older runs without expansion fields still load.
 
 ## Relics
 
@@ -81,13 +117,13 @@ The **Relics** shelf lists everything you own, and **Relic guide · 31** explain
 | Twin Sigil           | Pick two different cards from each victory's card rewards.                                                                      |
 | Traveler’s Satchel   | Potion belt capacity increases from 3 to 5.                                                                                     |
 | Bubbling Flask       | Double free potions from battles, events, and relics, up to belt capacity. Shop purchases still give one.                       |
-| Alchemist’s Mortar   | Power Tonic adds 2 per edge, Hex Vial removes 2 per edge, and Healing Draught restores 2 lives.                                 |
+| Alchemist’s Mortar   | Numeric potion effects are stronger; see the potion guide for exact values.                                                     |
 | Phoenix Feather      | Survive the first fatal battle loss at 1 life, then remain spent for the rest of the run.                                       |
 | Campfire Charm       | Recover 1 life after each battle victory, up to your maximum lives.                                                             |
 | Haggler’s Coin       | 20% discount on all shop cards, potions, upgrades, and relics; prices round up.                                                 |
 | Stonewright’s Hammer | Reward cards have +1 printed pip, respecting the 5-per-edge / 12-total caps.                                                    |
 | Fated Lens           | Choose from 5 reward cards instead of 3.                                                                                        |
-| Pilgrim’s Flask      | Immediately fill empty potion slots with a mix of Power, Hex, and Healing potions, once.                                        |
+| Pilgrim’s Flask      | Immediately fill empty potion slots with a varied selection from all fifteen potions, once.                                     |
 | Treasure Magnet      | Secured chests pay 30 additional gold, which also benefits from Gilded Compass.                                                 |
 | Vanguard Banner      | The first card you play in every battle gains +1 on all four edges for that battle.                                             |
 | Victory Medallion    | +10 gold per battle victory; combines with Gilded Compass.                                                                      |
@@ -156,6 +192,7 @@ Custom cards, board size, deck selection, and sound preference are saved in this
 - `tests/browser/app.spec.ts`: Playwright browser workflows.
 - `tests/browser/keywords.spec.ts`: mouse, keyboard and touch inspection, keyword editing, saved cards, and card-file sharing.
 - `tests/adventure.test.ts` and `tests/browser/adventure.spec.ts`: both board sizes, card catalogue, run progression, purchases, potion use, chest money, boss objectives, persistence, and phone layouts.
+- `tests/potions.test.ts`, `tests/spire-events.test.ts`, and `tests/browser/expansion.spec.ts`: all potion effects, complete event-source coverage, event choices on both board sizes, five-keyword transforms, curses, matching, staged battles, notes, and saved progress.
 - `tests/shop-rerolls-events.test.ts` and `tests/browser/shop-events.spec.ts`: paid and free rerolls, fresh shop keywords, retained purchases, shrine inscriptions, fusion previews and deck repair, save compatibility, and phone layouts.
 - `tests/relics.test.ts` and `tests/browser/relics.spec.ts`: individual relic effects, stacking, one-time grants, larger belts, multiple card picks, discounts, relic guide, save compatibility, and the throne-only boss start.
 
