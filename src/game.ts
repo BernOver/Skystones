@@ -4,21 +4,62 @@ export type Creature =
 export type Owner = 0 | 1;
 export type Edges = [number, number, number, number]; // North, east, south, west.
 export type Side = 0 | 1 | 2 | 3;
-export type KeywordType = "head-start" | "comeback" | "resonance";
+export type KeywordType =
+  "head-start" | "comeback" | "resonance" | "sunder" | "silence";
+export type TargetKeyword =
+  { type: "sunder"; side: Side } | { type: "silence" };
 export type StoneKeyword =
   | { type: "head-start" | "comeback"; side: Side }
-  | { type: "resonance"; side: Side; element: Element };
+  | { type: "resonance"; side: Side; element: Element }
+  | TargetKeyword;
 export type ActiveKeyword =
   | { type: "head-start" | "comeback"; side: Side }
   | { type: "resonance"; side: Side; element: Element; bonus: number };
+export interface KeywordTarget {
+  keywordIndex: number;
+  boardIndex: number;
+}
+export type TargetEffect = TargetKeyword & { target: number };
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
   "head-start": { name: "Head Start", condition: "winning" },
   comeback: { name: "Comeback", condition: "losing" },
   resonance: { name: "Resonance", condition: "element count" },
+  sunder: { name: "Sunder", condition: "on play" },
+  silence: { name: "Silence", condition: "on play" },
 } as const;
-export const MAX_KEYWORDS = Object.keys(KEYWORD_RULES).length * 4;
+export const MAX_KEYWORDS = (Object.keys(KEYWORD_RULES).length - 1) * 4 + 1;
+export function keywordKey(keyword: StoneKeyword): string {
+  return keyword.type === "silence"
+    ? "silence"
+    : `${keyword.type}:${keyword.side}`;
+}
+// Keep each on-play effect in printed order; only the passive edge bonuses group together.
+export function keywordGroups(keywords: StoneKeyword[]) {
+  return keywords.flatMap((keyword, index) => {
+    if (keyword.type === "sunder" || keyword.type === "silence")
+      return [
+        {
+          type: keyword.type as KeywordType,
+          keywords: [keyword] as StoneKeyword[],
+        },
+      ];
+    if (
+      keywords.findIndex((candidate) => candidate.type === keyword.type) !==
+      index
+    )
+      return [];
+    return [
+      {
+        type: keyword.type as KeywordType,
+        keywords: keywords.filter(
+          (candidate) => candidate.type === keyword.type,
+        ),
+      },
+    ];
+  });
+}
 export interface Stone {
   id: string;
   name: string;
@@ -36,11 +77,15 @@ export interface PlacedStone {
   playedBy?: Owner;
   edges?: Edges;
   activeKeywords?: ActiveKeyword[];
+  silenced?: boolean;
+  reductions?: Edges;
+  effects?: TargetEffect[];
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
   board: Board;
   captured: number[];
+  effects: TargetEffect[];
 }
 
 export const ELEMENTS: Record<
@@ -199,9 +244,10 @@ export function evaluateKeywords(
         edges[keyword.side] += bonus;
       }
     } else if (
-      keyword.type === "head-start"
+      (keyword.type === "head-start" || keyword.type === "comeback") &&
+      (keyword.type === "head-start"
         ? scores[player] > scores[rival]
-        : scores[player] < scores[rival]
+        : scores[player] < scores[rival])
     ) {
       activeKeywords.push(keyword);
       edges[keyword.side] += 1;
@@ -210,11 +256,150 @@ export function evaluateKeywords(
   return { edges, activeKeywords };
 }
 
+// Targeted effects resolve in printed order against cards already on the board.
+// This same helper drives the picker, actual play, and computer simulations.
+export function prepareTargeting(
+  board: Board,
+  stone: Stone,
+  targets: KeywordTarget[] = [],
+) {
+  if (
+    new Set(targets.map((choice) => choice.keywordIndex)).size !==
+    targets.length
+  )
+    throw new Error("Choose only one target for each keyword.");
+  let next = board;
+  const effects: TargetEffect[] = [];
+  const used = new Set<number>();
+  for (const [keywordIndex, keyword] of (stone.keywords || []).entries()) {
+    if (keyword.type !== "sunder" && keyword.type !== "silence") continue;
+    const candidates = next.flatMap((cell, index) => {
+      if (!cell) return [];
+      const valid =
+        keyword.type === "sunder"
+          ? (cell.edges || cell.stone.edges)[keyword.side] > 0
+          : !cell.silenced && !!cell.stone.keywords?.length;
+      return valid ? [index] : [];
+    });
+    const choice = targets.find(
+      (target) => target.keywordIndex === keywordIndex,
+    );
+    if (!candidates.length) {
+      if (choice) throw new Error("That keyword has no valid targets.");
+      continue;
+    }
+    if (!choice) {
+      if (targets.some((target) => !used.has(target.keywordIndex)))
+        throw new Error("Choose targets in keyword order.");
+      return {
+        board: next,
+        effects,
+        pending: { keyword, keywordIndex, candidates },
+      };
+    }
+    if (!candidates.includes(choice.boardIndex))
+      throw new Error("Choose a valid card already on the board.");
+    used.add(keywordIndex);
+    const cell = next[choice.boardIndex]!;
+    if (keyword.type === "sunder") {
+      const reductions = [...(cell.reductions || [0, 0, 0, 0])] as Edges;
+      const edges = [...(cell.edges || cell.stone.edges)] as Edges;
+      reductions[keyword.side]++;
+      edges[keyword.side]--;
+      next = next.map((target, index) =>
+        index === choice.boardIndex ? { ...cell, edges, reductions } : target,
+      );
+    } else {
+      const edges = cell.stone.edges.map((base, side) =>
+        Math.max(0, base - (cell.reductions?.[side] || 0)),
+      ) as Edges;
+      next = next.map((target, index) =>
+        index === choice.boardIndex
+          ? { ...cell, edges, silenced: true, activeKeywords: [] }
+          : target,
+      );
+    }
+    effects.push({ ...keyword, target: choice.boardIndex });
+  }
+  if (targets.some((target) => !used.has(target.keywordIndex)))
+    throw new Error("Unexpected keyword target.");
+  return { board: next, effects, pending: null };
+}
+
+function capturesAt(
+  board: Board,
+  index: number,
+  owner: Owner,
+  edges: Edges,
+): number[] {
+  const row = Math.floor(index / 3),
+    col = index % 3;
+  const neighbors = [
+    row > 0 ? index - 3 : -1,
+    col < 2 ? index + 1 : -1,
+    row < 2 ? index + 3 : -1,
+    col > 0 ? index - 1 : -1,
+  ];
+  return neighbors.filter((neighbor, direction) => {
+    const target = board[neighbor];
+    return (
+      target &&
+      target.owner !== owner &&
+      edges[direction] >
+        (target.edges || target.stone.edges)[(direction + 2) % 4]
+    );
+  });
+}
+
+// Greedy target selection avoids an exponential search on custom cards with many effects.
+export function chooseKeywordTargets(
+  board: Board,
+  index: number,
+  stone: Stone,
+  owner: Owner,
+): KeywordTarget[] {
+  const targets: KeywordTarget[] = [];
+  const edges = evaluateKeywords(stone, board, owner).edges;
+  let state = prepareTargeting(board, stone, targets);
+  while (state.pending) {
+    const { keywordIndex, candidates } = state.pending;
+    let best = candidates[0],
+      bestValue = -Infinity;
+    for (const boardIndex of candidates) {
+      const preview = prepareTargeting(board, stone, [
+        ...targets,
+        { keywordIndex, boardIndex },
+      ]);
+      const weakening = preview.board.reduce((sum, cell, spot) => {
+        if (!cell) return sum;
+        const before = state.board[spot]!;
+        const lost = (before.edges || before.stone.edges).reduce(
+          (total, edge, side) =>
+            total + edge - (cell.edges || cell.stone.edges)[side],
+          0,
+        );
+        const disabled = !before.silenced && cell.silenced ? 0.2 : 0;
+        return sum + (cell.owner === owner ? -1 : 1) * (lost + disabled);
+      }, 0);
+      const value =
+        capturesAt(preview.board, index, owner, edges).length * 10 + weakening;
+      if (value > bestValue) {
+        best = boardIndex;
+        bestValue = value;
+      }
+    }
+    targets.push({ keywordIndex, boardIndex: best });
+    state = prepareTargeting(board, stone, targets);
+  }
+  return targets;
+}
+
 export function placeStone(
   board: Board,
   index: number,
   stone: Stone,
   owner: Owner,
+  targets: KeywordTarget[] = [],
 ): Move {
   if (
     board.length !== 9 ||
@@ -226,30 +411,21 @@ export function placeStone(
     throw new Error("Choose an empty square on the board.");
   }
   const resolved = evaluateKeywords(stone, board, owner);
-  const next = board.map((cell) => (cell ? { ...cell } : null));
-  next[index] = { stone, owner, playedBy: owner, ...resolved };
-  const captured: number[] = [];
-  const row = Math.floor(index / 3);
-  const col = index % 3;
-  const neighbors = [
-    row > 0 ? index - 3 : -1,
-    col < 2 ? index + 1 : -1,
-    row < 2 ? index + 3 : -1,
-    col > 0 ? index - 1 : -1,
-  ];
-  neighbors.forEach((neighbor, direction) => {
-    const target = next[neighbor];
-    if (
-      target &&
-      target.owner !== owner &&
-      resolved.edges[direction] >
-        (target.edges || target.stone.edges)[(direction + 2) % 4]
-    ) {
-      next[neighbor] = { ...target, owner };
-      captured.push(neighbor);
-    }
-  });
-  return { board: next, captured };
+  const targeted = prepareTargeting(board, stone, targets);
+  if (targeted.pending)
+    throw new Error("Choose a target before placing this card.");
+  const next = targeted.board.map((cell) => (cell ? { ...cell } : null));
+  next[index] = {
+    stone,
+    owner,
+    playedBy: owner,
+    ...resolved,
+    ...(targeted.effects.length ? { effects: targeted.effects } : {}),
+  };
+  const captured = capturesAt(next, index, owner, resolved.edges);
+  for (const neighbor of captured)
+    next[neighbor] = { ...next[neighbor]!, owner };
+  return { board: next, captured, effects: targeted.effects };
 }
 
 export function score(board: Board): [number, number] {
@@ -268,20 +444,36 @@ export function chooseMove(
   hand: Stone[],
   rivalHand: Stone[],
   owner: Owner,
-): { index: number; cardIndex: number } {
-  let best = { index: -1, cardIndex: -1, value: -Infinity };
+): { index: number; cardIndex: number; targets: KeywordTarget[] } {
+  let best = {
+    index: -1,
+    cardIndex: -1,
+    targets: [] as KeywordTarget[],
+    value: -Infinity,
+  };
   hand.forEach((stone, cardIndex) =>
     board.forEach((cell, index) => {
       if (cell) return;
-      const move = placeStone(board, index, stone, owner);
+      const targets = chooseKeywordTargets(board, index, stone, owner);
+      const move = placeStone(board, index, stone, owner, targets);
       let worstReply = 0;
       rivalHand.forEach((rival) =>
         move.board.forEach((target, spot) => {
           if (!target)
             worstReply = Math.max(
               worstReply,
-              placeStone(move.board, spot, rival, owner === 0 ? 1 : 0).captured
-                .length,
+              placeStone(
+                move.board,
+                spot,
+                rival,
+                owner === 0 ? 1 : 0,
+                chooseKeywordTargets(
+                  move.board,
+                  spot,
+                  rival,
+                  owner === 0 ? 1 : 0,
+                ),
+              ).captured.length,
             );
         }),
       );
@@ -306,11 +498,28 @@ export function chooseMove(
         worstReply * 7 +
         exposed * 0.15 +
         (index === 4 ? 0.2 : 0);
-      if (value > best.value) best = { index, cardIndex, value };
+      const weakening = [
+        ...new Set(move.effects.map((effect) => effect.target)),
+      ].reduce((sum, target) => {
+        const before = board[target]!,
+          after = move.board[target]!;
+        const lost = (before.edges || before.stone.edges).reduce(
+          (total, edge, side) =>
+            total + edge - (after.edges || after.stone.edges)[side],
+          0,
+        );
+        return sum + (before.owner === owner ? -1 : 1) * (lost + 0.2);
+      }, 0);
+      if (value + weakening * 0.1 > best.value)
+        best = { index, cardIndex, targets, value: value + weakening * 0.1 };
     }),
   );
   if (best.index < 0) throw new Error("There are no available moves.");
-  return { index: best.index, cardIndex: best.cardIndex };
+  return {
+    index: best.index,
+    cardIndex: best.cardIndex,
+    targets: best.targets,
+  };
 }
 
 export function validateStone(value: unknown): value is Stone {
@@ -356,10 +565,15 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
       !keyword ||
       typeof keyword !== "object" ||
       typeof keyword.type !== "string" ||
-      !Object.hasOwn(KEYWORD_RULES, keyword.type) ||
-      !Number.isInteger(keyword.side) ||
-      keyword.side < 0 ||
-      keyword.side > 3
+      !Object.hasOwn(KEYWORD_RULES, keyword.type)
+    )
+      return false;
+    if (
+      keyword.type === "silence"
+        ? keyword.side !== undefined
+        : !Number.isInteger(keyword.side) ||
+          keyword.side < 0 ||
+          keyword.side > 3
     )
       return false;
     if (
@@ -368,7 +582,7 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
         !Object.hasOwn(ELEMENTS, keyword.element))
     )
       return false;
-    const key = `${keyword.type}:${keyword.side}`;
+    const key = keywordKey(keyword);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { Droplets, Flame, Leaf, Mountain, Sparkles, Wind } from "lucide-react";
-import { ELEMENTS, KEYWORD_RULES, SIDE_LETTERS } from "./game";
-import type { Creature, Edges, Element, KeywordType, Stone } from "./game";
+import { ELEMENTS, KEYWORD_RULES, SIDE_LETTERS, keywordGroups } from "./game";
+import type { Creature, Edges, Element, Stone } from "./game";
 
 export const ELEMENT_ICONS = {
   fire: Flame,
@@ -375,6 +375,7 @@ export function StoneCard({
   compact = false,
   faded = false,
   edges = stone.edges,
+  silenced = false,
 }: {
   stone: Stone;
   owner?: 0 | 1;
@@ -382,12 +383,13 @@ export function StoneCard({
   compact?: boolean;
   faded?: boolean;
   edges?: Edges;
+  silenced?: boolean;
 }) {
   const element = ELEMENTS[stone.element];
   const Icon = ELEMENT_ICONS[stone.element];
   return (
     <div
-      className={`stone-card ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
+      className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
       style={
         {
           "--element-color": element.color,
@@ -404,7 +406,7 @@ export function StoneCard({
         )}
         {edges.map((edge, i) => (
           <span
-            className={`edge edge-${i} ${edge > stone.edges[i] ? "edge-buffed" : ""}`}
+            className={`edge edge-${i} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
             key={i}
           >
             <b>{edge}</b>
@@ -418,34 +420,41 @@ export function StoneCard({
       </div>
       {!!stone.keywords?.length && (
         <div className="stone-keywords">
-          {(Object.keys(KEYWORD_RULES) as KeywordType[]).map((type) => {
-            const matches = stone.keywords!.filter(
-              (keyword) => keyword.type === type,
-            );
-            return matches.length ? (
-              <span key={type} className={`stone-keyword keyword-${type}`}>
-                {KEYWORD_RULES[type].name}
-                {type === "resonance" &&
-                  (() => {
-                    const elements = [
-                      ...new Set(
-                        matches.flatMap((keyword) =>
-                          keyword.type === "resonance"
-                            ? [ELEMENTS[keyword.element].name]
-                            : [],
+          {silenced && <strong className="silenced-label">Silenced</strong>}
+          {keywordGroups(stone.keywords!).map(
+            ({ type, keywords: matches }, groupIndex) => {
+              return matches.length ? (
+                <span
+                  key={groupIndex}
+                  className={`stone-keyword keyword-${type}`}
+                >
+                  {KEYWORD_RULES[type].name}
+                  {type === "resonance" &&
+                    (() => {
+                      const elements = [
+                        ...new Set(
+                          matches.flatMap((keyword) =>
+                            keyword.type === "resonance"
+                              ? [ELEMENTS[keyword.element].name]
+                              : [],
+                          ),
                         ),
-                      ),
-                    ];
-                    return ` ${elements.length === 1 ? elements[0] : `×${elements.length}`}`;
-                  })()}
-                <b>
-                  {matches
-                    .map((keyword) => SIDE_LETTERS[keyword.side])
-                    .join("/")}
-                </b>
-              </span>
-            ) : null;
-          })}
+                      ];
+                      return ` ${elements.length === 1 ? elements[0] : `×${elements.length}`}`;
+                    })()}
+                  <b>
+                    {matches
+                      .map((keyword) =>
+                        keyword.type === "silence"
+                          ? "ON PLAY"
+                          : SIDE_LETTERS[keyword.side],
+                      )
+                      .join("/")}
+                  </b>
+                </span>
+              ) : null;
+            },
+          )}
         </div>
       )}
       <div className="stone-caption">

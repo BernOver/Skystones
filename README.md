@@ -46,15 +46,18 @@ Select a stone from your hand, then an empty square on the 3×3 board. A higher 
 
 ## Keywords
 
-Assign **Head Start**, **Comeback**, or **Resonance** to named edges in the card studio. For Resonance, also choose the element to count. Some original cards demonstrate these keywords.
+Add keywords in the card studio. For Resonance, choose the element to count. For Sunder, choose which edge of the target loses a pip. Silence affects all keywords and needs no edge. Some original cards demonstrate the bonus keywords.
 
 - **Head Start:** the specified edge gains **+1 pip** if the player is winning immediately before playing that card.
 - **Comeback:** the specified edge gains **+1 pip** if the player is losing immediately before playing that card.
 - **Resonance:** the specified edge gains **+1 pip for every card of the chosen element already on the board**, counting both players' cards. For example, **Resonance · Fire · East** adds **+3 East pips** if there are three Fire cards on the board. The card being played does not count, even if it is also Fire.
+- **Sunder:** choose a card already on the board. Remove **1 pip from its specified edge**, to a minimum of zero. The reduction remains through captures and Silence.
+- **Silence:** choose a card already on the board. **Disable all its keywords and remove their pip bonuses** for the rest of the match. Its printed stats and element remain. Earlier captures and resolved Sunder/Silence effects stay; Silence does not reverse past actions.
+- When playing Sunder or Silence, pick an empty placement square, then select a highlighted board card in the target picker. Either player's cards can be targeted, including nonadjacent cards. The new card cannot target itself. Canceling the picker leaves the entire turn untouched. Targeted effects resolve in the card's listed order before captures, so weakening a defender can enable the new card's capture. Effects with no valid target are skipped, including on an empty board. Sunder cannot target a zero edge; Silence cannot target a card without keywords or an already silenced card.
 - Head Start and Comeback compare the number of controlled stones on the board **before placement**. A tie activates neither of those; Resonance works independently of the score.
-- Check each keyword **once** when the card is played. Activated bonuses stay on that card for the rest of the match, including after captures or score changes. Inactive keywords never activate later.
+- Check each keyword **once** when the card is played. Activated bonuses stay on that card for the rest of the match, including after captures or score changes, unless Silence removes them. Inactive keywords never activate later.
 - Activated pips count for both capturing and defending. Green edge numbers show the resolved strength; the enlarged view shows the base value, total bonus, and each Resonance count. Different keywords on the same edge add together. Bonuses can raise an edge above 5 and do not spend printed-stat budget points.
-- The same keyword cannot appear twice on the same edge. Cards without keywords, including older card-file exports, still work.
+- The same keyword cannot appear twice on the same edge; Silence appears at most once per card. Cards without keywords, including older card-file exports, still work. Hover inspection shows reduced edges, Silence status, and the targets of resolved effects. The computer also selects targets when simulating moves.
 
 Custom cards, deck selection, and sound preference are saved in this browser's local storage. Matches start fresh on reload. An incomplete saved deck uses the starter deck for the initial practice match; select five cards before starting another match. Clearing site data removes the collection, so export any creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 

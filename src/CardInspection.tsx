@@ -7,10 +7,18 @@ import {
   Info,
   RotateCcw,
   Waves,
+  Scissors,
+  VolumeX,
 } from "lucide-react";
 import { ELEMENT_ICONS, StoneCard } from "./Artwork";
-import { ELEMENTS, KEYWORD_RULES, SIDE_NAMES } from "./game";
-import type { ActiveKeyword, Edges, KeywordType, Stone } from "./game";
+import {
+  COORDINATES,
+  ELEMENTS,
+  KEYWORD_RULES,
+  SIDE_NAMES,
+  keywordGroups,
+} from "./game";
+import type { ActiveKeyword, Edges, Stone, TargetEffect } from "./game";
 
 export interface Inspection {
   stone: Stone;
@@ -22,70 +30,172 @@ export interface Inspection {
   played: boolean;
   playerName: string;
   controllerName?: string;
+  silenced?: boolean;
+  reductions?: Edges;
+  effects?: TargetEffect[];
 }
 
 export function KeywordDetails({
   stone,
   activeKeywords,
   played = false,
+  silenced = false,
+  effects,
 }: {
   stone: Stone;
   activeKeywords?: ActiveKeyword[];
   played?: boolean;
+  silenced?: boolean;
+  effects?: TargetEffect[];
 }) {
   return (
-    <div className="keyword-details">
-      {(Object.keys(KEYWORD_RULES) as KeywordType[]).map((type) => {
-        const keywords = (stone.keywords || []).filter(
-          (keyword) => keyword.type === type,
-        );
-        if (!keywords.length) return null;
-        if (type === "resonance")
-          return (
-            <ResonanceDetails
-              key={type}
-              stone={stone}
-              activeKeywords={activeKeywords}
-              played={played}
-            />
+    <div className={`keyword-details ${silenced ? "keywords-disabled" : ""}`}>
+      {silenced && (
+        <p className="silenced-notice">
+          <VolumeX size={14} />
+          <span>
+            <strong>Silenced</strong> · All keywords are disabled and their pip
+            bonuses are removed. Earlier captures and resolved effects stay.
+          </span>
+        </p>
+      )}
+      {keywordGroups(stone.keywords || []).map(
+        ({ type, keywords }, groupIndex) => {
+          if (!keywords.length) return null;
+          if (type === "resonance")
+            return (
+              <ResonanceDetails
+                key={groupIndex}
+                stone={stone}
+                activeKeywords={activeKeywords}
+                played={played}
+                silenced={silenced}
+              />
+            );
+          if (type === "sunder" || type === "silence") {
+            const matchingEffects = (effects || []).filter(
+              (effect) =>
+                effect.type === type &&
+                (effect.type === "silence" ||
+                  keywords.some(
+                    (keyword) =>
+                      keyword.type === "sunder" && keyword.side === effect.side,
+                  )),
+            );
+            return (
+              <section
+                className="keyword-rule target-keyword-rule"
+                key={groupIndex}
+              >
+                <div className="keyword-rule-heading">
+                  {type === "sunder" ? (
+                    <Scissors size={15} />
+                  ) : (
+                    <VolumeX size={15} />
+                  )}
+                  <strong>{KEYWORD_RULES[type].name}</strong>
+                  <span>On play</span>
+                </div>
+                <p>
+                  {type === "sunder" ? (
+                    <>
+                      Choose a card already on the board. Its{" "}
+                      <strong>
+                        {keywords
+                          .flatMap((keyword) =>
+                            keyword.type === "sunder"
+                              ? [SIDE_NAMES[keyword.side]]
+                              : [],
+                          )
+                          .join(", ")}{" "}
+                        edge{keywords.length > 1 ? "s each lose" : " loses"} 1
+                        pip
+                      </strong>
+                      , to a minimum of zero. Choose a target for each listed
+                      edge.
+                    </>
+                  ) : (
+                    <>
+                      Choose a card already on the board.{" "}
+                      <strong>
+                        Disable all its keywords and remove their pip bonuses
+                      </strong>{" "}
+                      for the rest of the match. Earlier captures and resolved
+                      effects stay.
+                    </>
+                  )}
+                </p>
+                {played ? (
+                  matchingEffects.length ? (
+                    matchingEffects.map((effect, i) => (
+                      <span className="keyword-status is-active" key={i}>
+                        <Check size={12} />
+                        {effect.type === "sunder"
+                          ? `${SIDE_NAMES[effect.side]} −1 on`
+                          : "Silenced"}{" "}
+                        {COORDINATES[effect.target]} · resolved when played
+                      </span>
+                    ))
+                  ) : (
+                    <span className="keyword-status">
+                      No valid target when played.
+                    </span>
+                  )
+                ) : (
+                  <span className="keyword-status">
+                    Choose either player’s card when played, before captures. No
+                    valid target means this effect is skipped.
+                  </span>
+                )}
+              </section>
+            );
+          }
+          const rule = KEYWORD_RULES[type];
+          const active = activeKeywords?.some(
+            (keyword) => keyword.type === type,
           );
-        const rule = KEYWORD_RULES[type];
-        const active = activeKeywords?.some((keyword) => keyword.type === type);
-        const Icon = type === "head-start" ? Flag : RotateCcw;
-        const sides = keywords
-          .map((keyword) => SIDE_NAMES[keyword.side])
-          .join(", ");
-        return (
-          <section
-            className={`keyword-rule ${active ? "keyword-active" : ""}`}
-            key={type}
-          >
-            <div className="keyword-rule-heading">
-              <Icon size={15} />
-              <strong>{rule.name}</strong>
-              <span>{sides}</span>
-            </div>
-            <p>
-              If its player is{" "}
-              <strong>{rule.condition} before placement</strong>,{" "}
-              {keywords.length === 1 ? "this edge gains" : "these edges gain"}{" "}
-              <strong>+1 pip</strong> for the rest of the match.
-            </p>
-            {activeKeywords !== undefined && (
-              <span className={`keyword-status ${active ? "is-active" : ""}`}>
-                {active ? <Check size={12} /> : <Info size={12} />}
-                {played
-                  ? active
-                    ? "Activated when played · bonus locked in"
-                    : "Did not activate when played"
-                  : active
-                    ? "Will activate if played now"
-                    : "Will not activate with the current score"}
-              </span>
-            )}
-          </section>
-        );
-      })}
+          const Icon = type === "head-start" ? Flag : RotateCcw;
+          const sides = keywords
+            .flatMap((keyword) =>
+              keyword.type === "head-start" || keyword.type === "comeback"
+                ? [SIDE_NAMES[keyword.side]]
+                : [],
+            )
+            .join(", ");
+          return (
+            <section
+              className={`keyword-rule ${active ? "keyword-active" : ""}`}
+              key={groupIndex}
+            >
+              <div className="keyword-rule-heading">
+                <Icon size={15} />
+                <strong>{rule.name}</strong>
+                <span>{sides}</span>
+              </div>
+              <p>
+                If its player is{" "}
+                <strong>{rule.condition} before placement</strong>,{" "}
+                {keywords.length === 1 ? "this edge gains" : "these edges gain"}{" "}
+                <strong>+1 pip</strong> for the rest of the match.
+              </p>
+              {activeKeywords !== undefined && (
+                <span className={`keyword-status ${active ? "is-active" : ""}`}>
+                  {active ? <Check size={12} /> : <Info size={12} />}
+                  {silenced
+                    ? "Disabled by Silence"
+                    : played
+                      ? active
+                        ? "Activated when played · bonus locked in"
+                        : "Did not activate when played"
+                      : active
+                        ? "Will activate if played now"
+                        : "Will not activate with the current score"}
+                </span>
+              )}
+            </section>
+          );
+        },
+      )}
       {!stone.keywords?.length && (
         <p className="no-keywords">
           No keywords. This stone uses its printed edge strengths.
@@ -95,7 +205,8 @@ export function KeywordDetails({
         <p className="keyword-timing">
           <Info size={12} />
           Check once, before placement. Ties block Head Start and Comeback only.
-          Bonuses remain through captures and score changes.
+          Bonuses remain through captures and score changes unless removed by
+          Silence. Targeted effects resolve in listed order before captures.
         </p>
       )}
     </div>
@@ -106,10 +217,12 @@ function ResonanceDetails({
   stone,
   activeKeywords,
   played,
+  silenced,
 }: {
   stone: Stone;
   activeKeywords?: ActiveKeyword[];
   played: boolean;
+  silenced: boolean;
 }) {
   const keywords = (stone.keywords || []).filter(
     (keyword) => keyword.type === "resonance",
@@ -161,9 +274,11 @@ function ResonanceDetails({
                   <>
                     <b>+{bonus}</b>
                     <small>
-                      {played
-                        ? `${bonus} matching · locked in`
-                        : `${bonus} matching · if played now`}
+                      {silenced
+                        ? "removed by Silence"
+                        : played
+                          ? `${bonus} matching · locked in`
+                          : `${bonus} matching · if played now`}
                     </small>
                   </>
                 )}
@@ -174,17 +289,28 @@ function ResonanceDetails({
       </div>
       <span className="keyword-status">
         <Info size={12} />
-        {played
-          ? "The count is locked. Later cards and captures do not change it."
-          : "No matching cards means +0. The count is locked when played."}
+        {silenced
+          ? "The Resonance bonus was removed by Silence."
+          : played
+            ? "The count is locked. Later cards and captures do not change it."
+            : "No matching cards means +0. The count is locked when played."}
       </span>
     </section>
   );
 }
 
 export function InspectionDetails({ inspection }: { inspection: Inspection }) {
-  const { stone, edges, played, playerName, controllerName, activeKeywords } =
-    inspection;
+  const {
+    stone,
+    edges,
+    played,
+    playerName,
+    controllerName,
+    activeKeywords,
+    silenced,
+    reductions,
+    effects,
+  } = inspection;
   return (
     <>
       <div className="inspection-context">
@@ -201,22 +327,44 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         {SIDE_NAMES.map((side, index) => (
           <div
             key={side}
-            className={edges[index] > stone.edges[index] ? "stat-boosted" : ""}
+            className={
+              edges[index] > stone.edges[index]
+                ? "stat-boosted"
+                : edges[index] < stone.edges[index]
+                  ? "stat-reduced"
+                  : ""
+            }
           >
             <small>{side}</small>
             <strong>{edges[index]}</strong>
-            {edges[index] > stone.edges[index] && (
+            {edges[index] !== stone.edges[index] && (
               <span>
-                {stone.edges[index]} + {edges[index] - stone.edges[index]}
+                {stone.edges[index]}{" "}
+                {edges[index] > stone.edges[index] ? "+" : "−"}{" "}
+                {Math.abs(edges[index] - stone.edges[index])}
               </span>
             )}
           </div>
         ))}
       </div>
+      {reductions?.some(Boolean) && (
+        <p className="sunder-notice">
+          Sunder applied:{" "}
+          {reductions
+            .flatMap((amount, side) =>
+              amount ? [`${SIDE_NAMES[side]} −${amount}`] : [],
+            )
+            .join(", ")}
+          . Reductions persist through capture and Silence; edges cannot fall
+          below zero.
+        </p>
+      )}
       <KeywordDetails
         stone={stone}
         activeKeywords={activeKeywords}
         played={played}
+        silenced={silenced}
+        effects={effects}
       />
       {stone.description && (
         <div className="inspection-story">
@@ -279,7 +427,11 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
       }}
     >
       <div className="inspector-card">
-        <StoneCard stone={inspection.stone} edges={inspection.edges} />
+        <StoneCard
+          stone={inspection.stone}
+          edges={inspection.edges}
+          silenced={inspection.silenced}
+        />
       </div>
       <h2>{inspection.stone.name}</h2>
       <InspectionDetails inspection={inspection} />

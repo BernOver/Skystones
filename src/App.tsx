@@ -47,8 +47,18 @@ import {
   score,
   evaluateKeywords,
   validateStone,
+  prepareTargeting,
+  KEYWORD_RULES,
+  SIDE_NAMES,
 } from "./game";
-import type { Board, Creature, Element, Owner, Stone } from "./game";
+import type {
+  Board,
+  Creature,
+  Element,
+  Owner,
+  Stone,
+  KeywordTarget,
+} from "./game";
 import { createId } from "./id";
 import {
   CardInspector,
@@ -57,6 +67,7 @@ import {
 } from "./CardInspection";
 import type { Inspection } from "./CardInspection";
 import { KeywordEditor } from "./KeywordEditor";
+import { TargetPicker } from "./TargetPicker";
 
 type Page = "table" | "collection" | "studio";
 type Mode = "computer" | "local";
@@ -64,6 +75,12 @@ type DialogState =
   | { kind: "rules" | "new" }
   | { kind: "card" | "delete"; stone: Stone }
   | { kind: "inspect"; inspection: Inspection }
+  | {
+      kind: "target";
+      index: number;
+      cardIndex: number;
+      targets: KeywordTarget[];
+    }
   | null;
 interface Library {
   custom: Stone[];
@@ -75,6 +92,7 @@ interface JournalEntry {
   owner: Owner;
   text: string;
   captured: number;
+  effects: string;
 }
 interface Match {
   id: string;
@@ -162,9 +180,14 @@ function createMatch(
   };
 }
 
-function applyMove(match: Match, index: number, cardIndex: number): Match {
+function applyMove(
+  match: Match,
+  index: number,
+  cardIndex: number,
+  targets: KeywordTarget[] = [],
+): Match {
   const stone = match.hands[match.current][cardIndex];
-  const move = placeStone(match.board, index, stone, match.current);
+  const move = placeStone(match.board, index, stone, match.current, targets);
   const hands: [Stone[], Stone[]] = [[...match.hands[0]], [...match.hands[1]]];
   hands[match.current].splice(cardIndex, 1);
   return {
@@ -181,6 +204,12 @@ function applyMove(match: Match, index: number, cardIndex: number): Match {
         owner: match.current,
         text: `${stone.name} → ${COORDINATES[index]}`,
         captured: move.captured.length,
+        effects: move.effects
+          .map(
+            (effect) =>
+              `${KEYWORD_RULES[effect.type].name} → ${COORDINATES[effect.target]}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −1` : ""}`,
+          )
+          .join(" · "),
       },
       ...match.entries,
     ],
@@ -361,7 +390,7 @@ export default function App() {
           current.hands[0],
           1,
         );
-        return applyMove(current, move.index, move.cardIndex);
+        return applyMove(current, move.index, move.cardIndex, move.targets);
       });
     }, 850);
     return () => clearTimeout(timer);
@@ -437,6 +466,9 @@ export default function App() {
       played: !!cell,
       playerName: names[player],
       controllerName: cell ? names[cell.owner] : undefined,
+      silenced: cell?.silenced,
+      reductions: cell?.reductions,
+      effects: cell?.effects,
     };
   }
   function showInspection(
@@ -497,8 +529,31 @@ export default function App() {
   }
   function playAt(index: number) {
     if (aiTurn || done || match.board[index] || selected === null) return;
+    const stone = match.hands[match.current][selected];
+    if (prepareTargeting(match.board, stone).pending) {
+      setDialog({ kind: "target", index, cardIndex: selected, targets: [] });
+      return;
+    }
     setMatch(applyMove(match, index, selected));
     setSelected(null);
+  }
+  function chooseTarget(boardIndex: number) {
+    if (dialog?.kind !== "target") return;
+    const stone = match.hands[match.current][dialog.cardIndex];
+    const state = prepareTargeting(match.board, stone, dialog.targets);
+    if (!state.pending || !state.pending.candidates.includes(boardIndex))
+      return;
+    const targets = [
+      ...dialog.targets,
+      { keywordIndex: state.pending.keywordIndex, boardIndex },
+    ];
+    if (prepareTargeting(match.board, stone, targets).pending) {
+      setDialog({ ...dialog, targets });
+    } else {
+      setMatch(applyMove(match, dialog.index, dialog.cardIndex, targets));
+      setSelected(null);
+      setDialog(null);
+    }
   }
   function toggleDeck(stone: Stone) {
     const included = library.deck.includes(stone.id);
@@ -810,7 +865,7 @@ export default function App() {
                           className={`board-cell ${cell ? "filled" : "empty"} ${match.lastCaptured.includes(index) ? "just-captured" : ""} ${match.lastPlaced === index ? "just-placed" : ""}`}
                           aria-label={
                             cell
-                              ? `${COORDINATES[index]}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}. Inspect card.`
+                              ? `${COORDINATES[index]}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}.${cell.silenced ? " Silenced." : ""} Inspect card.`
                               : `${COORDINATES[index]}, empty square`
                           }
                           disabled={
@@ -864,6 +919,7 @@ export default function App() {
                               stone={cell.stone}
                               owner={cell.owner}
                               edges={cell.edges || cell.stone.edges}
+                              silenced={cell.silenced}
                               compact
                             />
                           ) : (
@@ -1174,6 +1230,7 @@ export default function App() {
                               {entry.captured
                                 ? `${entry.captured} stone${entry.captured > 1 ? "s" : ""} captured`
                                 : "A new stone joins the board"}
+                              {entry.effects && ` · ${entry.effects}`}
                             </small>
                           </div>
                           {index === 0 && (
@@ -1814,6 +1871,7 @@ export default function App() {
               <StoneCard
                 stone={dialog.inspection.stone}
                 edges={dialog.inspection.edges}
+                silenced={dialog.inspection.silenced}
               />
             </div>
           </div>
@@ -1827,6 +1885,24 @@ export default function App() {
             Back to the table
             <ArrowRight size={16} />
           </button>
+        </Dialog>
+      )}
+
+      {dialog?.kind === "target" && (
+        <Dialog
+          title="Choose keyword target"
+          onClose={() => setDialog(null)}
+          className="target-dialog"
+        >
+          <TargetPicker
+            board={match.board}
+            stone={match.hands[match.current][dialog.cardIndex]}
+            placement={dialog.index}
+            targets={dialog.targets}
+            names={names}
+            onChoose={chooseTarget}
+            onCancel={() => setDialog(null)}
+          />
         </Dialog>
       )}
 
@@ -1909,7 +1985,19 @@ export default function App() {
               element already on the board, from either player, regardless of
               score. Check once before placement, excluding the card being
               played: activated pips stay even if the score changes or the stone
-              is captured.
+              is captured, unless removed by Silence.
+            </p>
+          </div>
+          <div className="rules-note keyword-rules-note">
+            <Swords size={19} />
+            <p>
+              <strong>Sunder</strong> removes 1 pip from a chosen board card’s
+              specified edge, down to zero. <strong>Silence</strong> disables a
+              chosen board card’s keywords and removes their bonuses for the
+              rest of the match. Choose either player’s card after picking your
+              placement. These effects resolve in listed order before captures;
+              no valid target means the effect is skipped. Earlier captures and
+              resolved effects stay.
             </p>
           </div>
           <button
