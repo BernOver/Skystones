@@ -288,12 +288,15 @@ export function newAdventure(
   seed = Math.floor(Math.random() * 2 ** 30),
 ): Adventure {
   const inventory = Array.from({ length: handSize(size) + 2 }, (_, i) =>
-    makeRunCard(seed + i * 53, i % 3 === 0 ? 3 : 2, `${seed}-start-${i}`),
+    makeRunCard(seed + i * 53, i % 3 === 0 ? 5 : 4, `${seed}-start-${i}`),
   );
-  // Starting cards spread their tiny budgets, keeping almost every edge at zero or one.
+  // Every starter has a reliable two-pip attack and a weak edge. Rotate the
+  // stronger sides so either hand size covers all four directions.
   inventory.forEach((stone, i) => {
     const edges: Edges = [0, 0, 0, 0];
-    for (let n = 0; n < (i % 3 === 0 ? 3 : 2); n++) edges[(i + n) % 4] = 1;
+    edges[i % 4] = 2;
+    edges[(i + 1) % 4] = i % 3 === 0 ? 2 : 1;
+    edges[(i + 2) % 4] = 1;
     stone.edges = edges;
   });
   return {
@@ -310,7 +313,8 @@ export function newAdventure(
     rewards: [],
     shopCards: [],
     shopPotions: [],
-    message: "A small deck. A long road. Choose your first encounter.",
+    message:
+      "Your starter stones have 4–5 pips, including stronger two-pip edges. Choose your first encounter.",
     victory: false,
   };
 }

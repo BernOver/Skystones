@@ -116,7 +116,7 @@ test("four-by-four games finish in sixteen moves using eight-card hands", () => 
     16,
   );
 });
-test("adventures start with mostly zero and one pips, correct hand sizes, and deterministic growing rewards", () => {
+test("adventures start with stronger four-to-five-pip cards, weak early enemies, correct hand sizes, and growing rewards", () => {
   for (const size of [3, 4] as BoardSize[]) {
     const run = newAdventure(size, 42);
     assert.equal(run.deck.length, handSize(size));
@@ -125,7 +125,10 @@ test("adventures start with mostly zero and one pips, correct hand sizes, and de
     assert.ok(
       run.inventory.every(
         (stone) =>
-          stone.edges.every((edge) => edge === 0 || edge === 1) &&
+          [4, 5].includes(stone.edges.reduce((a, b) => a + b, 0)) &&
+          stone.edges.every((edge) => edge >= 0 && edge <= 2) &&
+          stone.edges.includes(2) &&
+          stone.edges.includes(1) &&
           stone.edges.includes(0),
       ),
     );
@@ -372,7 +375,7 @@ test("well, alchemist, and camp choices apply once and respect lives, potion cap
   const trained = resolveAdventureEvent(camp, "train", base.inventory[0].id);
   assert.equal(
     trained.inventory[0].edges.reduce((a, b) => a + b, 0),
-    4,
+    base.inventory[0].edges.reduce((a, b) => a + b, 0) + 1,
   );
   assert.equal(trained.floor, 8);
 });
