@@ -32,21 +32,15 @@ import {
   handSize,
   prepareTargeting,
   score,
+  validateKeywords,
 } from "./game";
-import type {
-  BoardSize,
-  Element,
-  KeywordTarget,
-  KeywordType,
-  Side,
-  Stone,
-  StoneKeyword,
-} from "./game";
+import type { BoardSize, Element, KeywordTarget, Side, Stone } from "./game";
 import {
   ADVENTURE_STORAGE,
   POTIONS,
   ROUTE,
   SERVICE_PRICES,
+  adventureWorkshopOffer,
   adventureEnemyMove,
   buyAdventureCard,
   buyAdventurePotion,
@@ -166,10 +160,7 @@ export function Expedition() {
   } | null>(null);
   const [service, setService] = useState<"pip" | "element" | "keyword">("pip"),
     [serviceCard, setServiceCard] = useState(""),
-    [side, setSide] = useState<Side | "any">(0),
-    [element, setElement] = useState<Element>("fire"),
-    [keywordType, setKeywordType] = useState<KeywordType>("head-start"),
-    [amount, setAmount] = useState(1);
+    [element, setElement] = useState<Element>("fire");
   useEffect(() => {
     if (!run) return;
     try {
@@ -299,6 +290,21 @@ export function Expedition() {
     scores = battle ? score(battle.board) : [0, 0];
   const selectedService =
     run.inventory.find((stone) => stone.id === serviceCard) || run.inventory[0];
+  const shopOffer = adventureWorkshopOffer(run);
+  const offeredKeyword = shopOffer.keyword;
+  const keywordDirection =
+    offeredKeyword.type === "silence"
+      ? "Whole card"
+      : offeredKeyword.side === "any"
+        ? "Any edge"
+        : SIDE_NAMES[offeredKeyword.side];
+  const canInscribe = validateKeywords([
+    ...(selectedService.keywords || []),
+    offeredKeyword,
+  ]);
+  const canSharpen =
+    selectedService.edges[shopOffer.pipSide] < 5 &&
+    selectedService.edges.reduce((a, b) => a + b, 0) < 12;
   function look(
     stone: Stone,
     anchor: HTMLElement,
@@ -369,13 +375,11 @@ export function Expedition() {
     }
   }
   function workshop() {
-    const fixed = side === "any" ? 0 : side;
     if (service === "pip")
       act((current) =>
         buyAdventureService(current, {
           type: "pip",
           cardId: selectedService.id,
-          side: fixed,
         }),
       );
     else if (service === "element")
@@ -387,19 +391,10 @@ export function Expedition() {
         }),
       );
     else {
-      const keyword: StoneKeyword =
-        keywordType === "silence"
-          ? { type: "silence" }
-          : keywordType === "resonance"
-            ? { type: "resonance", side: fixed, element }
-            : keywordType === "sunder"
-              ? { type: "sunder", side, amount }
-              : { type: keywordType, side: fixed };
       act((current) =>
         buyAdventureService(current, {
           type: "keyword",
           cardId: selectedService.id,
-          keyword,
         }),
       );
     }
@@ -930,15 +925,17 @@ export function Expedition() {
                 value={service}
                 onChange={(event) => {
                   setService(event.target.value as typeof service);
-                  setSide(0);
                 }}
               >
-                <option value="pip">Sharpen · +1 pip · 25 gold</option>
+                <option value="pip">
+                  Sharpen · +1 {SIDE_NAMES[shopOffer.pipSide]} pip · 25 gold
+                </option>
                 <option value="element">
                   Reforge · change element · 20 gold
                 </option>
                 <option value="keyword">
-                  Inscribe · add a keyword · 35 gold
+                  Inscribe · {KEYWORD_RULES[offeredKeyword.type].name} ·{" "}
+                  {keywordDirection} · 35 gold
                 </option>
               </select>
             </label>
@@ -957,54 +954,49 @@ export function Expedition() {
               </select>
             </label>
             {service === "keyword" && (
-              <label>
-                Keyword
-                <select
-                  aria-label="Workshop keyword"
-                  value={keywordType}
-                  onChange={(event) => {
-                    setKeywordType(event.target.value as KeywordType);
-                    setSide(0);
-                  }}
-                >
-                  {Object.entries(KEYWORD_RULES).map(([type, rule]) => (
-                    <option key={type} value={type}>
-                      {rule.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <section
+                className="workshop-offer"
+                aria-label="Shop keyword offer"
+              >
+                <div className="eyebrow">THIS SHOP’S INSCRIPTION</div>
+                <h4>
+                  {KEYWORD_RULES[offeredKeyword.type].name} · {keywordDirection}
+                </h4>
+                <p>
+                  Randomly rolled for this shop visit. Choose a stone to receive
+                  this exact keyword and direction.
+                </p>
+                <KeywordDetails
+                  stone={{ ...selectedService, keywords: [offeredKeyword] }}
+                  size={run.size}
+                />
+                {!canInscribe && (
+                  <p className="workshop-unavailable">
+                    This stone already has the offered keyword. Choose another
+                    stone.
+                  </p>
+                )}
+              </section>
             )}
-            {service === "pip" ||
-            (service === "keyword" && keywordType !== "silence") ? (
+            {service === "pip" && (
+              <section className="workshop-offer" aria-label="Shop pip offer">
+                <div className="eyebrow">THIS SHOP’S SHARPENING</div>
+                <h4>+1 pip · {SIDE_NAMES[shopOffer.pipSide]}</h4>
+                <p>
+                  This direction was randomly rolled for the visit. Choose which
+                  stone gains the pip.
+                </p>
+                {!canSharpen && (
+                  <p className="workshop-unavailable">
+                    This stone has no room for the offered pip. Choose another
+                    stone.
+                  </p>
+                )}
+              </section>
+            )}
+            {service === "element" && (
               <label>
-                Affected edge
-                <select
-                  aria-label="Workshop edge"
-                  value={side}
-                  onChange={(event) =>
-                    setSide(
-                      event.target.value === "any"
-                        ? "any"
-                        : (Number(event.target.value) as Side),
-                    )
-                  }
-                >
-                  {SIDE_NAMES.map((name, index) => (
-                    <option key={name} value={index}>
-                      {name}
-                    </option>
-                  ))}
-                  {service === "keyword" && keywordType === "sunder" && (
-                    <option value="any">Any · choose when played</option>
-                  )}
-                </select>
-              </label>
-            ) : null}
-            {service === "element" ||
-            (service === "keyword" && keywordType === "resonance") ? (
-              <label>
-                {service === "element" ? "New element" : "Counted element"}
+                New element
                 <select
                   aria-label="Workshop element"
                   value={element}
@@ -1019,30 +1011,14 @@ export function Expedition() {
                   ))}
                 </select>
               </label>
-            ) : null}
-            {service === "keyword" && keywordType === "sunder" && (
-              <label>
-                Pips removed
-                <input
-                  aria-label="Workshop Sunder strength"
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={amount}
-                  onChange={(event) =>
-                    setAmount(
-                      Math.max(
-                        1,
-                        Math.min(99, Number(event.target.value) || 1),
-                      ),
-                    )
-                  }
-                />
-              </label>
             )}
             <button
               className="button button-dark"
-              disabled={run.gold < SERVICE_PRICES[service]}
+              disabled={
+                run.gold < SERVICE_PRICES[service] ||
+                (service === "keyword" && !canInscribe) ||
+                (service === "pip" && !canSharpen)
+              }
             >
               Buy upgrade · {SERVICE_PRICES[service]} gold
             </button>

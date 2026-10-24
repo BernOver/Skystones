@@ -5,6 +5,7 @@ import {
   enterAdventureNode,
   newAdventure,
   resolveAdventureEvent,
+  adventureWorkshopOffer,
 } from "../../src/adventure.ts";
 import type { Adventure } from "../../src/adventure.ts";
 import { chooseMove, coordinate, STARTER_STONES } from "../../src/game.ts";
@@ -90,13 +91,11 @@ test("Giants catalogue has 81 playable stones, original images, strong original 
   const buffer = Buffer.concat(chunks);
   expect(JSON.parse(buffer.toString()).card.edges).toEqual([4, 4, 4, 4]);
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page
-    .getByLabel("Import card file")
-    .setInputFiles({
-      name: "conquertron.skystone.json",
-      mimeType: "application/json",
-      buffer,
-    });
+  await page.getByLabel("Import card file").setInputFiles({
+    name: "conquertron.skystone.json",
+    mimeType: "application/json",
+    buffer,
+  });
   await expect(
     page.getByRole("button", { name: "View CONQUERTRON", exact: true }),
   ).toHaveCount(1);
@@ -216,13 +215,14 @@ test("shop purchases, all three workshop services, deck changes, and gold surviv
     .click();
   expect((await stored(page)).potions).toEqual(["power"]);
   const id = run.inventory[0].id;
+  const offer = adventureWorkshopOffer(run);
   await page.getByLabel("Workshop card").selectOption(id);
-  await page.getByLabel("Workshop edge").selectOption("0");
+  await expect(page.getByLabel("Workshop edge")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Buy upgrade · 25 gold", exact: true })
     .click();
-  expect((await stored(page)).inventory[0].edges[0]).toBe(
-    run.inventory[0].edges[0] + 1,
+  expect((await stored(page)).inventory[0].edges[offer.pipSide]).toBe(
+    run.inventory[0].edges[offer.pipSide] + 1,
   );
   await page.getByLabel("Workshop service").selectOption("element");
   const element = run.inventory[0].element === "water" ? "fire" : "water";
@@ -231,23 +231,40 @@ test("shop purchases, all three workshop services, deck changes, and gold surviv
     .getByRole("button", { name: "Buy upgrade · 20 gold", exact: true })
     .click();
   await page.getByLabel("Workshop service").selectOption("keyword");
-  await page
-    .getByLabel("Workshop keyword", { exact: true })
-    .selectOption("sunder");
-  await page.getByLabel("Workshop edge").selectOption("any");
-  await page.getByLabel("Workshop Sunder strength").fill("3");
+  await expect(
+    page.getByLabel("Workshop keyword", { exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Workshop edge")).toHaveCount(0);
+  const offerHeading = await page
+    .getByRole("region", { name: "Shop keyword offer" })
+    .getByRole("heading")
+    .textContent();
+  await page.getByLabel("Workshop card").selectOption(run.inventory[1].id);
+  await expect(
+    page
+      .getByRole("region", { name: "Shop keyword offer" })
+      .getByRole("heading"),
+  ).toHaveText(offerHeading!);
+  await page.getByLabel("Workshop card").selectOption(id);
   await page
     .getByRole("button", { name: "Buy upgrade · 35 gold", exact: true })
     .click();
   current = await stored(page);
   expect(current.inventory[0].element).toBe(element);
-  expect(current.inventory[0].keywords).toEqual([
-    { type: "sunder", side: "any", amount: 3 },
-  ]);
+  expect(current.inventory[0].keywords).toEqual([offer.keyword]);
   expect(current.gold).toBe(220 - 38 - 25 - 25 - 20 - 35);
   await page.reload();
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
   expect((await stored(page)).gold).toBe(current.gold);
+  await page.getByLabel("Workshop service").selectOption("keyword");
+  await expect(
+    page
+      .getByRole("region", { name: "Shop keyword offer" })
+      .getByRole("heading"),
+  ).toHaveText(offerHeading!);
+  await expect(
+    page.getByRole("button", { name: "Buy upgrade · 35 gold", exact: true }),
+  ).toBeDisabled();
   await page.getByRole("button", { name: /^Expedition deck/ }).click();
   await page
     .getByRole("button", {

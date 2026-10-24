@@ -777,6 +777,24 @@
   align-self: end;
   min-height: 41px;
 }
+.stone-workshop .workshop-offer {
+  grid-column: 1/-1;
+  padding: 17px;
+  border: 1px solid #d4ddbf;
+  border-radius: 8px;
+  background: #fafbf2;
+  min-width: 0;
+}
+.workshop-offer h4 {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 400;
+  color: #687e55;
+  margin: 9px 0;
+}
+.workshop-offer .workshop-unavailable {
+  color: #a2734e;
+}
 .leave-shop {
   display: flex;
   margin: 25px 0 0 auto;

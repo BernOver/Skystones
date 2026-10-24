@@ -18,6 +18,7 @@ import {
   buyAdventureCard,
   buyAdventurePotion,
   buyAdventureService,
+  adventureWorkshopOffer,
   cardPrice,
   claimAdventureReward,
   enterAdventureNode,
@@ -259,13 +260,16 @@ test("shop purchases charge exactly once, upgrades persist, and failed purchases
       "shop-one",
     ),
     stone = shop.inventory[0];
+  const offer = adventureWorkshopOffer(shop);
   const sharpen = buyAdventureService(shop, {
     type: "pip",
     cardId: stone.id,
-    side: 0,
   });
   assert.equal(sharpen.gold, 175);
-  assert.equal(sharpen.inventory[0].edges[0], stone.edges[0] + 1);
+  assert.equal(
+    sharpen.inventory[0].edges[offer.pipSide],
+    stone.edges[offer.pipSide] + 1,
+  );
   assert.deepEqual(shop.inventory[0], stone);
   const element = stone.element === "fire" ? "water" : "fire";
   const reforged = buyAdventureService(sharpen, {
@@ -278,17 +282,13 @@ test("shop purchases charge exactly once, upgrades persist, and failed purchases
   const inscribed = buyAdventureService(reforged, {
     type: "keyword",
     cardId: stone.id,
-    keyword: { type: "sunder", side: "any", amount: 3 },
   });
   assert.equal(inscribed.gold, 120);
-  assert.deepEqual(inscribed.inventory[0].keywords, [
-    { type: "sunder", side: "any", amount: 3 },
-  ]);
+  assert.deepEqual(inscribed.inventory[0].keywords, [offer.keyword]);
   assert.throws(() =>
     buyAdventureService(inscribed, {
       type: "keyword",
       cardId: stone.id,
-      keyword: { type: "sunder", side: "any" },
     }),
   );
   const bought = buyAdventureCard(inscribed, shop.shopCards[0].id);
@@ -298,7 +298,7 @@ test("shop purchases charge exactly once, upgrades persist, and failed purchases
   assert.throws(() =>
     buyAdventureService(
       { ...shop, gold: 0 },
-      { type: "pip", cardId: stone.id, side: 0 },
+      { type: "pip", cardId: stone.id },
     ),
   );
   const full = {
@@ -309,7 +309,7 @@ test("shop purchases charge exactly once, upgrades persist, and failed purchases
     ],
   };
   assert.throws(() =>
-    buyAdventureService(full, { type: "pip", cardId: stone.id, side: 0 }),
+    buyAdventureService(full, { type: "pip", cardId: stone.id }),
   );
   assert.equal(full.gold, 200);
   const next = leaveAdventureShop(inscribed);

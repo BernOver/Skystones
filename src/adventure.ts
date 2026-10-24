@@ -392,10 +392,13 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
   }
   // Eight-card runs spread their rewards across a larger deck, and the keeper
   // has the final move on an even board. Ease its pip curve by one point.
-  const budget = Math.max(1, Math.min(
-    7,
-    2 + Math.floor(run.floor * 0.5) + (node.kind === "elite" ? 1 : 0),
-  ) - (run.size === 4 ? 1 : 0));
+  const budget = Math.max(
+    1,
+    Math.min(
+      7,
+      2 + Math.floor(run.floor * 0.5) + (node.kind === "elite" ? 1 : 0),
+    ) - (run.size === 4 ? 1 : 0),
+  );
   const enemies = Array.from({ length: handSize(run.size) }, (_, i) =>
     makeRunCard(
       run.seed + run.floor * 131 + i * 19,
@@ -408,7 +411,7 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
     enemies.forEach((stone, i) => {
       const edges: Edges = [0, 0, 0, 0];
       edges[i % 4] = 1;
-      if(run.size === 3) edges[(i + 1) % 4] = 1;
+      if (run.size === 3) edges[(i + 1) % 4] = 1;
       stone.edges = edges;
     });
   return {
@@ -624,10 +627,40 @@ export function resolveAdventureEvent(
   throw new Error("Choose an available event option.");
 }
 export const SERVICE_PRICES = { pip: 25, element: 20, keyword: 35 };
+export function adventureWorkshopOffer(
+  run: Pick<Adventure, "seed" | "floor">,
+): { pipSide: Side; keyword: StoneKeyword } {
+  // Deriving offers from the run seed and stop keeps existing saves compatible
+  // and prevents purchases, card selection, or reloads from rerolling a shop.
+  const rng = random(
+    Math.imul(run.seed ^ 0xa511e9b3, 0x9e3779b1) ^
+      Math.imul(run.floor + 1, 0x85ebca6b),
+  );
+  const pipSide = Math.floor(rng() * 4) as Side;
+  const types = [
+    "head-start",
+    "comeback",
+    "resonance",
+    "sunder",
+    "silence",
+  ] as const;
+  const type = types[Math.floor(rng() * types.length)];
+  const side = Math.floor(rng() * 4) as Side;
+  const elements = Object.keys(ELEMENTS) as Element[];
+  const keyword: StoneKeyword =
+    type === "silence"
+      ? { type }
+      : type === "resonance"
+        ? { type, side, element: elements[Math.floor(rng() * elements.length)] }
+        : type === "sunder"
+          ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
+          : { type, side };
+  return { pipSide, keyword };
+}
 export type WorkshopOrder =
-  | { type: "pip"; cardId: string; side: Side }
+  | { type: "pip"; cardId: string }
   | { type: "element"; cardId: string; element: Element }
-  | { type: "keyword"; cardId: string; keyword: StoneKeyword };
+  | { type: "keyword"; cardId: string };
 export function buyAdventureService(
   run: Adventure,
   order: WorkshopOrder,
@@ -637,20 +670,18 @@ export function buyAdventureService(
   if (run.gold < price) throw new Error("You need more gold.");
   const stone = run.inventory.find((s) => s.id === order.cardId);
   if (!stone) throw new Error("Choose a stone in your pack.");
+  const offer = adventureWorkshopOffer(run);
   let upgraded: Stone;
   if (order.type === "pip") {
     if (
-      !Number.isInteger(order.side) ||
-      order.side < 0 ||
-      order.side > 3 ||
-      stone.edges[order.side] >= 5 ||
+      stone.edges[offer.pipSide] >= 5 ||
       stone.edges.reduce((a, b) => a + b, 0) >= 12
     )
       throw new Error(
         "That upgrade would exceed five pips on an edge or the 12-pip budget.",
       );
     const edges = [...stone.edges] as Edges;
-    edges[order.side]++;
+    edges[offer.pipSide]++;
     upgraded = { ...stone, edges };
   } else if (order.type === "element") {
     if (
@@ -660,7 +691,7 @@ export function buyAdventureService(
       throw new Error("Choose a different element.");
     upgraded = { ...stone, element: order.element };
   } else {
-    const keywords = [...(stone.keywords || []), order.keyword];
+    const keywords = [...(stone.keywords || []), offer.keyword];
     if (!validateKeywords(keywords))
       throw new Error(
         "That keyword is already assigned here, or its settings are invalid.",
