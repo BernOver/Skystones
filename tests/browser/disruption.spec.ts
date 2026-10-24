@@ -30,7 +30,7 @@ test("make, save, export, import, and edit Sunder and Silence cards", async ({
   await page.getByRole("button", { name: "View Quiet Cutter" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText(
-    "Disable all its keywords and remove their pip bonuses",
+    "Disable all its keywords and restore printed pips, minus damage",
   );
   await expect(dialog).toContainText("West edge loses 1 pip");
   const pending = page.waitForEvent("download");
@@ -44,13 +44,11 @@ test("make, save, export, import, and edit Sunder and Silence cards", async ({
     { type: "silence" },
   ]);
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page
-    .getByLabel("Import card file")
-    .setInputFiles({
-      name: "quiet.skystone.json",
-      mimeType: "application/json",
-      buffer,
-    });
+  await page.getByLabel("Import card file").setInputFiles({
+    name: "quiet.skystone.json",
+    mimeType: "application/json",
+    buffer,
+  });
   await expect(
     page.getByRole("button", { name: "View Quiet Cutter" }),
   ).toHaveCount(2);

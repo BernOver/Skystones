@@ -171,6 +171,8 @@ test("start, play and resume a four-by-four adventure, use a potion, claim a rew
   }
   await expect.poll(async () => (await stored(page)).phase).toBe("reward");
   current = await stored(page);
+  if (current.relicOffers?.length)
+    await page.getByRole("button", { name: "Skip relic", exact: true }).click();
   if (current.rewards.length) {
     expect(current.rewards[0].edges.reduce((a, b) => a + b, 0)).toBe(4);
     await page
@@ -321,7 +323,7 @@ function almostDone(
         [{ ...run.inventory[0], edges: [0, 0, 0, 0], keywords: [] }],
         [run.inventory[0]],
       ],
-      turns: size ** 2 - 1 - (kind === "boss" ? 2 : 1),
+      turns: size ** 2 - 2,
     },
   };
 }
@@ -337,6 +339,7 @@ test("holding the chest pays extra gold, and claiming its reward cannot pay twic
     "Chest secured: +45 bonus gold",
   );
   expect((await stored(page)).gold).toBe(135);
+  await page.getByRole("button", { name: "Skip relic", exact: true }).click();
   await page
     .getByRole("button", { name: /^Take / })
     .first()

@@ -72,10 +72,11 @@ import {
 import type { Inspection } from "./CardInspection";
 import { KeywordEditor } from "./KeywordEditor";
 import { TargetPicker } from "./TargetPicker";
+import { Draft } from "./Draft";
 import { Expedition } from "./Expedition";
 import { GIANTS_STONES, GIANTS_REFERENCE } from "./giants";
 
-type Page = "table" | "collection" | "studio" | "run";
+type Page = "table" | "collection" | "studio" | "run" | "draft";
 type Mode = "computer" | "local";
 type DialogState =
   | { kind: "rules" | "new" }
@@ -107,6 +108,7 @@ interface Match {
   hands: [Stone[], Stone[]];
   current: Owner;
   mode: Mode;
+  draft?: boolean;
   entries: JournalEntry[];
   moves: number;
   lastCaptured: number[];
@@ -212,7 +214,9 @@ function applyMove(
   targets: KeywordTarget[] = [],
 ): Match {
   const stone = match.hands[match.current][cardIndex];
-  const move = placeStone(match.board, index, stone, match.current, targets);
+  const move = placeStone(match.board, index, stone, match.current, targets, {
+    seed: Math.floor(Math.random() * 0x100000000),
+  });
   const hands: [Stone[], Stone[]] = [[...match.hands[0]], [...match.hands[1]]];
   hands[match.current].splice(cardIndex, 1);
   return {
@@ -504,6 +508,7 @@ export default function App() {
       silenced: cell?.silenced,
       reductions: cell?.reductions,
       effects: cell?.effects,
+      dizzy: cell?.dizzy,
       size,
     };
   }
@@ -801,6 +806,13 @@ export default function App() {
               <Swords size={17} />
               <span>Adventure</span>
             </button>
+            <button
+              className={page === "draft" ? "active" : ""}
+              onClick={() => navigate("draft")}
+            >
+              <Users size={17} />
+              <span>Draft</span>
+            </button>
           </nav>
           <div className="header-actions">
             <button
@@ -827,6 +839,27 @@ export default function App() {
 
       <main className={`main-content page-${page}`}>
         {page === "run" && <Expedition />}
+        {page === "draft" && (
+          <Draft
+            onPlay={(draftSize, hands) => {
+              setMatch({
+                id: createId(),
+                board: EMPTY_BOARD(draftSize),
+                hands,
+                current: 0,
+                mode: "local",
+                draft: true,
+                entries: [],
+                moves: 0,
+                lastCaptured: [],
+                lastPlaced: -1,
+              });
+              setSelected(null);
+              setDialog(null);
+              navigate("table");
+            }}
+          />
+        )}
         {page === "table" && (
           <>
             <div className="page-heading">
@@ -836,7 +869,8 @@ export default function App() {
                   LITTLE MAGIC.
                 </div>
                 <h1>
-                  Make your move<span className="orange-period">.</span>
+                  {match.draft ? "Draft showdown" : "Make your move"}
+                  <span className="orange-period">.</span>
                 </h1>
                 <p>Good stones. Clever moves. One square at a time.</p>
               </div>

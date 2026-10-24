@@ -1,6 +1,6 @@
 # Skystones
 
-A browser game inspired by classic Skylanders Skystones, with a Giants card catalogue, sixteen illustrated creature presets, a custom card studio, and a roguelike Adventure mode. Built with React, TypeScript, and Vite. Everything runs in the browser; no account, API keys, or backend is needed.
+A browser game inspired by classic Skylanders Skystones, with a Giants card catalogue, sixteen illustrated creature presets, a custom card studio, a roguelike Adventure mode, and a two-player Draft mode. Built with React, TypeScript, and Vite. Everything runs in the browser; no account, API keys, or backend is needed.
 
 ## Download and play
 
@@ -8,7 +8,7 @@ A browser game inspired by classic Skylanders Skystones, with a Giants card cata
 2. Extract the ZIP into a folder on your computer.
 3. Double-click **Skystones.html** and open it in Chrome or Microsoft Edge.
 
-The download contains the whole game. No installation, terminal, or server is required. Use **Card studio** to make cards, then add them to your deck in **Collection**. Choose **Adventure** to start or resume a roguelike run.
+The download contains the whole game. No installation, terminal, or server is required. Use **Card studio** to make cards, then add them to your deck in **Collection**. Choose **Adventure** to start or resume a roguelike run, or **Draft** to draft a shared pool with another player.
 
 ## Run
 
@@ -59,29 +59,84 @@ Choose **Adventure** and select a 3×3 or 4×4 board before starting. The run us
 
 - Follow a nine-stop route with branching battles, events, two merchants, an elite keeper, a campfire, and the final boss. A lost battle costs one life; a normal draw does not. Losing the last life ends the run. Regular victories award 25 + 5 per floor in gold; elites add 20. Choose one of three card rewards, with printed budgets growing gradually from 4 to 12 as the route advances. Some wins also award a potion if the three-slot belt has room.
 - **The Brass Chest / Gilded Cache:** challenge a keeper with a guarded chest already on a central square (B2 on either board). Control it when the board fills for **45 extra gold**, even if you lose the overall score. If the keeper recaptures it before the finish, there is no bonus. You may also leave the chest alone.
-- **Events:** the Whispering Well heals one life or exchanges a life for 40 gold; the Alchemist offers a free potion; the campfire heals a life or permanently adds a pip to one chosen stone.
-- **Shops:** buy any of three displayed stones, stock up on potions, or visit the workshop. **Sharpen (25 gold)** adds a pip on the shop's randomly rolled edge. **Reforge (20)** changes a chosen card's element. **Inscribe (35)** adds the shop's randomly rolled keyword and direction; Resonance includes a rolled element, Sunder states its strength, and Silence affects the whole card. Offers are visible before buying and stay fixed for that merchant visit, including after purchases, selecting a different stone, or reloading. You choose which card receives the offered upgrade. Upgrades last for the adventure and use the normal 5-per-edge / 12-total printed-stat limits. Invalid purchases and duplicate keywords spend no gold. Bought cards must be swapped into the battle deck.
+- **Events:** the Whispering Well heals one life or exchanges a life for 40 gold; the Alchemist offers a free potion; the campfire heals a life or permanently adds a pip to one chosen stone. The Whirling Idol event gives a **12-pip Magic card (4/4/4/0) with Dizzy** for free; add it to your expedition deck from the pack.
+- **Shops:** buy any of three displayed stones, stock up on potions, or visit the workshop. **Sharpen (25 gold)** adds a pip on the shop's randomly rolled edge. **Reforge (20)** changes a chosen card's element. **Inscribe (35)** adds the shop's randomly rolled keyword and direction; Resonance includes a rolled element, Sunder states its strength, and Silence and Dizzy affect the whole card. Offers are visible before buying and stay fixed for that merchant visit, including after purchases, selecting a different stone, or reloading. You choose which card receives the offered upgrade. Upgrades last for the adventure and use the normal 5-per-edge / 12-total printed-stat limits. Invalid purchases and duplicate keywords spend no gold. Bought cards must be swapped into the battle deck.
 - **Potions:** Power Tonic gives a chosen hand card +1 on all edges for that battle; Hex Vial removes one pip from every edge of a chosen enemy board card, stopping at zero; Healing Draught restores one life, up to three. Combat potions require your turn and do not consume it. Healing works between encounters too. Potions are consumed once and the belt holds three.
-- **Crown Warden:** the boss begins with two enemy guards already on the board. Its central throne has weak north/south edges. To win the run you must **control the throne and have the higher score** when the board fills. A higher score alone is not enough. If you survive a failed attempt, you may revise your deck and try the boss again.
+- **Crown Warden:** only the central throne starts on the board; the extra Crown Sentinel has been removed. The throne has weak north/south edges. To win the run you must **control the throne and have the higher score** when the board fills. A higher score alone is not enough. If you survive a failed attempt, you may revise your deck and try the boss again.
+
+## Relics
+
+There are **30 unique relics**, and each can be owned once per adventure. Choose one of three unowned relics after your first victory, a secured chest, or an elite victory. The Forgotten Reliquary is another event option, and merchants sell one relic for 75 base gold. Offers stay fixed through reloads. Choose or skip a relic before taking card rewards; reward-related relics affect the waiting card rewards immediately.
+
+The **Relics** shelf lists everything you own, and **Relic guide · 30** explains the complete set. Relics and spent charges save with the run. Older saves without relic fields still load; new relics can be earned at subsequent encounters. Normal matches and custom cards are separate from relic effects.
+
+| Relic                | Effect                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Gilded Compass       | +25% gold earned from battles, chests, and events; rounds down per payout.                                                      |
+| Merchant’s Purse     | +100 gold immediately, once. This flat grant is not multiplied.                                                                 |
+| Runesmith’s Quill    | +30 percentage points to reward-card keyword chance, including early rewards.                                                   |
+| Twin Sigil           | Pick two different cards from each victory's card rewards.                                                                      |
+| Traveler’s Satchel   | Potion belt capacity increases from 3 to 5.                                                                                     |
+| Bubbling Flask       | Double free potions from battles, events, and relics, up to belt capacity. Shop purchases still give one.                       |
+| Alchemist’s Mortar   | Power Tonic adds 2 per edge, Hex Vial removes 2 per edge, and Healing Draught restores 2 lives.                                 |
+| Phoenix Feather      | Survive the first fatal battle loss at 1 life, then remain spent for the rest of the run.                                       |
+| Campfire Charm       | Recover 1 life after each battle victory, up to your maximum lives.                                                                              |
+| Haggler’s Coin       | 20% discount on all shop cards, potions, upgrades, and relics; prices round up.                                                 |
+| Stonewright’s Hammer | Reward cards have +1 printed pip, respecting the 5-per-edge / 12-total caps.                                                    |
+| Fated Lens           | Choose from 5 reward cards instead of 3.                                                                                        |
+| Pilgrim’s Flask      | Immediately fill empty potion slots with a mix of Power, Hex, and Healing potions, once.                                        |
+| Treasure Magnet      | Secured chests pay 30 additional gold, which also benefits from Gilded Compass.                                                 |
+| Vanguard Banner      | The first card you play in every battle gains +1 on all four edges for that battle.                                             |
+| Victory Medallion    | +10 gold per battle victory; combines with Gilded Compass.                                                                      |
+| Copper Claw          | +2 gold per enemy card captured, including recaptures, paid after the battle.                                                   |
+| Quiet Coin           | +15 earned gold on entering each shop, once per visit.                                                                          |
+| Rainy Day Bank       | Leaving a shop earns 10% of remaining gold, rounded down and capped at 30.                                                      |
+| Restful Ember        | Heal 1 on arriving at a camp, before its normal choice.                                                                         |
+| Whetstone Ring       | Shop sharpening adds up to 2 pips within printed-stat limits.                                                                   |
+| Elemental Prism      | Shop reforging also adds a pip to the weakest edge, if there is room.                                                           |
+| Rune Echo            | Directional shop inscriptions also add their keyword to the opposite edge when available. Whole-card effects remain singletons. |
+| Market Map           | Merchants you enter stock four cards instead of three.                                                                               |
+| Herbalist’s Lens     | Every won battle drops a free potion, subject to belt capacity.                                                                 |
+| Bottomless Bottle    | The first successful potion use in each battle keeps the potion; later uses consume it.                                         |
+| Duelist’s Bracer     | Heal 1 on your first capture each battle.                                                                                       |
+| Stout Heart          | Raise maximum lives to 4 and heal 1 immediately.                                                                                |
+| Loaded Dice          | Your Dizzy shuffles keep at least 2 per edge when possible; smaller totals use the largest feasible equal minimum.              |
+| Oracle’s Eye         | Reveal and inspect the keeper’s remaining hand.                                                                                 |
+
+Relics combine: Twin Sigil can take two of Fated Lens's five offers; Traveler’s Satchel can hold Bubbling Flask's extra potions; Alchemist’s Mortar strengthens each potion actually used. Potion reductions stop at zero and healing stops at your maximum lives (three, or four with Stout Heart). Printed-stat reward bonuses do not affect shop stock. One-time acquisition effects and Phoenix Feather's charge do not replay on reload.
 
 Changing pages pauses the adventure; returning resumes it. Normal games and the custom card collection remain separate from the run. Progress is browser-local; clearing browser storage removes it.
 
+## Draft
+
+Choose **Draft** for a separate two-player mode on one screen. A fresh table shows **25 generated stones**, with varied pip totals, elements, artwork, and all six keyword types. Most cards trade stronger edges for weaker ones; a slightly superior card can occasionally appear, but the pool limits obvious pip dominance.
+
+| Board | Nominations per player | Random unselected cards | Pool size | Draft rounds | Hand size |
+| ----- | ---------------------- | ----------------------- | --------- | ------------ | --------- |
+| 3×3   | 6                      | 3                       | 15        | 5            | 5         |
+| 4×4   | 9                      | 6                       | 24        | 8            | 8         |
+
+Player one nominates first, then player two selects from the remaining cards. After both lock their nominations, random additions complete the pool, which is shuffled once. Each round shows three cards. The first player picks one, the other picks one, and the last is discarded. First pick alternates between rounds. Cards are used once, so there are no duplicate picks or repeats from the discard pile.
+
+**Play drafted match** brings both exact hands to the normal table with local two-player rules; player one opens. Hover, keyboard focus, or tap cards to inspect keyword rules. Draft setup and committed picks save automatically and resume after reload; the battle itself starts fresh on reload, as other normal matches do. Draft cards do not alter your collection or adventure.
+
 ## Keywords
 
-Add keywords in the card studio. For Resonance, choose the element to count. For Sunder, choose a fixed edge or choose the edge when played, and set the number of pips to remove. Silence affects all keywords and needs no edge. Some original cards demonstrate the bonus keywords.
+Add keywords in the card studio. For Resonance, choose the element to count. For Sunder, choose a fixed edge or choose the edge when played, and set the number of pips to remove. Silence and Dizzy need no edge. Some original cards demonstrate the bonus keywords.
 
 - **Head Start:** the specified edge gains **+1 pip** if the player is winning immediately before playing that card.
 - **Comeback:** the specified edge gains **+1 pip** if the player is losing immediately before playing that card.
 - **Resonance:** the specified edge gains **+1 pip for every card of the chosen element already on the board**, counting both players' cards. For example, **Resonance · Fire · East** adds **+3 East pips** if there are three Fire cards on the board. The card being played does not count, even if it is also Fire.
 - **Sunder:** choose a card already on the board. Remove **up to its stated number of pips from the target edge**, to a minimum of zero. Set **Pips removed** from 1–99 in Card studio; older cards default to 1. For example, Sunder 3 reduces a five-pip edge to two, or a two-pip edge to zero. Set **Target edge → Any · choose when played** for a flexible version: when played, select any card anywhere on the board, then choose North, East, South, or West. Only edges with at least one pip can be chosen. Fixed-edge Sunder remains available, and both versions can appear on the same card. The actual reduction is recorded in the hover preview and move log, and remains through captures and Silence.
-- **Silence:** choose a card already on the board. **Disable all its keywords and remove their pip bonuses** for the rest of the match. Its printed stats and element remain. Earlier captures and resolved Sunder/Silence effects stay; Silence does not reverse past actions.
+- **Silence:** choose a card already on the board. **Disable all its keywords and remove their pip bonuses** for the rest of the match. It restores printed stats minus recorded damage, including undoing a Dizzy reshuffle. Its element remains. Earlier captures and resolved Sunder/Silence effects stay; Silence does not reverse past actions.
+- **Dizzy:** after placement and all captures, randomly redistribute the card’s effective pips once, with **at most 4 on each edge**. Attacks use pre-shuffle strengths; defense uses the stored result. Preserve the total up to a 16-pip ceiling (bonuses above 16 cannot fit under four per edge). Captures, later turns, score changes, and reloads do not reshuffle it. Silence restores printed pips minus damage.
 - When playing Sunder or Silence, pick an empty placement square, then select a highlighted board card in the target picker. Either player's cards can be targeted, including nonadjacent cards. The new card cannot target itself. Canceling the picker leaves the entire turn untouched. Targeted effects resolve in the card's listed order before captures, so weakening a defender can enable the new card's capture. Effects with no valid target are skipped, including on an empty board. Sunder cannot target a zero edge; Silence cannot target a card without keywords or an already silenced card.
 - Head Start and Comeback compare the number of controlled stones on the board **before placement**. A tie activates neither of those; Resonance works independently of the score.
 - Check each keyword **once** when the card is played. Activated bonuses stay on that card for the rest of the match, including after captures or score changes, unless Silence removes them. Inactive keywords never activate later.
 - Activated pips count for both capturing and defending. Green edge numbers show the resolved strength; the enlarged view shows the base value, total bonus, and each Resonance count. Different keywords on the same edge add together. Bonuses can raise an edge above 5 and do not spend printed-stat budget points.
-- The same keyword cannot appear twice on the same edge; Silence appears at most once per card. Cards without keywords, including older card-file exports, still work. Hover inspection shows reduced edges, Silence status, and the targets of resolved effects. The computer also selects targets when simulating moves.
+- The same keyword cannot appear twice on the same edge; Silence and Dizzy each appear at most once per card. Cards without keywords, including older card-file exports, still work. Hover inspection shows reduced edges, Silence status, and the targets of resolved effects. The computer also selects targets when simulating moves.
 
-Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
+Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures and draft selections resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
 ## Project
 
@@ -90,12 +145,14 @@ Custom cards, board size, deck selection, and sound preference are saved in this
 - `src/App.tsx`: game table, collection, card studio, persistence, and dialogs.
 - `src/CardInspection.tsx` and `src/KeywordEditor.tsx`: enlarged card rules and directional keyword editing.
 - `src/adventure.ts` and `src/Expedition.tsx`: saved adventure state, rewards, encounters, potions, merchants, boss conditions, and adventure interface.
+- `src/relics.ts` and `src/RelicCard.tsx`: all fifteen relics, deterministic unowned offers, shared modifiers, and relic artwork panels.
 - `src/giants-data.json`, `src/giants.ts`, and `src/assets/giants`: the sourced Giants card catalogue and bundled artwork.
 - `tests/game.test.ts`: isolated rules and validation checks.
 - `tests/keywords.test.ts`: keyword timing, capture and defense bonuses, permanent activation, and import validation.
 - `tests/browser/app.spec.ts`: Playwright browser workflows.
 - `tests/browser/keywords.spec.ts`: mouse, keyboard and touch inspection, keyword editing, saved cards, and card-file sharing.
 - `tests/adventure.test.ts` and `tests/browser/adventure.spec.ts`: both board sizes, card catalogue, run progression, purchases, potion use, chest money, boss objectives, persistence, and phone layouts.
+- `tests/relics.test.ts` and `tests/browser/relics.spec.ts`: individual relic effects, stacking, one-time grants, larger belts, multiple card picks, discounts, relic guide, save compatibility, and the throne-only boss start.
 
 To refresh the downloadable ZIP after changing the app, run `npm run package:download`. This rebuilds the standalone HTML and packages it in `downloads/Skystones.zip`; Python 3 is needed only for the packaging step. Commit the updated ZIP with the source changes.
 

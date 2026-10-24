@@ -21,6 +21,7 @@ import {
   adventureWorkshopOffer,
   cardPrice,
   claimAdventureReward,
+  claimAdventureRelic,
   enterAdventureNode,
   leaveAdventureShop,
   newAdventure,
@@ -58,14 +59,7 @@ function almostFinished(run: Adventure, owners: (0 | 1)[]): Adventure {
       board,
       hands: [[plain()], [plain()]],
       current: 0,
-      turns:
-        battle.board.length -
-        1 -
-        (battle.objectiveKind === "throne"
-          ? 2
-          : battle.objectiveKind === "chest"
-            ? 1
-            : 0),
+      turns: battle.board.length - 1 - (battle.objectiveKind ? 1 : 0),
     },
   };
 }
@@ -207,11 +201,17 @@ test("chest events start central treasure on both sizes and pay only if it is he
     assert.equal(unclaimed.gold, 60);
   }
 });
-test("the boss begins with two guards and requires both throne control and the winning score", () => {
+test("the boss begins with only its throne and requires both throne control and the winning score", () => {
   for (const size of [3, 4] as BoardSize[]) {
     const run = { ...newAdventure(size, 4), floor: 8 };
     const battle = enterAdventureNode(run, "warden");
-    assert.equal(battle.battle!.board.filter(Boolean).length, 2);
+    assert.equal(battle.battle!.board.filter(Boolean).length, 1);
+    assert.equal(
+      battle.battle!.board.some(
+        (cell) => cell?.stone.name === "Crown Sentinel",
+      ),
+      false,
+    );
     const owners = Array(size ** 2).fill(0) as (0 | 1)[];
     owners[0] = 1;
     const won = playAdventureCard(
@@ -237,7 +237,10 @@ test("the boss begins with two guards and requires both throne control and the w
 });
 test("battle rewards are chosen once and join the pack without replacing the player's selected deck", () => {
   const run = enterAdventureNode(newAdventure(3, 3), "moss");
-  const won = playAdventureCard(almostFinished(run, Array(9).fill(0)), 8, 0);
+  const won = claimAdventureRelic(
+    playAdventureCard(almostFinished(run, Array(9).fill(0)), 8, 0),
+    null,
+  );
   assert.equal(won.phase, "reward");
   assert.equal(won.gold, 85);
   const before = won.inventory.length,

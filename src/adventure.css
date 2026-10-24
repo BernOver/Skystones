@@ -868,6 +868,193 @@
 .adventure-save-note {
   margin: 25px 0;
 }
+.relic-shelf {
+  margin: 20px 0;
+  padding: 18px 21px;
+  border: 1px solid #dddcc6;
+  border-radius: 10px;
+  background: #fbfaf1;
+}
+.relic-shelf h2 {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
+  color: #827345;
+}
+.relic-shelf > p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #959976;
+}
+.relic-shelf .section-heading {
+  margin-bottom: 12px;
+}
+.owned-relics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.owned-relics button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  min-width: 0;
+  background: #f4efdc;
+  border: 1px solid #dcd0a8;
+  border-radius: 7px;
+  color: #a08344;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+}
+.owned-relics button span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.owned-relics button small {
+  font-size: 8px;
+  text-transform: uppercase;
+  color: #aaa087;
+}
+.owned-relics button.spent {
+  opacity: 0.55;
+}
+.relic-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+  padding: 22px;
+  background: linear-gradient(145deg, #fff9e8, #f4f2e3);
+  border: 1px solid #e0d3ad;
+  border-radius: 10px;
+  text-align: left;
+}
+.relic-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  background: #eee2bb;
+  color: #a78842;
+  border: 1px solid #dfd09e;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.relic-card h3 {
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  color: #8c7545;
+  line-height: 1.25;
+}
+.relic-card > p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #8c9471;
+}
+.relic-card > small {
+  color: #aa946a;
+  font-size: 10px;
+}
+.relic-card > .button {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.6;
+  margin-top: auto;
+  font-size: 11px;
+}
+.relic-card.relic-owned {
+  border-color: #b7c69a;
+  background: #f1f5e7;
+}
+.relic-card.relic-spent {
+  opacity: 0.65;
+}
+.relic-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 25px 0;
+}
+.relic-reward > p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #8c9471;
+  margin-top: 12px;
+}
+.relic-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin-top: 22px;
+}
+.relic-guide-grid .relic-card {
+  padding: 16px;
+}
+.relic-guide-grid .relic-card h3 {
+  font-size: 21px;
+}
+.relic-guide-grid .relic-card > p {
+  font-size: 11px;
+}
+.shop-relic-stock {
+  max-width: 430px;
+  margin: 20px auto 30px;
+}
+.reward-picks {
+  padding: 9px 12px;
+  border-radius: 5px;
+  background: #f1f4e4;
+  color: #7d9163;
+}
+@media (max-width: 760px) {
+  .relic-offer-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .relic-card {
+    padding: 19px;
+  }
+}
+@media (max-width: 480px) {
+  .relic-shelf {
+    padding: 16px;
+  }
+  .relic-shelf .section-heading {
+    align-items: center;
+    gap: 10px;
+  }
+  .relic-shelf h2 {
+    font-size: 21px;
+  }
+  .relic-shelf .text-button {
+    font-size: 10px;
+  }
+  .owned-relics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .owned-relics button {
+    padding: 9px;
+    gap: 7px;
+    font-size: 10px;
+  }
+  .owned-relics button svg {
+    width: 18px;
+    flex-shrink: 0;
+  }
+  .relic-guide-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .relic-card h3 {
+    font-size: 24px;
+  }
+}
 @media (max-width: 760px) {
   .main-nav {
     margin-left: 0;
@@ -950,7 +1137,7 @@
 @media (max-width: 480px) {
   .main-nav {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     width: auto;
     transform: none;
   }
@@ -1198,5 +1385,25 @@
   }
   .run-map-row.current .run-node:hover {
     transform: none;
+  }
+}
+.shop-stock.expanded-stock {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 1040px;
+}
+@media (max-width: 700px) {
+  .shop-stock.expanded-stock {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .main-nav > button {
+    font-size: 8.5px;
+    padding: 9px 2px;
+    gap: 3px;
+  }
+  .main-nav > button > svg {
+    width: 12px;
   }
 }

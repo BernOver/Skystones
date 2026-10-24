@@ -7,6 +7,7 @@ import {
   Info,
   RotateCcw,
   Waves,
+  Shuffle,
   Scissors,
   VolumeX,
 } from "lucide-react";
@@ -35,10 +36,12 @@ export interface Inspection {
   activeKeywords: ActiveKeyword[];
   played: boolean;
   playerName: string;
+  preview?: boolean;
   controllerName?: string;
   silenced?: boolean;
   reductions?: Edges;
   effects?: TargetEffect[];
+  dizzy?: { before: Edges; after: Edges };
   size?: BoardSize;
 }
 
@@ -48,6 +51,7 @@ export function KeywordDetails({
   played = false,
   silenced = false,
   effects,
+  dizzy,
   size = 3,
 }: {
   stone: Stone;
@@ -55,6 +59,7 @@ export function KeywordDetails({
   played?: boolean;
   silenced?: boolean;
   effects?: TargetEffect[];
+  dizzy?: { before: Edges; after: Edges };
   size?: BoardSize;
 }) {
   return (
@@ -64,13 +69,37 @@ export function KeywordDetails({
           <VolumeX size={14} />
           <span>
             <strong>Silenced</strong> · All keywords are disabled and their pip
-            bonuses are removed. Earlier captures and resolved effects stay.
+            bonuses and Dizzy reshuffles are removed. Earlier captures and
+            resolved effects stay.
           </span>
         </p>
       )}
       {keywordGroups(stone.keywords || []).map(
         ({ type, keywords }, groupIndex) => {
           if (!keywords.length) return null;
+          if (type === "dizzy")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Shuffle size={15} />
+                  <strong>Dizzy</strong>
+                  <span>After captures</span>
+                </div>
+                <p>
+                  After this card is placed and finishes its captures, randomly
+                  redistribute its pips once. Keep the total, up to 16, with{" "}
+                  <strong>at most 4 pips per edge</strong>. Captures use its
+                  strengths before the shuffle.
+                </p>
+                <span className="keyword-status">
+                  {silenced
+                    ? "Disabled by Silence · printed strengths restored, minus damage"
+                    : dizzy
+                      ? `Shuffled once: ${dizzy.before.join("/")} → ${dizzy.after.join("/")} (N/E/S/W)`
+                      : "The shuffled strengths stay through turns and captures."}
+                </span>
+              </section>
+            );
           if (type === "resonance")
             return (
               <ResonanceDetails
@@ -160,7 +189,8 @@ export function KeywordDetails({
                     <>
                       Choose a card already on the board.{" "}
                       <strong>
-                        Disable all its keywords and remove their pip bonuses
+                        Disable all its keywords and restore printed pips, minus
+                        damage
                       </strong>{" "}
                       for the rest of the match. Earlier captures and resolved
                       effects stay.
@@ -246,9 +276,10 @@ export function KeywordDetails({
       {!!stone.keywords?.length && (
         <p className="keyword-timing">
           <Info size={12} />
-          Check once, before placement. Ties block Head Start and Comeback only.
-          Bonuses remain through captures and score changes unless removed by
-          Silence. Targeted effects resolve in listed order before captures.
+          Dizzy shuffles once after captures. Other keywords check before
+          placement. Ties block Head Start and Comeback only. Bonuses remain
+          through captures and score changes unless removed by Silence. Targeted
+          effects resolve in listed order before captures.
         </p>
       )}
     </div>
@@ -352,15 +383,18 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
     silenced,
     reductions,
     effects,
+    dizzy,
   } = inspection;
   return (
     <>
       <div className="inspection-context">
-        {played
-          ? `Played by ${playerName}`
-          : playerName === "You"
-            ? "Your hand"
-            : `${playerName}’s hand`}
+        {inspection.preview
+          ? "Draft table"
+          : played
+            ? `Played by ${playerName}`
+            : playerName === "You"
+              ? "Your hand"
+              : `${playerName}’s hand`}
         {played && controllerName !== playerName && (
           <span> · Controlled by {controllerName}</span>
         )}
@@ -403,10 +437,11 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
       )}
       <KeywordDetails
         stone={stone}
-        activeKeywords={activeKeywords}
+        activeKeywords={inspection.preview ? undefined : activeKeywords}
         played={played}
         silenced={silenced}
         effects={effects}
+        dizzy={dizzy}
         size={inspection.size}
       />
       {stone.description && (

@@ -30,12 +30,13 @@ export type Owner = 0 | 1;
 export type Edges = [number, number, number, number]; // North, east, south, west.
 export type Side = 0 | 1 | 2 | 3;
 export type KeywordType =
-  "head-start" | "comeback" | "resonance" | "sunder" | "silence";
+  "head-start" | "comeback" | "resonance" | "sunder" | "silence" | "dizzy";
 export type TargetKeyword =
   { type: "sunder"; side: Side | "any"; amount?: number } | { type: "silence" };
 export type StoneKeyword =
   | { type: "head-start" | "comeback"; side: Side }
   | { type: "resonance"; side: Side; element: Element }
+  | { type: "dizzy" }
   | TargetKeyword;
 export type ActiveKeyword =
   | { type: "head-start" | "comeback"; side: Side }
@@ -62,11 +63,12 @@ export const KEYWORD_RULES = {
   resonance: { name: "Resonance", condition: "element count" },
   sunder: { name: "Sunder", condition: "on play" },
   silence: { name: "Silence", condition: "on play" },
+  dizzy: { name: "Dizzy", condition: "after captures" },
 } as const;
-export const MAX_KEYWORDS = (Object.keys(KEYWORD_RULES).length - 1) * 4 + 2;
+export const MAX_KEYWORDS = 4 * 4 + 3;
 export function keywordKey(keyword: StoneKeyword): string {
-  return keyword.type === "silence"
-    ? "silence"
+  return keyword.type === "silence" || keyword.type === "dizzy"
+    ? keyword.type
     : `${keyword.type}:${keyword.side}`;
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
@@ -115,6 +117,7 @@ export interface PlacedStone {
   silenced?: boolean;
   reductions?: Edges;
   effects?: TargetEffect[];
+  dizzy?: { before: Edges; after: Edges };
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -467,12 +470,33 @@ export function chooseKeywordTargets(
   return targets;
 }
 
+// Redistribute once, retaining the total up to the four-per-edge ceiling.
+// A seed keeps previews, AI searches, and saved expedition turns reproducible.
+export function rollDizzy(edges: Edges, seed: number, minimum = 0): Edges {
+  const total = Math.min(
+    16,
+    edges.reduce((sum, edge) => sum + edge, 0),
+  );
+  const floor = Math.min(minimum, Math.floor(total / 4), 4);
+  const result: Edges = [floor, floor, floor, floor];
+  let state = seed >>> 0 || 0x9e3779b9;
+  for (let pip = floor * 4; pip < total; pip++) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const available = result.flatMap((edge, side) => (edge < 4 ? [side] : []));
+    result[available[(state >>> 0) % available.length]]++;
+  }
+  return result;
+}
+
 export function placeStone(
   board: Board,
   index: number,
   stone: Stone,
   owner: Owner,
   targets: KeywordTarget[] = [],
+  options: { seed?: number; minimumDizzyPips?: number } = {},
 ): Move {
   if (
     (board.length !== 9 && board.length !== 16) ||
@@ -498,6 +522,30 @@ export function placeStone(
   const captured = capturesAt(next, index, owner, resolved.edges);
   for (const neighbor of captured)
     next[neighbor] = { ...next[neighbor]!, owner };
+  if (stone.keywords?.some((keyword) => keyword.type === "dizzy")) {
+    const seed =
+      options.seed ??
+      board.reduce(
+        (value, cell, spot) =>
+          Math.imul(
+            value ^
+              (cell
+                ? (cell.edges || cell.stone.edges).reduce(
+                    (a, b) => a * 7 + b,
+                    cell.owner + 1,
+                  )
+                : spot),
+            16777619,
+          ),
+        Math.imul(index + 1, 2654435761) ^ (owner + 1),
+      );
+    const after = rollDizzy(resolved.edges, seed, options.minimumDizzyPips);
+    next[index] = {
+      ...next[index]!,
+      edges: after,
+      dizzy: { before: resolved.edges, after },
+    };
+  }
   return { board: next, captured, effects: targeted.effects };
 }
 
@@ -651,7 +699,7 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
     )
       return false;
     if (
-      keyword.type === "silence"
+      keyword.type === "silence" || keyword.type === "dizzy"
         ? keyword.side !== undefined
         : !(keyword.type === "sunder" && keyword.side === "any") &&
           (!Number.isInteger(keyword.side) ||

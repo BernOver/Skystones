@@ -22,6 +22,19 @@ import type {
   Stone,
   StoneKeyword,
 } from "./game.ts";
+import {
+  RELICS,
+  RELIC_IDS,
+  cardRewardPicks,
+  earnedGold,
+  hasRelic,
+  offerRelics,
+  maxLives,
+  potionCapacity,
+  potionPotency,
+  shopPrice,
+} from "./relics.ts";
+import type { RelicId } from "./relics.ts";
 
 export type NodeKind =
   "battle" | "elite" | "event" | "chest" | "shop" | "camp" | "boss";
@@ -60,6 +73,13 @@ export const ROUTE: AdventureNode[][] = [
       kind: "event",
       description: "Recover a life, or trade one for a purse of coins.",
     },
+    {
+      id: "whirling-idol",
+      name: "The Whirling Idol",
+      kind: "event",
+      description:
+        "Claim a 12-pip Magic stone with Dizzy. Powerful attacks, unpredictable defenses.",
+    },
   ],
   [
     {
@@ -95,6 +115,13 @@ export const ROUTE: AdventureNode[][] = [
       name: "The Gilded Cache",
       kind: "chest",
       description: "Another chest, another chance to win extra gold.",
+    },
+    {
+      id: "reliquary",
+      name: "The Forgotten Reliquary",
+      kind: "event",
+      description:
+        "Choose one of three ancient relics to carry for the rest of your run.",
     },
   ],
   [
@@ -133,7 +160,7 @@ export const ROUTE: AdventureNode[][] = [
       name: "The Crown Warden",
       kind: "boss",
       description:
-        "Two guards start on the board. Take the central throne AND win the score to finish the run.",
+        "Only the throne starts on the board. Take it AND win the score to finish the run.",
     },
   ],
 ];
@@ -151,7 +178,7 @@ export const POTIONS: Record<
   heal: {
     name: "Healing Draught",
     description:
-      "Recover one life, up to three. Can be used between battles too.",
+      "Recover one life, up to ${maxLives(run)}. Can be used between battles too.",
     price: 25,
   },
   hex: {
@@ -171,6 +198,10 @@ export interface AdventureBattle {
   objectiveKind?: "chest" | "throne";
   lastCaptured: number[];
   log: string[];
+  vanguardUsed?: boolean;
+  captures?: number;
+  potionSaved?: boolean;
+  bracerUsed?: boolean;
 }
 export interface Adventure {
   version: 1;
@@ -190,6 +221,11 @@ export interface Adventure {
   shopPotions: { id: string; type: Potion }[];
   message: string;
   victory: boolean;
+  relics?: RelicId[];
+  spentRelics?: RelicId[];
+  relicOffers?: RelicId[];
+  shopRelic?: RelicId | null;
+  rewardPicksRemaining?: number;
 }
 export const ADVENTURE_STORAGE = "skystones-adventure-v1";
 const ART: Creature[] = [
@@ -240,6 +276,7 @@ export function makeRunCard(
   budget: number,
   id: string,
   keywordTier = 0,
+  keywordBonus = 0,
 ): Stone {
   const rng = random(seed),
     edges: Edges = [0, 0, 0, 0];
@@ -251,7 +288,8 @@ export function makeRunCard(
     elements = Object.keys(ELEMENTS) as Element[];
   const element = elements[Math.floor(rng() * elements.length)];
   const keywords: StoneKeyword[] =
-    keywordTier > 0 && rng() < 0.55
+    (keywordTier > 0 || keywordBonus > 0) &&
+    rng() < Math.min(1, (keywordTier > 0 ? 0.55 : 0) + keywordBonus)
       ? [
           keywordTier > 4
             ? {
@@ -273,14 +311,25 @@ export function makeRunCard(
     custom: true,
   };
 }
-export function rewardCards(run: Adventure): Stone[] {
-  return Array.from({ length: 3 }, (_, i) =>
-    makeRunCard(
-      run.seed + run.floor * 101 + i * 17,
-      Math.min(12, 4 + run.floor),
-      `${run.seed}-reward-${run.floor}-${i}`,
-      run.floor,
-    ),
+export function rewardCards(
+  run: Adventure,
+  applyRelics = true,
+  count?: number,
+): Stone[] {
+  const relicRun = applyRelics ? run : { relics: [] };
+  return Array.from(
+    { length: count ?? (hasRelic(relicRun, "fated-lens") ? 5 : 3) },
+    (_, i) =>
+      makeRunCard(
+        run.seed + run.floor * 101 + i * 17,
+        Math.min(
+          12,
+          4 + run.floor + (hasRelic(relicRun, "stonewrights-hammer") ? 1 : 0),
+        ),
+        `${run.seed}-reward-${run.floor}-${i}`,
+        run.floor,
+        hasRelic(relicRun, "runesmiths-quill") ? 0.3 : 0,
+      ),
   );
 }
 export function newAdventure(
@@ -316,6 +365,10 @@ export function newAdventure(
     message:
       "Your starter stones have 4–5 pips, including stronger two-pip edges. Choose your first encounter.",
     victory: false,
+    relics: [],
+    spentRelics: [],
+    relicOffers: [],
+    rewardPicksRemaining: 0,
   };
 }
 function advance(run: Adventure): Adventure {
@@ -328,6 +381,9 @@ function advance(run: Adventure): Adventure {
     rewards: [],
     shopCards: [],
     shopPotions: [],
+    shopRelic: undefined,
+    relicOffers: [],
+    rewardPicksRemaining: 0,
   };
 }
 export function setAdventureDeck(run: Adventure, id: string): Adventure {
@@ -375,24 +431,6 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
       edges: [...stone.edges],
       activeKeywords: [],
     };
-    if (node.kind === "boss") {
-      const guard: Stone = {
-        ...stone,
-        id: "custom-run-crown-guard",
-        name: "Crown Sentinel",
-        creature: "golem",
-        edges: [1, 0, 2, 0],
-        description: "A sentinel placed before the first turn.",
-      };
-      const at = run.size === 3 ? 0 : 10;
-      board[at] = {
-        stone: guard,
-        owner: 1,
-        playedBy: 1,
-        edges: [...guard.edges],
-        activeKeywords: [],
-      };
-    }
   }
   // Eight-card runs spread their rewards across a larger deck, and the keeper
   // has the final move on an even board. Ease its pip curve by one point.
@@ -438,7 +476,7 @@ function beginBattle(run: Adventure, node: AdventureNode): Adventure {
     },
     message:
       node.kind === "boss"
-        ? "The Warden starts with two guards. Win the score AND hold the throne."
+        ? "Only the throne starts on the board. Win the score AND hold it."
         : node.kind === "chest"
           ? "Hold the chest at the finish for 45 extra gold, even if you lose the score."
           : "Higher facing pips capture adjacent enemy stones.",
@@ -456,7 +494,12 @@ export function enterAdventureNode(run: Adventure, id: string): Adventure {
       ...run,
       node,
       phase: "shop",
-      shopCards: rewardCards(run).map((stone, i) => ({
+      gold: run.gold + (hasRelic(run, "quiet-coin") ? earnedGold(run, 15) : 0),
+      shopCards: rewardCards(
+        run,
+        false,
+        hasRelic(run, "market-map") ? 4 : 3,
+      ).map((stone, i) => ({
         ...stone,
         id: `custom-run-${run.seed}-shop-${run.floor}-${i}`,
       })),
@@ -465,9 +508,114 @@ export function enterAdventureNode(run: Adventure, id: string): Adventure {
         { id: `${run.floor}-hex`, type: "hex" },
         { id: `${run.floor}-heal`, type: "heal" },
       ],
+      shopRelic: offerRelics(run, 1, 0x73686f70)[0] || null,
       message: "Improve your stones, stock up, or save your gold for later.",
     };
-  return { ...run, node, phase: "event", message: node.description };
+  return {
+    ...run,
+    node,
+    phase: "event",
+    lives:
+      node.kind === "camp" && hasRelic(run, "restful-ember")
+        ? Math.min(maxLives(run), run.lives + 1)
+        : run.lives,
+    message:
+      node.kind === "camp" && hasRelic(run, "restful-ember")
+        ? "Restful Ember restores 1 life on arrival. Choose your camp reward."
+        : node.description,
+    relicOffers: node.id === "reliquary" ? offerRelics(run, 3, 0x73687269) : [],
+  };
+}
+function receiveFreePotions(run: Adventure, types: Potion[]): Potion[] {
+  const drops = hasRelic(run, "bubbling-flask")
+    ? types.flatMap((type) => [type, type])
+    : types;
+  return [...run.potions, ...drops].slice(0, potionCapacity(run));
+}
+export function potionDescription(run: Adventure, type: Potion): string {
+  const strength = potionPotency(run);
+  return type === "power"
+    ? `Choose a card in your hand. All four edges gain +${strength} for this battle. Does not use your turn.`
+    : type === "hex"
+      ? `Choose an enemy board card. All four edges lose ${strength} pip${strength === 1 ? "" : "s"}, stopping at zero. Does not use your turn.`
+      : `Recover ${strength} ${strength === 1 ? "life" : "lives"}, up to ${maxLives(run)}. Can be used between battles too.`;
+}
+function addRelic(run: Adventure, id: RelicId): Adventure {
+  if (!Object.hasOwn(RELICS, id) || hasRelic(run, id))
+    throw new Error("Choose an unowned relic.");
+  let next: Adventure = { ...run, relics: [...(run.relics || []), id] };
+  if (id === "stout-heart")
+    next = { ...next, lives: Math.min(maxLives(next), next.lives + 1) };
+  if (id === "merchants-purse") next = { ...next, gold: next.gold + 100 };
+  if (id === "pilgrims-flask") {
+    const types: Potion[] = ["power", "hex", "heal"];
+    next = {
+      ...next,
+      potions: receiveFreePotions(
+        next,
+        Array.from(
+          { length: potionCapacity(next) - next.potions.length },
+          (_, i) => types[i % types.length],
+        ),
+      ),
+    };
+  }
+  return {
+    ...next,
+    message: `Acquired ${RELICS[id].name}. ${RELICS[id].description}`,
+  };
+}
+export function claimAdventureRelic(
+  run: Adventure,
+  id: RelicId | null,
+): Adventure {
+  const shrine = run.phase === "event" && run.node?.id === "reliquary";
+  if (run.phase !== "reward" && !shrine)
+    throw new Error("No relic reward is waiting.");
+  if (id && !(run.relicOffers || []).includes(id))
+    throw new Error("Choose one of the offered relics.");
+  if (!shrine && !(run.relicOffers || []).length)
+    throw new Error("No relic reward is waiting.");
+  let next = id ? addRelic(run, id) : run;
+  next = { ...next, relicOffers: [] };
+  if (shrine) return advance(next);
+  if (
+    id &&
+    next.rewards.length &&
+    [
+      "runesmiths-quill",
+      "twin-sigil",
+      "stonewrights-hammer",
+      "fated-lens",
+    ].includes(id)
+  )
+    next = {
+      ...next,
+      rewards: rewardCards(next),
+      rewardPicksRemaining: cardRewardPicks(next),
+    };
+  return next;
+}
+export const RELIC_PRICE = 75;
+export function buyAdventureRelic(run: Adventure, id: RelicId): Adventure {
+  if (run.phase !== "shop" || run.shopRelic !== id || hasRelic(run, id))
+    throw new Error("That relic is not for sale here.");
+  const price = shopPrice(run, RELIC_PRICE);
+  if (run.gold < price) throw new Error("You need more gold.");
+  return addRelic({ ...run, gold: run.gold - price, shopRelic: null }, id);
+}
+export function adventureStoneForPlay(
+  run: Adventure,
+  stone: Stone,
+  owner: Owner = 0,
+): Stone {
+  return run.phase === "battle" &&
+    !!run.battle &&
+    owner === 0 &&
+    hasRelic(run, "vanguard-banner") &&
+    !run.battle?.vanguardUsed
+    ? { ...stone, edges: stone.edges.map((edge) => edge + 1) as Edges }
+    : stone;
 }
 function finishBattle(run: Adventure): Adventure {
   const battle = run.battle!,
@@ -478,19 +626,43 @@ function finishBattle(run: Adventure): Adventure {
     battle.board[battle.objective]?.owner === 0;
   const won = you > enemy && (!throne || held),
     draw = you === enemy && !throne;
-  const chest = battle.objectiveKind === "chest" && held ? 45 : 0;
-  const earned =
+  const chest =
+    battle.objectiveKind === "chest" && held
+      ? 45 + (hasRelic(run, "treasure-magnet") ? 30 : 0)
+      : 0;
+  const earned = earnedGold(
+    run,
     (won
-      ? 25 + run.floor * 5 + (run.node?.kind === "elite" ? 20 : 0)
+      ? 25 +
+        run.floor * 5 +
+        (run.node?.kind === "elite" ? 20 : 0) +
+        (hasRelic(run, "victory-medallion") ? 10 : 0)
       : draw
         ? 10
-        : 0) + chest;
-  const lives = run.lives - (won || draw ? 0 : 1),
-    victory = throne && won;
-  const message = `${won ? "Victory" : draw ? "A draw" : "Battle lost"} · ${you}–${enemy}. +${earned} gold.${chest ? " Chest secured: +45 bonus gold included." : battle.objectiveKind === "chest" ? " The chest stayed with the keeper." : ""}${throne && !held ? " You did not secure the throne." : ""}${!won && !draw ? " One life lost." : ""}`;
-  const potions = [...run.potions];
-  if (won && run.floor % 3 === 0 && potions.length < 3)
-    potions.push(run.floor % 2 === 0 ? "hex" : "power");
+        : 0) +
+      chest +
+      (hasRelic(run, "copper-claw") ? (battle.captures || 0) * 2 : 0),
+  );
+  let lives = run.lives - (won || draw ? 0 : 1);
+  let spentRelics = run.spentRelics || [],
+    revived = false;
+  if (
+    lives === 0 &&
+    hasRelic(run, "phoenix-feather") &&
+    !spentRelics.includes("phoenix-feather")
+  ) {
+    lives = 1;
+    revived = true;
+    spentRelics = [...spentRelics, "phoenix-feather"];
+  }
+  if (won && hasRelic(run, "campfire-charm"))
+    lives = Math.min(maxLives(run), lives + 1);
+  const victory = throne && won;
+  const message = `${won ? "Victory" : draw ? "A draw" : "Battle lost"} · ${you}–${enemy}. +${earned} gold.${chest ? ` Chest secured: +${chest} bonus gold included.` : battle.objectiveKind === "chest" ? " The chest stayed with the keeper." : ""}${throne && !held ? " You did not secure the throne." : ""}${!won && !draw ? " One life lost." : ""}${revived ? " Phoenix Feather restores you to 1 life. The feather is now spent." : ""}${won && hasRelic(run, "campfire-charm") ? " Campfire Charm restores 1 life, up to your maximum lives." : ""}`;
+  const potions =
+    won && (run.floor % 3 === 0 || hasRelic(run, "herbalists-lens"))
+      ? receiveFreePotions(run, [run.floor % 2 === 0 ? "hex" : "power"])
+      : [...run.potions];
   const updated = {
     ...run,
     gold: run.gold + earned,
@@ -498,11 +670,19 @@ function finishBattle(run: Adventure): Adventure {
     message,
     victory,
     potions,
+    spentRelics,
   };
   return {
     ...updated,
     phase: victory || lives === 0 ? "ended" : "reward",
     rewards: won && !throne ? rewardCards(run) : [],
+    rewardPicksRemaining: won && !throne ? cardRewardPicks(run) : 0,
+    relicOffers:
+      !victory &&
+      lives > 0 &&
+      ((won && (run.floor === 0 || run.node?.kind === "elite")) || chest > 0)
+        ? offerRelics(run, 3, 0x62617474)
+        : [],
   };
 }
 export function playAdventureCard(
@@ -514,19 +694,41 @@ export function playAdventureCard(
   if (run.phase !== "battle" || !run.battle)
     throw new Error("There is no active battle.");
   const battle = run.battle,
-    stone = battle.hands[battle.current][cardIndex];
-  if (!stone) throw new Error("Choose a card in the current hand.");
-  const move = placeStone(battle.board, index, stone, battle.current, targets),
+    original = battle.hands[battle.current][cardIndex];
+  if (!original) throw new Error("Choose a card in the current hand.");
+  const stone = adventureStoneForPlay(run, original, battle.current);
+  const move = placeStone(battle.board, index, stone, battle.current, targets, {
+      seed:
+        run.seed ^
+        Math.imul(run.floor + 1, 0x9e3779b1) ^
+        Math.imul(battle.turns + 1, 0x85ebca6b) ^
+        index,
+      minimumDizzyPips:
+        battle.current === 0 && hasRelic(run, "loaded-dice") ? 2 : 0,
+    }),
     hands: [Stone[], Stone[]] = [[...battle.hands[0]], [...battle.hands[1]]];
   hands[battle.current].splice(cardIndex, 1);
+  const bracer =
+    battle.current === 0 &&
+    move.captured.length > 0 &&
+    hasRelic(run, "duelists-bracer") &&
+    !battle.bracerUsed;
   const next = {
     ...run,
+    lives: bracer ? Math.min(maxLives(run), run.lives + 1) : run.lives,
     battle: {
       ...battle,
       board: move.board,
       hands,
       current: (battle.current === 0 ? 1 : 0) as Owner,
       turns: battle.turns + 1,
+      captures:
+        (battle.captures || 0) +
+        (battle.current === 0 ? move.captured.length : 0),
+      bracerUsed: battle.bracerUsed || bracer,
+      vanguardUsed:
+        battle.vanguardUsed ||
+        (battle.current === 0 && hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
         `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured`,
@@ -547,6 +749,8 @@ export function claimAdventureReward(
   id: string | null,
 ): Adventure {
   if (run.phase !== "reward") throw new Error("No reward is waiting.");
+  if (run.relicOffers?.length)
+    throw new Error("Choose or skip your relic reward first.");
   const stone = id ? run.rewards.find((stone) => stone.id === id) : null;
   if (id && !stone) throw new Error("Choose one of the offered stones.");
   const next = {
@@ -556,6 +760,13 @@ export function claimAdventureReward(
       ? `${stone.name} joins your pack. Swap it into your expedition deck before the next battle.`
       : run.message,
   };
+  if (stone && (run.rewardPicksRemaining ?? 1) > 1) {
+    return {
+      ...next,
+      rewards: run.rewards.filter((card) => card.id !== id),
+      rewardPicksRemaining: (run.rewardPicksRemaining ?? 1) - 1,
+    };
+  }
   if (run.node?.kind === "boss")
     return {
       ...next,
@@ -566,6 +777,18 @@ export function claimAdventureReward(
     };
   return advance(next);
 }
+export function dizzyEventCard(run: Adventure): Stone {
+  return {
+    id: `custom-run-${run.seed}-dizzy-prize-${run.floor}`,
+    name: "Whirling Idol",
+    element: "magic",
+    creature: "golem",
+    edges: [4, 4, 4, 0],
+    keywords: [{ type: "dizzy" }],
+    description: "Twelve pips, never quite where you left them.",
+    custom: true,
+  };
+}
 export function resolveAdventureEvent(
   run: Adventure,
   choice: string,
@@ -573,6 +796,15 @@ export function resolveAdventureEvent(
 ): Adventure {
   if (run.phase !== "event" || !run.node)
     throw new Error("There is no event to resolve.");
+  if (run.node.id === "whirling-idol" && choice === "dizzy-card") {
+    const stone = dizzyEventCard(run);
+    return advance({
+      ...run,
+      inventory: [...run.inventory, stone],
+      message:
+        "Whirling Idol joins your pack: 12 pips and Dizzy. Edit your expedition deck to take it into battle.",
+    });
+  }
   if (run.node.kind === "chest") {
     if (choice === "fight") return beginBattle(run, run.node);
     if (choice === "leave")
@@ -582,33 +814,33 @@ export function resolveAdventureEvent(
     if (choice === "heal")
       return advance({
         ...run,
-        lives: Math.min(3, run.lives + 1),
+        lives: Math.min(maxLives(run), run.lives + 1),
         message: "The well restores one life.",
       });
     if (choice === "gold" && run.lives > 1)
       return advance({
         ...run,
         lives: run.lives - 1,
-        gold: run.gold + 40,
-        message: "One life traded for 40 gold.",
+        gold: run.gold + earnedGold(run, 40),
+        message: `One life traded for ${earnedGold(run, 40)} gold.`,
       });
   }
   if (run.node.id === "alchemy" && Object.hasOwn(POTIONS, choice)) {
-    if (run.potions.length >= 3)
+    if (run.potions.length >= potionCapacity(run))
       throw new Error(
         "Your potion belt is full. Use a potion first, or leave.",
       );
     return advance({
       ...run,
-      potions: [...run.potions, choice as Potion],
-      message: `You receive a ${POTIONS[choice as Potion].name}.`,
+      potions: receiveFreePotions(run, [choice as Potion]),
+      message: `You receive ${hasRelic(run, "bubbling-flask") ? "up to two copies" : "a bottle"} of ${POTIONS[choice as Potion].name}.`,
     });
   }
   if (run.node.kind === "camp") {
     if (choice === "heal")
       return advance({
         ...run,
-        lives: Math.min(3, run.lives + 1),
+        lives: Math.min(maxLives(run), run.lives + 1),
         message: "A warm fire restores one life.",
       });
     if (choice === "train") {
@@ -647,12 +879,13 @@ export function adventureWorkshopOffer(
     "resonance",
     "sunder",
     "silence",
+    "dizzy",
   ] as const;
   const type = types[Math.floor(rng() * types.length)];
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
-    type === "silence"
+    type === "silence" || type === "dizzy"
       ? { type }
       : type === "resonance"
         ? { type, side, element: elements[Math.floor(rng() * elements.length)] }
@@ -670,7 +903,7 @@ export function buyAdventureService(
   order: WorkshopOrder,
 ): Adventure {
   if (run.phase !== "shop") throw new Error("Visit a shop first.");
-  const price = SERVICE_PRICES[order.type];
+  const price = shopPrice(run, SERVICE_PRICES[order.type]);
   if (run.gold < price) throw new Error("You need more gold.");
   const stone = run.inventory.find((s) => s.id === order.cardId);
   if (!stone) throw new Error("Choose a stone in your pack.");
@@ -685,7 +918,11 @@ export function buyAdventureService(
         "That upgrade would exceed five pips on an edge or the 12-pip budget.",
       );
     const edges = [...stone.edges] as Edges;
-    edges[offer.pipSide]++;
+    edges[offer.pipSide] += Math.min(
+      hasRelic(run, "whetstone-ring") ? 2 : 1,
+      5 - edges[offer.pipSide],
+      12 - edges.reduce((a, b) => a + b, 0),
+    );
     upgraded = { ...stone, edges };
   } else if (order.type === "element") {
     if (
@@ -693,13 +930,30 @@ export function buyAdventureService(
       order.element === stone.element
     )
       throw new Error("Choose a different element.");
-    upgraded = { ...stone, element: order.element };
+    const edges = [...stone.edges] as Edges;
+    if (
+      hasRelic(run, "elemental-prism") &&
+      edges.reduce((a, b) => a + b, 0) < 12
+    )
+      edges[edges.indexOf(Math.min(...edges))]++;
+    upgraded = { ...stone, edges, element: order.element };
   } else {
     const keywords = [...(stone.keywords || []), offer.keyword];
     if (!validateKeywords(keywords))
       throw new Error(
         "That keyword is already assigned here, or its settings are invalid.",
       );
+    if (
+      hasRelic(run, "rune-echo") &&
+      "side" in offer.keyword &&
+      offer.keyword.side !== "any"
+    ) {
+      const echo = {
+        ...offer.keyword,
+        side: ((offer.keyword.side + 2) % 4) as Side,
+      };
+      if (validateKeywords([...keywords, echo])) keywords.push(echo);
+    }
     upgraded = { ...stone, keywords };
   }
   return {
@@ -709,14 +963,14 @@ export function buyAdventureService(
     message: `${stone.name} upgraded for ${price} gold.`,
   };
 }
-export function cardPrice(stone: Stone): number {
-  return 20 + stone.edges.reduce((a, b) => a + b, 0) * 3;
+export function cardPrice(stone: Stone, run?: Adventure): number {
+  return shopPrice(run || {}, 20 + stone.edges.reduce((a, b) => a + b, 0) * 3);
 }
 export function buyAdventureCard(run: Adventure, id: string): Adventure {
   if (run.phase !== "shop") throw new Error("Visit a shop first.");
   const stone = run.shopCards.find((s) => s.id === id);
   if (!stone) throw new Error("That card has already sold.");
-  const price = cardPrice(stone);
+  const price = cardPrice(stone, run);
   if (run.gold < price) throw new Error("You need more gold.");
   return {
     ...run,
@@ -730,8 +984,9 @@ export function buyAdventurePotion(run: Adventure, id: string): Adventure {
   if (run.phase !== "shop") throw new Error("Visit a shop first.");
   const item = run.shopPotions.find((p) => p.id === id);
   if (!item) throw new Error("That potion has already sold.");
-  if (run.potions.length >= 3) throw new Error("Your potion belt is full.");
-  const price = POTIONS[item.type].price;
+  if (run.potions.length >= potionCapacity(run))
+    throw new Error("Your potion belt is full.");
+  const price = shopPrice(run, POTIONS[item.type].price);
   if (run.gold < price) throw new Error("You need more gold.");
   return {
     ...run,
@@ -743,7 +998,14 @@ export function buyAdventurePotion(run: Adventure, id: string): Adventure {
 }
 export function leaveAdventureShop(run: Adventure): Adventure {
   if (run.phase !== "shop") throw new Error("You are not at a shop.");
-  return advance(run);
+  const interest = hasRelic(run, "rainy-day-bank")
+    ? Math.min(30, Math.floor(run.gold / 10))
+    : 0;
+  return advance({
+    ...run,
+    gold: run.gold + interest,
+    message: interest ? `Rainy Day Bank pays ${interest} gold.` : run.message,
+  });
 }
 export function useAdventurePotion(
   run: Adventure,
@@ -758,9 +1020,11 @@ export function useAdventurePotion(
   )
     throw new Error("Wait until your turn.");
   let next: Adventure = run;
+  const strength = potionPotency(run);
   if (potion === "heal") {
-    if (run.lives >= 3) throw new Error("You are already at full life.");
-    next = { ...run, lives: Math.min(3, run.lives + 1) };
+    if (run.lives >= maxLives(run))
+      throw new Error("You are already at full life.");
+    next = { ...run, lives: Math.min(maxLives(run), run.lives + strength) };
   } else {
     if (run.phase !== "battle" || !run.battle)
       throw new Error("Use that potion during a battle.");
@@ -771,7 +1035,7 @@ export function useAdventurePotion(
       const hands: [Stone[], Stone[]] = [
         battle.hands[0].map((s) =>
           s.id === target
-            ? { ...s, edges: s.edges.map((edge) => edge + 1) as Edges }
+            ? { ...s, edges: s.edges.map((edge) => edge + strength) as Edges }
             : s,
         ),
         battle.hands[1],
@@ -788,7 +1052,7 @@ export function useAdventurePotion(
       )
         throw new Error("Choose an enemy card with at least one pip.");
       const edges = (cell.edges || cell.stone.edges).map((edge) =>
-        Math.max(0, edge - 1),
+        Math.max(0, edge - strength),
       ) as Edges;
       const reductions = (cell.reductions || [0, 0, 0, 0]).map(
         (amount, side) =>
@@ -805,10 +1069,18 @@ export function useAdventurePotion(
       };
     }
   }
+  const saved =
+    run.phase === "battle" &&
+    !!run.battle &&
+    hasRelic(run, "bottomless-bottle") &&
+    !run.battle.potionSaved;
   return {
     ...next,
-    potions: run.potions.filter((_, i) => i !== index),
-    message: `Used ${POTIONS[potion].name}.`,
+    ...(saved && next.battle
+      ? { battle: { ...next.battle, potionSaved: true } }
+      : {}),
+    potions: saved ? run.potions : run.potions.filter((_, i) => i !== index),
+    message: `Used ${POTIONS[potion].name}.${saved ? " Bottomless Bottle keeps this potion." : ""}`,
   };
 }
 function validBattleCard(value: unknown): value is Stone {
@@ -854,6 +1126,16 @@ function validPlaced(value: unknown, length: number): boolean {
     [0, 1].includes(cell.owner) &&
     validBattleCard(cell.stone) &&
     (cell.edges === undefined || edges(cell.edges)) &&
+    (cell.dizzy === undefined ||
+      (!!cell.dizzy &&
+        edges(cell.dizzy.before) &&
+        edges(cell.dizzy.after) &&
+        cell.dizzy.after.every((n) => n <= 4) &&
+        cell.dizzy.after.reduce((a, b) => a + b, 0) ===
+          Math.min(
+            16,
+            cell.dizzy.before.reduce((a, b) => a + b, 0),
+          ))) &&
     (cell.reductions === undefined || edges(cell.reductions)) &&
     (cell.silenced === undefined || typeof cell.silenced === "boolean") &&
     (cell.playedBy === undefined || [0, 1].includes(cell.playedBy)) &&
@@ -893,6 +1175,46 @@ export function validateAdventure(value: unknown): value is Adventure {
   if (!value || typeof value !== "object") return false;
   const run = value as Adventure;
   if (
+    run.relics !== undefined &&
+    (!Array.isArray(run.relics) ||
+      run.relics.length > RELIC_IDS.length ||
+      new Set(run.relics).size !== run.relics.length ||
+      !run.relics.every((id) => Object.hasOwn(RELICS, id)))
+  )
+    return false;
+  if (
+    run.spentRelics !== undefined &&
+    (!Array.isArray(run.spentRelics) ||
+      new Set(run.spentRelics).size !== run.spentRelics.length ||
+      !run.spentRelics.every(
+        (id) => id === "phoenix-feather" && hasRelic(run, id),
+      ))
+  )
+    return false;
+  if (
+    run.relicOffers !== undefined &&
+    (!Array.isArray(run.relicOffers) ||
+      run.relicOffers.length > 3 ||
+      new Set(run.relicOffers).size !== run.relicOffers.length ||
+      !run.relicOffers.every(
+        (id) => Object.hasOwn(RELICS, id) && !hasRelic(run, id),
+      ))
+  )
+    return false;
+  if (
+    run.shopRelic !== undefined &&
+    run.shopRelic !== null &&
+    (!Object.hasOwn(RELICS, run.shopRelic) || hasRelic(run, run.shopRelic))
+  )
+    return false;
+  if (
+    run.rewardPicksRemaining !== undefined &&
+    (!Number.isInteger(run.rewardPicksRemaining) ||
+      run.rewardPicksRemaining < 0 ||
+      run.rewardPicksRemaining > 2)
+  )
+    return false;
+  if (
     run.version !== 1 ||
     !Number.isInteger(run.seed) ||
     ![3, 4].includes(run.size) ||
@@ -906,7 +1228,7 @@ export function validateAdventure(value: unknown): value is Adventure {
     run.gold < 0 ||
     !Number.isInteger(run.lives) ||
     run.lives < 0 ||
-    run.lives > 3 ||
+    run.lives > maxLives(run) ||
     typeof run.victory !== "boolean" ||
     typeof run.message !== "string"
   )
@@ -925,13 +1247,13 @@ export function validateAdventure(value: unknown): value is Adventure {
     return false;
   if (
     !Array.isArray(run.potions) ||
-    run.potions.length > 3 ||
+    run.potions.length > potionCapacity(run) ||
     !run.potions.every((p) => Object.hasOwn(POTIONS, p)) ||
     !Array.isArray(run.rewards) ||
-    run.rewards.length > 3 ||
+    run.rewards.length > 5 ||
     !run.rewards.every(validateStone) ||
     !Array.isArray(run.shopCards) ||
-    run.shopCards.length > 3 ||
+    run.shopCards.length > 4 ||
     !run.shopCards.every(validateStone) ||
     !Array.isArray(run.shopPotions) ||
     run.shopPotions.length > 3 ||
@@ -966,6 +1288,16 @@ export function validateAdventure(value: unknown): value is Adventure {
       !Number.isInteger(battle.turns) ||
       battle.turns < 0 ||
       battle.turns > run.size ** 2 ||
+      (battle.vanguardUsed !== undefined &&
+        typeof battle.vanguardUsed !== "boolean") ||
+      (battle.captures !== undefined &&
+        (!Number.isInteger(battle.captures) ||
+          battle.captures < 0 ||
+          battle.captures > 64)) ||
+      (battle.potionSaved !== undefined &&
+        typeof battle.potionSaved !== "boolean") ||
+      (battle.bracerUsed !== undefined &&
+        typeof battle.bracerUsed !== "boolean") ||
       typeof battle.name !== "string" ||
       !Array.isArray(battle.log) ||
       !battle.log.every((line) => typeof line === "string") ||
@@ -982,9 +1314,34 @@ export function validateAdventure(value: unknown): value is Adventure {
   }
   if (
     run.phase === "battle" &&
-    (run.battle!.board.every(Boolean) ||
+    (!run.battle ||
+      run.battle.board.every(Boolean) ||
       !run.battle!.hands[run.battle!.current].length)
   )
     return false;
   return run.phase !== "battle" || !!run.battle;
+}
+export function restoreAdventure(value: unknown): Adventure | null {
+  if (!validateAdventure(value)) return null;
+  let run = value;
+  if (run.phase === "shop" && run.shopRelic === undefined)
+    run = { ...run, shopRelic: offerRelics(run, 1, 0x73686f70)[0] || null };
+  // Update an untouched boss setup from older downloads, preserving any fight
+  // in which the player has already made a move.
+  if (
+    run.phase === "battle" &&
+    run.node?.kind === "boss" &&
+    run.battle?.turns === 0 &&
+    run.battle.board.some((cell) => cell?.stone.id === "custom-run-crown-guard")
+  )
+    run = {
+      ...run,
+      battle: {
+        ...run.battle,
+        board: run.battle.board.map((cell) =>
+          cell?.stone.id === "custom-run-crown-guard" ? null : cell,
+        ),
+      },
+    };
+  return run;
 }

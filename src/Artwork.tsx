@@ -606,8 +606,10 @@ export function StoneCard({
                   <b>
                     {matches
                       .map((keyword) =>
-                        keyword.type === "silence"
-                          ? "ON PLAY"
+                        keyword.type === "silence" || keyword.type === "dizzy"
+                          ? keyword.type === "dizzy"
+                            ? "AFTER PLAY"
+                            : "ON PLAY"
                           : keyword.side === "any"
                             ? "ANY EDGE"
                             : SIDE_LETTERS[keyword.side],

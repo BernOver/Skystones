@@ -4673,3 +4673,44 @@ button:disabled:hover {
     font-size: 11px;
   }
 }
+
+/* Five mode tabs share the available header width on smaller screens. */
+@media (max-width: 1150px) and (min-width: 761px) {
+  .main-nav {
+    gap: 2px;
+  }
+  .main-nav > button {
+    padding: 10px 8px;
+    gap: 5px;
+    font-size: 10px;
+  }
+  .main-nav .nav-count {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .main-nav {
+    gap: 2px;
+  }
+  .main-nav > button {
+    min-width: 0;
+    flex: 1;
+    padding: 9px 5px;
+    gap: 4px;
+    font-size: 9px;
+  }
+  .main-nav > button > svg {
+    width: 13px;
+    flex-shrink: 0;
+  }
+  .main-nav .nav-count {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  .main-nav > button {
+    font-size: 8px;
+    gap: 3px;
+    padding: 9px 3px;
+  }
+}

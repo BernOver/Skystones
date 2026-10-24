@@ -28,8 +28,8 @@ export function KeywordEditor({
       )
     ) {
       setError(
-        value.type === "silence"
-          ? "Silence is already on this card."
+        value.type === "silence" || value.type === "dizzy"
+          ? `${KEYWORD_RULES[value.type].name} is already on this card.`
           : value.side === "any"
             ? "Sunder with an edge chosen when played is already on this card."
             : `${KEYWORD_RULES[value.type].name} is already assigned to ${SIDE_NAMES[value.side]}. Choose another edge.`,
@@ -45,7 +45,7 @@ export function KeywordEditor({
         ? [0, 1, 2, 3, "any"]
         : [0, 1, 2, 3]) as (Side | "any")[]) {
         const value: StoneKeyword =
-          type === "silence"
+          type === "silence" || type === "dizzy"
             ? { type }
             : type === "sunder"
               ? { type, side }
@@ -75,7 +75,7 @@ export function KeywordEditor({
       <div className="keyword-editor-list">
         {keywords.map((keyword, index) => (
           <div
-            className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" ? "has-strength" : ""} ${keyword.type === "silence" ? "no-edge" : ""}`}
+            className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" ? "has-strength" : ""} ${keyword.type === "silence" || keyword.type === "dizzy" ? "no-edge" : ""}`}
             key={index}
           >
             <div>
@@ -88,13 +88,14 @@ export function KeywordEditor({
                 onChange={(e) =>
                   update(
                     index,
-                    e.target.value === "silence"
-                      ? { type: "silence" }
+                    e.target.value === "silence" || e.target.value === "dizzy"
+                      ? { type: e.target.value }
                       : e.target.value === "resonance"
                         ? {
                             type: "resonance",
                             side:
                               keyword.type === "silence" ||
+                              keyword.type === "dizzy" ||
                               keyword.side === "any"
                                 ? 0
                                 : keyword.side,
@@ -108,6 +109,7 @@ export function KeywordEditor({
                               "head-start" | "comeback" | "sunder",
                             side:
                               keyword.type === "silence" ||
+                              keyword.type === "dizzy" ||
                               keyword.side === "any"
                                 ? 0
                                 : keyword.side,
@@ -123,12 +125,14 @@ export function KeywordEditor({
                         ? "Sunder · remove pips"
                         : type === "silence"
                           ? "Silence · disable keywords"
-                          : `${rule.name} · while ${rule.condition}`}
+                          : type === "dizzy"
+                            ? "Dizzy · shuffle pips after captures"
+                            : `${rule.name} · while ${rule.condition}`}
                   </option>
                 ))}
               </select>
             </div>
-            {keyword.type !== "silence" && (
+            {keyword.type !== "silence" && keyword.type !== "dizzy" && (
               <div>
                 <label htmlFor={`keyword-side-${index}`}>
                   {keyword.type === "sunder" ? "Target edge" : "Affected edge"}{" "}
@@ -271,6 +275,11 @@ export function KeywordEditor({
           <p>
             <strong>Silence</strong> disables a chosen board card’s keywords and
             removes their bonuses.
+          </p>
+          <p>
+            <strong>Dizzy</strong> redistributes this card’s pips once after
+            placement and captures. Each edge has at most four pips; totals
+            above 16 are capped at 16.
           </p>
           <small>
             Head Start and Comeback do not activate on a tie. All bonuses are

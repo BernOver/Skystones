@@ -34,7 +34,14 @@ import {
   score,
   validateKeywords,
 } from "./game";
-import type { BoardSize, Element, KeywordTarget, Side, Stone } from "./game";
+import type {
+  BoardSize,
+  Element,
+  KeywordTarget,
+  Side,
+  Stone,
+  Owner,
+} from "./game";
 import {
   ADVENTURE_STORAGE,
   POTIONS,
@@ -54,8 +61,26 @@ import {
   resolveAdventureEvent,
   setAdventureDeck,
   useAdventurePotion,
-  validateAdventure,
+  restoreAdventure,
+  claimAdventureRelic,
+  buyAdventureRelic,
+  RELIC_PRICE,
+  potionDescription,
+  adventureStoneForPlay,
+  dizzyEventCard,
 } from "./adventure";
+import {
+  RELICS,
+  RELIC_IDS,
+  cardRewardPicks,
+  earnedGold,
+  hasRelic,
+  maxLives,
+  potionCapacity,
+  shopPrice,
+} from "./relics";
+import type { RelicId } from "./relics";
+import { RelicCard, RELIC_ICONS } from "./RelicCard";
 import type { Adventure, NodeKind } from "./adventure";
 
 const NODE_ICONS = {
@@ -70,12 +95,12 @@ const NODE_ICONS = {
 function loadAdventure(): Adventure | null {
   try {
     const value = JSON.parse(localStorage.getItem(ADVENTURE_STORAGE) || "null");
-    return validateAdventure(value) ? value : null;
+    return restoreAdventure(value);
   } catch {
     return null;
   }
 }
-function RunDialog({
+export function RunDialog({
   title,
   children,
   onClose,
@@ -153,6 +178,8 @@ export function Expedition() {
     [inspection, setInspection] = useState<Inspection | null>(null),
     [inspected, setInspected] = useState<Inspection | null>(null),
     [potionTarget, setPotionTarget] = useState<number | null>(null);
+  const [relicGuide, setRelicGuide] = useState(false),
+    [relicDetail, setRelicDetail] = useState<RelicId | null>(null);
   const [target, setTarget] = useState<{
     placement: number;
     cardIndex: number;
@@ -290,10 +317,14 @@ export function Expedition() {
     scores = battle ? score(battle.board) : [0, 0];
   const selectedService =
     run.inventory.find((stone) => stone.id === serviceCard) || run.inventory[0];
+  const beltSize = potionCapacity(run);
+  const pendingRelic = !!run.relicOffers?.length;
+  const picksLeft =
+    run.rewardPicksRemaining ?? (run.rewards.length ? cardRewardPicks(run) : 0);
   const shopOffer = adventureWorkshopOffer(run);
   const offeredKeyword = shopOffer.keyword;
   const keywordDirection =
-    offeredKeyword.type === "silence"
+    offeredKeyword.type === "silence" || offeredKeyword.type === "dizzy"
       ? "Whole card"
       : offeredKeyword.side === "any"
         ? "Any edge"
@@ -310,6 +341,7 @@ export function Expedition() {
     anchor: HTMLElement,
     boardIndex?: number,
     modal = false,
+    owner: Owner = 0,
   ) {
     const cell = boardIndex !== undefined ? battle?.board[boardIndex] : null;
     const resolved = cell
@@ -317,7 +349,11 @@ export function Expedition() {
           edges: cell.edges || stone.edges,
           activeKeywords: cell.activeKeywords || [],
         }
-      : evaluateKeywords(stone, battle?.board || [], 0);
+      : evaluateKeywords(
+          adventureStoneForPlay(run!, stone, owner),
+          battle?.board || [],
+          owner,
+        );
     const rect = anchor.getBoundingClientRect();
     const value: Inspection = {
       stone,
@@ -326,11 +362,12 @@ export function Expedition() {
       anchorElement: anchor,
       ...resolved,
       played: !!cell,
-      playerName: cell?.playedBy === 1 ? "Keeper" : "You",
+      playerName: (cell ? cell.playedBy === 1 : owner === 1) ? "Keeper" : "You",
       controllerName: cell?.owner === 1 ? "Keeper" : "You",
       silenced: cell?.silenced,
       reductions: cell?.reductions,
       effects: cell?.effects,
+      dizzy: cell?.dizzy,
       size: run!.size,
     };
     if (modal) {
@@ -411,6 +448,37 @@ export function Expedition() {
     const Icon = NODE_ICONS[kind];
     return <Icon size={23} />;
   };
+  function relicChoices(shrine = false) {
+    return (
+      <section className="relic-reward" aria-label="Choose a relic">
+        <div className="eyebrow">AN ANCIENT GIFT</div>
+        <h2>Choose a relic for your journey.</h2>
+        <p>
+          Relics last for the run. Choose one; its effects begin immediately.
+        </p>
+        <div className="relic-offer-grid">
+          {(run!.relicOffers || []).map((id) => (
+            <RelicCard key={id} id={id}>
+              <button
+                className="button button-dark"
+                onClick={() =>
+                  act((current) => claimAdventureRelic(current, id))
+                }
+              >
+                Take relic {RELICS[id].name}
+              </button>
+            </RelicCard>
+          ))}
+        </div>
+        <button
+          className="button button-outline"
+          onClick={() => act((current) => claimAdventureRelic(current, null))}
+        >
+          {shrine ? "Leave the Reliquary" : "Skip relic"}
+        </button>
+      </section>
+    );
+  }
   return (
     <div className="adventure">
       <div className="page-heading">
@@ -434,7 +502,10 @@ export function Expedition() {
       <div className="run-toolbar">
         <span>
           <Heart size={18} />
-          <strong>{run.lives}/3</strong> lives
+          <strong>
+            {run.lives}/{maxLives(run)}
+          </strong>{" "}
+          lives
         </span>
         <span>
           <Coins size={18} />
@@ -452,12 +523,12 @@ export function Expedition() {
           {run.potions.map((type, index) => (
             <button
               key={`${index}-${type}`}
-              title={POTIONS[type].description}
+              title={potionDescription(run, type)}
               aria-label={`Use ${POTIONS[type].name}`}
               disabled={
                 ai ||
                 run.phase === "ended" ||
-                (type === "heal" && run.lives === 3) ||
+                (type === "heal" && run.lives >= maxLives(run)) ||
                 (type !== "heal" && run.phase !== "battle")
               }
               onClick={() => potion(index)}
@@ -466,9 +537,50 @@ export function Expedition() {
               {POTIONS[type].name}
             </button>
           ))}
-          {!run.potions.length && <small>Empty potion belt · 0/3</small>}
+          <small>
+            {!run.potions.length ? "Empty potion belt · " : ""}
+            {run.potions.length}/{beltSize} slots
+          </small>
         </div>
       </div>
+      <section className="relic-shelf" aria-label="Your relics">
+        <div className="section-heading">
+          <h2>
+            Relics · {(run.relics || []).length}/{RELIC_IDS.length}
+          </h2>
+          <button className="text-button" onClick={() => setRelicGuide(true)}>
+            Relic guide · {RELIC_IDS.length}
+          </button>
+        </div>
+        {run.relics?.length ? (
+          <div className="owned-relics">
+            {run.relics.map((id) => {
+              const Icon = RELIC_ICONS[id],
+                spent = run.spentRelics?.includes(id);
+              return (
+                <button
+                  key={id}
+                  className={spent ? "spent" : ""}
+                  title={RELICS[id].description}
+                  onClick={() => setRelicDetail(id)}
+                  aria-label={`Inspect relic ${RELICS[id].name}`}
+                >
+                  <Icon size={21} />
+                  <span>
+                    {RELICS[id].name}
+                    {spent && <small>Spent</small>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p>
+            Win your first battle, secure chests, defeat elites, visit the
+            Reliquary, or buy a relic from a merchant.
+          </p>
+        )}
+      </section>
       {(error || storageError) && (
         <p className="adventure-error" role="alert">
           {error || storageError}
@@ -599,8 +711,8 @@ export function Expedition() {
             <p className="run-objective">
               <Crown size={17} />
               {battle.objectiveKind === "chest"
-                ? `Hold the chest at ${coordinate(battle.objective, run.size)} at the finish: +45 gold.`
-                : `Win the score AND hold the throne at ${coordinate(battle.objective, run.size)}. The Warden starts with two guards.`}
+                ? `Hold the chest at ${coordinate(battle.objective, run.size)} at the finish: +${45 + (hasRelic(run, "treasure-magnet") ? 30 : 0)} gold before percentage bonuses.`
+                : `Win the score AND hold the throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
             </p>
           )}
           <div
@@ -658,6 +770,38 @@ export function Expedition() {
               </button>
             ))}
           </div>
+          {hasRelic(run, "oracles-eye") && (
+            <section className="oracle-hand">
+              <h3>Oracle’s Eye · keeper’s hand</h3>
+              <div className="run-hand">
+                {battle.hands[1].map((stone) => (
+                  <button
+                    className="run-enemy-card"
+                    key={stone.id}
+                    onClick={(e) =>
+                      look(stone, e.currentTarget, undefined, true, 1)
+                    }
+                    onPointerEnter={(e) =>
+                      e.pointerType !== "touch" &&
+                      look(stone, e.currentTarget, undefined, false, 1)
+                    }
+                    onPointerLeave={() => setInspection(null)}
+                    onFocus={(e) =>
+                      e.currentTarget.matches(":focus-visible") &&
+                      look(stone, e.currentTarget, undefined, false, 1)
+                    }
+                    onBlur={() => setInspection(null)}
+                  >
+                    <StoneCard
+                      stone={stone}
+                      owner={1}
+                      edges={evaluateKeywords(stone, battle.board, 1).edges}
+                    />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
           <div className="run-hand-heading">
             <h3>Your hand · {battle.hands[0].length} cards</h3>
             <span>{battle.hands[1].length} keeper cards remain</span>
@@ -685,7 +829,13 @@ export function Expedition() {
               >
                 <StoneCard
                   stone={stone}
-                  edges={evaluateKeywords(stone, battle.board, 0).edges}
+                  edges={
+                    evaluateKeywords(
+                      adventureStoneForPlay(run, stone),
+                      battle.board,
+                      0,
+                    ).edges
+                  }
                   selected={selected === index}
                 />
               </button>
@@ -728,7 +878,8 @@ export function Expedition() {
                     act((current) => resolveAdventureEvent(current, "fight"))
                   }
                 >
-                  Challenge the chest keeper · hold chest for +45 gold
+                  Challenge the chest keeper · hold chest for +
+                  {45 + (hasRelic(run, "treasure-magnet") ? 30 : 0)} gold
                 </button>
                 <button
                   className="button button-outline"
@@ -743,7 +894,7 @@ export function Expedition() {
               <>
                 <button
                   className="button button-dark"
-                  disabled={run.lives === 3}
+                  disabled={run.lives >= maxLives(run)}
                   onClick={() =>
                     act((current) => resolveAdventureEvent(current, "heal"))
                   }
@@ -757,7 +908,7 @@ export function Expedition() {
                     act((current) => resolveAdventureEvent(current, "gold"))
                   }
                 >
-                  Offer 1 life · gain 40 gold
+                  Offer 1 life · gain {earnedGold(run, 40)} gold
                 </button>
                 <button
                   className="text-button"
@@ -768,11 +919,36 @@ export function Expedition() {
                   Walk away
                 </button>
               </>
+            ) : run.node.id === "whirling-idol" ? (
+              <div className="dizzy-event-card">
+                <StoneCard stone={dizzyEventCard(run)} />
+                <KeywordDetails stone={dizzyEventCard(run)} />
+                <button
+                  className="button button-dark"
+                  onClick={() =>
+                    act((current) =>
+                      resolveAdventureEvent(current, "dizzy-card"),
+                    )
+                  }
+                >
+                  Claim Whirling Idol · 12 pips
+                </button>
+                <button
+                  className="button button-outline"
+                  onClick={() =>
+                    act((current) => resolveAdventureEvent(current, "leave"))
+                  }
+                >
+                  Leave the idol
+                </button>
+              </div>
+            ) : run.node.id === "reliquary" ? (
+              relicChoices(true)
             ) : run.node.kind === "camp" ? (
               <>
                 <button
                   className="button button-dark"
-                  disabled={run.lives === 3}
+                  disabled={run.lives >= maxLives(run)}
                   onClick={() =>
                     act((current) => resolveAdventureEvent(current, "heal"))
                   }
@@ -824,13 +1000,13 @@ export function Expedition() {
                     <button
                       className="button button-outline potion-event"
                       key={type}
-                      disabled={run.potions.length >= 3}
+                      disabled={run.potions.length >= beltSize}
                       onClick={() =>
                         act((current) => resolveAdventureEvent(current, type))
                       }
                     >
                       <strong>{POTIONS[type].name}</strong>
-                      <span>{POTIONS[type].description}</span>
+                      <span>{potionDescription(run, type)}</span>
                     </button>
                   ),
                 )}
@@ -858,7 +1034,9 @@ export function Expedition() {
             </div>
           </div>
           <h3>Stones for sale</h3>
-          <div className="shop-stock">
+          <div
+            className={`shop-stock ${hasRelic(run, "market-map") ? "expanded-stock" : ""}`}
+          >
             {run.shopCards.map((stone) => (
               <article className="shop-card" key={stone.id}>
                 <button
@@ -870,35 +1048,53 @@ export function Expedition() {
                 </button>
                 <button
                   className="button button-outline"
-                  disabled={run.gold < cardPrice(stone)}
+                  disabled={run.gold < cardPrice(stone, run)}
                   onClick={() =>
                     act((current) => buyAdventureCard(current, stone.id))
                   }
                 >
-                  Buy card · {cardPrice(stone)} gold
+                  Buy card · {cardPrice(stone, run)} gold
                 </button>
               </article>
             ))}
             {!run.shopCards.length && <p>Every stone has found a traveler.</p>}
           </div>
-          <h3>Potions · belt capacity 3</h3>
+          <h3>A relic for the road</h3>
+          {run.shopRelic ? (
+            <div className="shop-relic-stock">
+              <RelicCard id={run.shopRelic}>
+                <button
+                  className="button button-outline"
+                  disabled={run.gold < shopPrice(run, RELIC_PRICE)}
+                  onClick={() =>
+                    act((current) => buyAdventureRelic(current, run.shopRelic!))
+                  }
+                >
+                  Buy relic · {shopPrice(run, RELIC_PRICE)} gold
+                </button>
+              </RelicCard>
+            </div>
+          ) : (
+            <p>No relic remains for sale at this shop.</p>
+          )}
+          <h3>Potions · belt capacity {beltSize}</h3>
           <div className="shop-potions">
             {run.shopPotions.map((item) => (
               <article key={item.id}>
                 <FlaskConical size={24} />
                 <h4>{POTIONS[item.type].name}</h4>
-                <p>{POTIONS[item.type].description}</p>
+                <p>{potionDescription(run, item.type)}</p>
                 <button
                   className="button button-outline"
                   disabled={
-                    run.gold < POTIONS[item.type].price ||
-                    run.potions.length >= 3
+                    run.gold < shopPrice(run, POTIONS[item.type].price) ||
+                    run.potions.length >= beltSize
                   }
                   onClick={() =>
                     act((current) => buyAdventurePotion(current, item.id))
                   }
                 >
-                  Buy potion · {POTIONS[item.type].price} gold
+                  Buy potion · {shopPrice(run, POTIONS[item.type].price)} gold
                 </button>
               </article>
             ))}
@@ -928,14 +1124,18 @@ export function Expedition() {
                 }}
               >
                 <option value="pip">
-                  Sharpen · +1 {SIDE_NAMES[shopOffer.pipSide]} pip · 25 gold
+                  Sharpen · +{hasRelic(run, "whetstone-ring") ? 2 : 1}{" "}
+                  {SIDE_NAMES[shopOffer.pipSide]} pips · {shopPrice(run, 25)}{" "}
+                  gold
                 </option>
                 <option value="element">
-                  Reforge · change element · 20 gold
+                  Reforge · change element{" "}
+                  {hasRelic(run, "elemental-prism") ? "+ weakest-edge pip" : ""}{" "}
+                  · {shopPrice(run, 20)} gold
                 </option>
                 <option value="keyword">
                   Inscribe · {KEYWORD_RULES[offeredKeyword.type].name} ·{" "}
-                  {keywordDirection} · 35 gold
+                  {keywordDirection} · {shopPrice(run, 35)} gold
                 </option>
               </select>
             </label>
@@ -964,7 +1164,9 @@ export function Expedition() {
                 </h4>
                 <p>
                   Randomly rolled for this shop visit. Choose a stone to receive
-                  this exact keyword and direction.
+                  this exact keyword and direction.{" "}
+                  {hasRelic(run, "rune-echo") &&
+                    "Rune Echo also inscribes the opposite edge when available."}
                 </p>
                 <KeywordDetails
                   stone={{ ...selectedService, keywords: [offeredKeyword] }}
@@ -981,7 +1183,10 @@ export function Expedition() {
             {service === "pip" && (
               <section className="workshop-offer" aria-label="Shop pip offer">
                 <div className="eyebrow">THIS SHOP’S SHARPENING</div>
-                <h4>+1 pip · {SIDE_NAMES[shopOffer.pipSide]}</h4>
+                <h4>
+                  +{hasRelic(run, "whetstone-ring") ? 2 : 1} pips ·{" "}
+                  {SIDE_NAMES[shopOffer.pipSide]}
+                </h4>
                 <p>
                   This direction was randomly rolled for the visit. Choose which
                   stone gains the pip.
@@ -1015,12 +1220,12 @@ export function Expedition() {
             <button
               className="button button-dark"
               disabled={
-                run.gold < SERVICE_PRICES[service] ||
+                run.gold < shopPrice(run, SERVICE_PRICES[service]) ||
                 (service === "keyword" && !canInscribe) ||
                 (service === "pip" && !canSharpen)
               }
             >
-              Buy upgrade · {SERVICE_PRICES[service]} gold
+              Buy upgrade · {shopPrice(run, SERVICE_PRICES[service])} gold
             </button>
           </form>
           <button
@@ -1034,49 +1239,65 @@ export function Expedition() {
       )}
       {run.phase === "reward" && (
         <section className="run-panel run-rewards">
-          <div className="eyebrow">THE ROAD REWARDS THE BRAVE</div>
-          <h2>
-            {run.rewards.length
-              ? "Choose a stone for your pack."
-              : "A lesson for the road."}
-          </h2>
-          <p>
-            Gold is already in your purse. Card rewards grow stronger as you
-            climb. New stones must be swapped into your expedition deck.
-          </p>
-          <div className="reward-options">
-            {run.rewards.map((stone) => (
-              <article key={stone.id}>
-                <button
-                  className="run-card-preview"
-                  onClick={() => setCard(stone)}
-                  aria-label={`Inspect reward ${stone.name}`}
-                >
-                  <StoneCard stone={stone} />
-                </button>
-                <span>
-                  {stone.edges.reduce((a, b) => a + b, 0)} printed pips
-                </span>
-                <button
-                  className="button button-dark"
-                  onClick={() => {
-                    setDeckOpen(true);
-                    act((current) => claimAdventureReward(current, stone.id));
-                  }}
-                >
-                  Take {stone.name}
-                </button>
-              </article>
-            ))}
-          </div>
-          <button
-            className="button button-outline"
-            onClick={() =>
-              act((current) => claimAdventureReward(current, null))
-            }
-          >
-            {run.rewards.length ? "Skip card reward" : "Continue expedition"}
-          </button>
+          {pendingRelic ? (
+            relicChoices()
+          ) : (
+            <>
+              <div className="eyebrow">THE ROAD REWARDS THE BRAVE</div>
+              <h2>
+                {run.rewards.length
+                  ? `Choose ${picksLeft > 1 ? `${picksLeft} stones` : "a stone"} for your pack.`
+                  : "A lesson for the road."}
+              </h2>
+              <p>
+                Gold is already in your purse. Card rewards grow stronger as you
+                climb. New stones must be swapped into your expedition deck.
+              </p>
+              {!!run.rewards.length && (
+                <p className="reward-picks" role="status">
+                  {picksLeft} card pick{picksLeft === 1 ? "" : "s"} remaining ·{" "}
+                  {run.rewards.length} choices
+                </p>
+              )}
+              <div className="reward-options">
+                {run.rewards.map((stone) => (
+                  <article key={stone.id}>
+                    <button
+                      className="run-card-preview"
+                      onClick={() => setCard(stone)}
+                      aria-label={`Inspect reward ${stone.name}`}
+                    >
+                      <StoneCard stone={stone} />
+                    </button>
+                    <span>
+                      {stone.edges.reduce((a, b) => a + b, 0)} printed pips
+                    </span>
+                    <button
+                      className="button button-dark"
+                      onClick={() => {
+                        setDeckOpen(picksLeft <= 1);
+                        act((current) =>
+                          claimAdventureReward(current, stone.id),
+                        );
+                      }}
+                    >
+                      Take {stone.name}
+                    </button>
+                  </article>
+                ))}
+              </div>
+              <button
+                className="button button-outline"
+                onClick={() =>
+                  act((current) => claimAdventureReward(current, null))
+                }
+              >
+                {run.rewards.length
+                  ? "Skip card reward"
+                  : "Continue expedition"}
+              </button>
+            </>
+          )}
         </section>
       )}
       {run.phase === "ended" && (
@@ -1095,7 +1316,7 @@ export function Expedition() {
           <p>
             {run.victory
               ? "You won the score and seized the throne. The Warden yields."
-              : "Your three lives are spent. A new journey begins with a new little deck."}
+              : "Your lives are spent. A new journey begins with a new little deck."}
           </p>
           <p>
             {run.gold} gold · {run.inventory.length} stones collected ·{" "}
@@ -1129,7 +1350,7 @@ export function Expedition() {
           onClose={() => setPotionTarget(null)}
         >
           <h2>{POTIONS[run.potions[potionTarget]].name}</h2>
-          <p>{POTIONS[run.potions[potionTarget]].description}</p>
+          <p>{potionDescription(run, run.potions[potionTarget])}</p>
           <div className="potion-targets">
             {run.potions[potionTarget] === "power"
               ? battle.hands[0].map((stone) => (
@@ -1204,10 +1425,45 @@ export function Expedition() {
           <InspectionDetails inspection={inspected} />
         </RunDialog>
       )}
+      {relicGuide && (
+        <RunDialog title="Relic guide" onClose={() => setRelicGuide(false)}>
+          <div className="eyebrow">FIFTEEN ANCIENT TREASURES</div>
+          <h2>Relics for the road.</h2>
+          <p>
+            Earn relics from your first victory, secured chests, elite
+            victories, and the Reliquary, or buy one from a merchant. You can
+            own each relic once.
+          </p>
+          <div className="relic-guide-grid">
+            {RELIC_IDS.map((id) => (
+              <RelicCard
+                key={id}
+                id={id}
+                owned={hasRelic(run, id)}
+                spent={run.spentRelics?.includes(id)}
+              />
+            ))}
+          </div>
+        </RunDialog>
+      )}
+      {relicDetail && (
+        <RunDialog
+          title={`Relic ${RELICS[relicDetail].name}`}
+          onClose={() => setRelicDetail(null)}
+        >
+          <RelicCard
+            id={relicDetail}
+            owned
+            spent={run.spentRelics?.includes(relicDetail)}
+          />
+        </RunDialog>
+      )}
       {inspection &&
         !target &&
         !card &&
         !inspected &&
+        !relicGuide &&
+        !relicDetail &&
         potionTarget === null && <CardInspector inspection={inspection} />}
       <p className="field-note adventure-save-note">
         Your progress saves after each choice and move. You can return to normal

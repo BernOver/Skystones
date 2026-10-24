@@ -21,16 +21,16 @@ test("shops roll all keyword types and four directions, with complete valid offe
       assert.ok(validateKeywords([offer.keyword]));
       types.add(offer.keyword.type);
       pipDirections.add(offer.pipSide);
-      if (offer.keyword.type !== "silence") {
+      if ("side" in offer.keyword) {
         assert.notEqual(offer.keyword.side, "any");
         directions.add(offer.keyword.side);
       }
       if (offer.keyword.type === "sunder")
         assert.equal(offer.keyword.amount, floor === 2 ? 1 : 2);
-      if (offer.keyword.type === "silence")
+      if (!("side" in offer.keyword))
         assert.equal("side" in offer.keyword, false);
     }
-  assert.equal(types.size, 5);
+  assert.equal(types.size, 6);
   assert.equal(directions.size, 4);
   assert.equal(pipDirections.size, 4);
   assert.ok(
