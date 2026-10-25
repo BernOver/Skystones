@@ -15,7 +15,7 @@ import type { Board, Edges, Side, Stone, StoneKeyword } from "../src/game.ts";
 const card = (
   keywords: StoneKeyword[] = [],
   edges: Edges = [2, 2, 2, 2],
-): Stone => ({ ...STARTER_STONES[0], id: "custom-effect", keywords, edges });
+): Stone => ({ ...STARTER_STONES[0], id: "custom-effect", element: "fire", keywords, edges });
 const choice = (keywordIndex: number, boardIndex: number) => ({
   keywordIndex,
   boardIndex,

@@ -223,22 +223,22 @@ test("relics can be bought in a shop and discounts affect relics, potions, cards
     .click();
   expect((await stored(page)).gold).toBe(120);
   await page
-    .getByRole("button", { name: "Buy card · 31 gold", exact: true })
+    .getByRole("button", { name: "Buy card · 28 gold", exact: true })
     .first()
     .click();
-  expect((await stored(page)).gold).toBe(89);
+  expect((await stored(page)).gold).toBe(92);
   await page
     .getByRole("button", { name: "Buy upgrade · 20 gold", exact: true })
     .click();
-  expect((await stored(page)).gold).toBe(69);
+  expect((await stored(page)).gold).toBe(72);
   await page.getByLabel("Workshop service").selectOption("keyword");
   await page
     .getByRole("button", { name: "Buy upgrade · 28 gold", exact: true })
     .click();
-  expect((await stored(page)).gold).toBe(41);
+  expect((await stored(page)).gold).toBe(44);
   await page.reload();
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
-  expect((await stored(page)).gold).toBe(41);
+  expect((await stored(page)).gold).toBe(44);
   expect((await stored(page)).relics).toEqual([
     "hagglers-coin",
     "travelers-satchel",

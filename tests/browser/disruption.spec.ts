@@ -157,9 +157,9 @@ async function play(
 async function prepareBoard(page: import("@playwright/test").Page) {
   for (const [name, coordinate] of [
     ["Beacon", "A2"],
-    ["Cloudpaws", "C3"],
+    ["Whirlwind", "C3"],
     ["Champion", "B2"],
-    ["Glowcap", "C2"],
+    ["Shroomboom", "C2"],
   ])
     await play(page, name, coordinate);
 }
@@ -171,7 +171,9 @@ test("target selection supports canceling, Sunder reaches zero, and Silence enab
   page.on("pageerror", (error) => errors.push(error.message));
   await setup(page);
   await prepareBoard(page);
-  await expect(page.locator("#board-4 .edge-3 b")).toHaveText("3");
+  await expect(
+    page.locator("#board-4 .capture-flip-back .edge-3 b"),
+  ).toHaveText("3");
   await play(page, "Breaker", "A1");
   let dialog = page.getByRole("dialog", { name: "Choose keyword target" });
   await expect(dialog).toContainText("Sunder: choose a card");
@@ -179,7 +181,7 @@ test("target selection supports canceling, Sunder reaches zero, and Silence enab
     dialog.getByRole("button", { name: "A1, placing here", exact: true }),
   ).toBeDisabled();
   await expect(
-    dialog.getByRole("button", { name: /Target C2: Glowcap/ }),
+    dialog.getByRole("button", { name: /Target C2: Shroomboom/ }),
   ).toContainText("North 1 → 0");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
@@ -197,7 +199,7 @@ test("target selection supports canceling, Sunder reaches zero, and Silence enab
     .getByRole("button", { name: "A1, empty square", exact: true })
     .click();
   dialog = page.getByRole("dialog", { name: "Choose keyword target" });
-  await dialog.getByRole("button", { name: /Target C2: Glowcap/ }).click();
+  await dialog.getByRole("button", { name: /Target C2: Shroomboom/ }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("#board-7 .edge-0 b")).toHaveText("0");
   await page.locator("#board-7").click();
@@ -205,25 +207,31 @@ test("target selection supports canceling, Sunder reaches zero, and Silence enab
     "Sunder applied: North −1",
   );
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await play(page, "Moonwatch", "C1");
+  await play(page, "Jet-Vac", "C1");
   await play(page, "Muter", "B1");
   dialog = page.getByRole("dialog", { name: "Choose keyword target" });
   await expect(dialog).toContainText("Silence: choose a card");
   await expect(
-    dialog.getByRole("button", { name: /Target C1: Moonwatch/ }),
+    dialog.getByRole("button", { name: /Target C1: Jet-Vac/ }),
   ).toBeDisabled();
   await dialog.getByRole("button", { name: /Target B2: Champion/ }).click();
   await expect(page.locator("#board-4")).toHaveAccessibleName(
     /controlled by Player one/,
   );
-  await expect(page.locator("#board-4 .silenced-label")).toHaveText("Silenced");
-  await expect(page.locator("#board-4 .edge-3 b")).toHaveText("2");
+  await expect(
+    page.locator("#board-4 .capture-flip-back .silenced-label"),
+  ).toHaveText("Silenced");
+  await expect(
+    page.locator("#board-4 .capture-flip-back .edge-3 b"),
+  ).toHaveText("2");
   await expect(page.locator("#board-7 .edge-0 b")).toHaveText("0");
-  await play(page, "Cinder", "B3");
+  await play(page, "Flameslinger", "B3");
   await expect(page.locator("#board-4")).toHaveAccessibleName(
     /controlled by Player two/,
   );
-  await expect(page.locator("#board-4 .silenced-label")).toHaveText("Silenced");
+  await expect(
+    page.locator("#board-4 .capture-flip-back .silenced-label"),
+  ).toHaveText("Silenced");
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.locator("#board-4").hover();
   await expect(
@@ -244,11 +252,11 @@ test("multiple on-play effects resolve in listed order with preview changes and 
   await prepareBoard(page);
   await play(page, "Breaker", "A1");
   let dialog = page.getByRole("dialog", { name: "Choose keyword target" });
-  await dialog.getByRole("button", { name: /Target C2: Glowcap/ }).click();
+  await dialog.getByRole("button", { name: /Target C2: Shroomboom/ }).click();
   await expect(dialog).toContainText("Silence: choose a card");
   await expect(
     dialog
-      .getByRole("button", { name: /Target C2: Glowcap/ })
+      .getByRole("button", { name: /Target C2: Shroomboom/ })
       .locator(".edge-0 b"),
   ).toHaveText("0");
   await page.keyboard.press("Escape");
@@ -258,7 +266,7 @@ test("multiple on-play effects resolve in listed order with preview changes and 
     .getByRole("button", { name: "A1, empty square", exact: true })
     .click();
   dialog = page.getByRole("dialog", { name: "Choose keyword target" });
-  await dialog.getByRole("button", { name: /Target C2: Glowcap/ }).click();
+  await dialog.getByRole("button", { name: /Target C2: Shroomboom/ }).click();
   await dialog.getByRole("button", { name: /Target B2: Champion/ }).click();
   await expect(dialog).toContainText("Sunder: choose a card");
   await expect(
@@ -268,7 +276,9 @@ test("multiple on-play effects resolve in listed order with preview changes and 
   ).toHaveText("2");
   await dialog.getByRole("button", { name: /Target B2: Champion/ }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.locator("#board-4 .edge-3 b")).toHaveText("1");
+  await expect(
+    page.locator("#board-4 .capture-flip-back .edge-3 b"),
+  ).toHaveText("1");
   await expect(page.locator("#board-7 .edge-0 b")).toHaveText("0");
   await page.locator("#board-0").click();
   await expect(

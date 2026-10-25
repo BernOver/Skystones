@@ -109,11 +109,11 @@ test("hand previews count three matching cards and the board keeps that count wh
   await page.getByRole("button", { name: "Find a little magic" }).click();
   const sequence: [string, string][] = [
     ["Fire A", "A1"],
-    ["Cloudpaws", "C3"],
+    ["Whirlwind", "C3"],
     ["Fire B", "A2"],
-    ["Glowcap", "C2"],
+    ["Shroomboom", "C2"],
     ["Fire C", "A3"],
-    ["Moonwatch", "C1"],
+    ["Jet-Vac", "C1"],
   ];
   for (const [name, square] of sequence) {
     await page
@@ -136,7 +136,7 @@ test("hand previews count three matching cards and the board keeps that count wh
   await page
     .getByRole("button", { name: "B1, empty square", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Select Cinder,/ }).click();
+  await page.getByRole("button", { name: /^Select Flameslinger,/ }).click();
   await page
     .getByRole("button", { name: "B2, empty square", exact: true })
     .click();

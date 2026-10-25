@@ -10,6 +10,8 @@ import {
   Shuffle,
   Scissors,
   VolumeX,
+  Shield,
+  Link,
 } from "lucide-react";
 import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
@@ -25,6 +27,8 @@ import type {
   Stone,
   TargetEffect,
   BoardSize,
+  BasicKeyword,
+  Element,
 } from "./game";
 
 export interface Inspection {
@@ -43,6 +47,10 @@ export interface Inspection {
   effects?: TargetEffect[];
   dizzy?: { before: Edges; after: Edges };
   size?: BoardSize;
+  shields?: Edges;
+  comboActive?: boolean;
+  comboPrevious?: Element;
+  grantedKeywords?: BasicKeyword[];
 }
 
 export function KeywordDetails({
@@ -53,6 +61,8 @@ export function KeywordDetails({
   effects,
   dizzy,
   size = 3,
+  comboActive,
+  comboPrevious,
 }: {
   stone: Stone;
   activeKeywords?: ActiveKeyword[];
@@ -61,6 +71,8 @@ export function KeywordDetails({
   effects?: TargetEffect[];
   dizzy?: { before: Edges; after: Edges };
   size?: BoardSize;
+  comboActive?: boolean;
+  comboPrevious?: Element;
 }) {
   return (
     <div className={`keyword-details ${silenced ? "keywords-disabled" : ""}`}>
@@ -77,6 +89,97 @@ export function KeywordDetails({
       {keywordGroups(stone.keywords || []).map(
         ({ type, keywords }, groupIndex) => {
           if (!keywords.length) return null;
+          if (type === "shield")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Shield size={15} />
+                  <strong>Shield</strong>
+                  <span>Defense only</span>
+                </div>
+                <p>
+                  Each shield pip adds 1 to its edge{" "}
+                  <strong>only when defending against a capture</strong>. It
+                  never adds attack strength and is not spent when attacked.
+                  Ties still defend.
+                </p>
+                <span className="keyword-status">
+                  {keywords
+                    .flatMap((keyword) =>
+                      keyword.type === "shield"
+                        ? [
+                            `${SIDE_NAMES[keyword.side]} +${keyword.amount ?? 1} defense`,
+                          ]
+                        : [],
+                    )
+                    .join(" · ")}
+                  {silenced
+                    ? " · removed by Silence"
+                    : " · stays through captures"}
+                </span>
+              </section>
+            );
+          if (type === "combo") {
+            const combo = keywords.find((keyword) => keyword.type === "combo");
+            if (!combo || combo.type !== "combo") return null;
+            return (
+              <section className="keyword-rule combo-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Link size={15} />
+                  <strong>Combo</strong>
+                  <span>Same element</span>
+                </div>
+                <p>
+                  Before placement, check{" "}
+                  <strong>the last card you played</strong>. If it has the same
+                  element as this card, gain the following pips and keywords
+                  once, before captures. Your first card cannot activate Combo.
+                  Opponent plays and changes of ownership do not change your
+                  previous play.
+                </p>
+                {!!combo.pips?.length && (
+                  <p>
+                    <strong>
+                      {combo.pips
+                        .map(
+                          (pip) =>
+                            `${SIDE_NAMES[pip.side]} +${pip.amount} pip${pip.amount === 1 ? "" : "s"}`,
+                        )
+                        .join(" · ")}
+                    </strong>
+                  </p>
+                )}
+                <span
+                  className={`keyword-status ${comboActive && !silenced ? "is-active" : ""}`}
+                >
+                  {silenced
+                    ? "Disabled by Silence · Combo pips and granted keywords removed"
+                    : comboActive === undefined
+                      ? "Matching your previous card activates these effects."
+                      : `${comboActive ? (played ? "Activated when played · bonuses locked in" : "Will activate if played now") : played ? "Did not activate when played" : "Will not activate if played now"}${comboPrevious ? ` · previous element: ${ELEMENTS[comboPrevious].name}` : " · no previous card"}`}
+                </span>
+                {!!combo.keywords?.length && (
+                  <div className="combo-granted-rules">
+                    <strong>Granted keywords</strong>
+                    <KeywordDetails
+                      stone={{ ...stone, keywords: combo.keywords }}
+                      played={played && !!comboActive}
+                      activeKeywords={comboActive ? activeKeywords : undefined}
+                      silenced={silenced}
+                      effects={comboActive ? effects : undefined}
+                      dizzy={dizzy}
+                      size={size}
+                    />
+                  </div>
+                )}
+                <small>
+                  Granted bonuses stay on this card. Targeted grants choose
+                  targets when played. Silence removes the bonuses; completed
+                  effects and captures stay.
+                </small>
+              </section>
+            );
+          }
           if (type === "dizzy")
             return (
               <section className="keyword-rule" key={groupIndex}>
@@ -413,6 +516,12 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           >
             <small>{side}</small>
             <strong>{edges[index]}</strong>
+            {!!inspection.shields?.[index] && !silenced && (
+              <span className="defense-stat">
+                Shield +{inspection.shields[index]} · defends{" "}
+                {edges[index] + inspection.shields[index]}
+              </span>
+            )}
             {edges[index] !== stone.edges[index] && (
               <span>
                 {stone.edges[index]}{" "}
@@ -443,6 +552,8 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         effects={effects}
         dizzy={dizzy}
         size={inspection.size}
+        comboActive={inspection.comboActive}
+        comboPrevious={inspection.comboPrevious}
       />
       {stone.description && (
         <div className="inspection-story">
@@ -509,6 +620,7 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
           stone={inspection.stone}
           edges={inspection.edges}
           silenced={inspection.silenced}
+          shields={inspection.shields}
         />
       </div>
       <h2>{inspection.stone.name}</h2>

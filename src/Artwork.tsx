@@ -9,8 +9,19 @@ import {
   Cog,
   Skull,
   CircleDot,
+  Sun,
+  Moon,
+  Shield,
 } from "lucide-react";
-import { ELEMENTS, KEYWORD_RULES, SIDE_LETTERS, keywordGroups } from "./game";
+import {
+  ELEMENTS,
+  KEYWORD_RULES,
+  SIDE_LETTERS,
+  keywordGroups,
+  shieldEdges,
+} from "./game";
+import { withCharacterPortrait } from "./characters";
+import { portraitImage } from "./portraits";
 import type { Creature, Edges, Element, Stone } from "./game";
 
 export const ELEMENT_ICONS = {
@@ -23,6 +34,8 @@ export const ELEMENT_ICONS = {
   tech: Cog,
   undead: Skull,
   neutral: CircleDot,
+  light: Sun,
+  dark: Moon,
 };
 
 export function CreatureArt({
@@ -528,6 +541,7 @@ export function StoneCard({
   faded = false,
   edges = stone.edges,
   silenced = false,
+  shields = shieldEdges(stone, silenced),
 }: {
   stone: Stone;
   owner?: 0 | 1;
@@ -536,9 +550,12 @@ export function StoneCard({
   faded?: boolean;
   edges?: Edges;
   silenced?: boolean;
+  shields?: Edges;
 }) {
   const element = ELEMENTS[stone.element];
   const Icon = ELEMENT_ICONS[stone.element];
+  const artwork =
+    stone.image || portraitImage(withCharacterPortrait(stone).portrait);
   return (
     <div
       className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
@@ -551,11 +568,11 @@ export function StoneCard({
       }
     >
       <div className="stone-art">
-        {stone.image ? (
+        {artwork ? (
           <img
-            src={stone.image}
+            src={artwork}
             alt=""
-            className={`uploaded-art ${stone.origin === "giants" ? "giants-art" : ""}`}
+            className={`uploaded-art ${withCharacterPortrait(stone).portrait ? "character-art" : stone.origin === "giants" ? "giants-art" : ""}`}
           />
         ) : (
           <CreatureArt creature={stone.creature} element={stone.element} />
@@ -566,6 +583,15 @@ export function StoneCard({
             key={i}
           >
             <b>{edge}</b>
+            {!!shields[i] && !silenced && (
+              <small
+                className="shield-pip"
+                aria-label={`${shields[i]} defense-only shield pips`}
+              >
+                <Shield size={12} fill="currentColor" />
+                <strong>+{shields[i]}</strong>
+              </small>
+            )}
             <span className="edge-spikes">
               {Array.from({ length: edge }, (_, n) => (
                 <i key={n} />
@@ -606,10 +632,14 @@ export function StoneCard({
                   <b>
                     {matches
                       .map((keyword) =>
-                        keyword.type === "silence" || keyword.type === "dizzy"
+                        keyword.type === "silence" ||
+                        keyword.type === "dizzy" ||
+                        keyword.type === "combo"
                           ? keyword.type === "dizzy"
                             ? "AFTER PLAY"
-                            : "ON PLAY"
+                            : keyword.type === "combo"
+                              ? "SAME ELEMENT"
+                              : "ON PLAY"
                           : keyword.side === "any"
                             ? "ANY EDGE"
                             : SIDE_LETTERS[keyword.side],

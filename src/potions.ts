@@ -241,14 +241,26 @@ function boardCell(run: Adventure, target: unknown) {
     : undefined;
 }
 export function rotatedPotionStone(stone: Stone): Stone {
+  const rotate = (keyword: StoneKeyword): StoneKeyword =>
+    keyword.type === "combo"
+      ? {
+          ...keyword,
+          pips: keyword.pips?.map((pip) => ({
+            ...pip,
+            side: ((pip.side + 1) % 4) as Side,
+          })),
+          keywords: keyword.keywords?.map(
+            (grant) =>
+              rotate(grant) as Exclude<StoneKeyword, { type: "combo" }>,
+          ),
+        }
+      : "side" in keyword && keyword.side !== "any"
+        ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
+        : { ...keyword };
   return {
     ...stone,
     edges: [stone.edges[3], stone.edges[0], stone.edges[1], stone.edges[2]],
-    keywords: (stone.keywords || []).map((keyword): StoneKeyword =>
-      "side" in keyword && keyword.side !== "any"
-        ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
-        : { ...keyword },
-    ),
+    keywords: (stone.keywords || []).map(rotate),
   };
 }
 function rotationChanges(stone: Stone) {

@@ -110,7 +110,7 @@ test("four-by-four games finish in sixteen moves using eight-card hands", () => 
     16,
   );
 });
-test("adventures start with stronger four-to-five-pip cards, weak early enemies, correct hand sizes, and growing rewards", () => {
+test("adventures start with modest two-to-three-pip cards, weak early enemies, correct hand sizes, and growing rewards", () => {
   for (const size of [3, 4] as BoardSize[]) {
     const run = newAdventure(size, 42);
     assert.equal(run.deck.length, handSize(size));
@@ -119,9 +119,8 @@ test("adventures start with stronger four-to-five-pip cards, weak early enemies,
     assert.ok(
       run.inventory.every(
         (stone) =>
-          [4, 5].includes(stone.edges.reduce((a, b) => a + b, 0)) &&
+          [2, 3].includes(stone.edges.reduce((a, b) => a + b, 0)) &&
           stone.edges.every((edge) => edge >= 0 && edge <= 2) &&
-          stone.edges.includes(2) &&
           stone.edges.includes(1) &&
           stone.edges.includes(0),
       ),
@@ -136,11 +135,11 @@ test("adventures start with stronger four-to-five-pip cards, weak early enemies,
     );
     assert.equal(validateAdventure(battle), true);
     let previous = 0;
-    for (let floor = 0; floor < 9; floor++) {
+    for (let floor = 0; floor < ROUTE.length; floor++) {
       const offers = rewardCards({ ...run, floor });
       const budget = offers[0].edges.reduce((a, b) => a + b, 0);
       assert.ok(budget >= previous);
-      assert.equal(budget, Math.min(12, 4 + floor));
+      assert.equal(budget, Math.min(12, 4 + Math.floor(floor * 0.5)));
       assert.ok(offers.every(validateStone));
       assert.deepEqual(offers, rewardCards({ ...run, floor }));
       previous = budget;
@@ -219,8 +218,12 @@ test("the boss begins with only its throne and requires both throne control and 
       size ** 2 - 1,
       0,
     );
-    assert.equal(won.phase, "ended");
-    assert.equal(won.victory, true);
+    assert.equal(won.phase, "reward");
+    assert.equal(won.victory, false);
+    assert.equal(won.battle?.bossWon, true);
+    const onward = claimAdventureReward(claimAdventureRelic(won, null), null);
+    assert.equal(onward.floor, 9);
+    assert.equal(onward.phase, "map");
     owners[battle.battle!.objective!] = 1;
     const failed = playAdventureCard(
       almostFinished(battle, owners),

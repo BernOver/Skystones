@@ -6,6 +6,8 @@ import {
   newAdventure,
   resolveAdventureEvent,
   adventureWorkshopOffer,
+  cardPrice,
+  POTIONS,
 } from "../../src/adventure.ts";
 import type { Adventure } from "../../src/adventure.ts";
 import { chooseMove, coordinate, STARTER_STONES } from "../../src/game.ts";
@@ -61,65 +63,49 @@ test("normal four-by-four games use eight-card decks, finish sixteen squares, an
   await expect(page.locator(".deck-count")).toContainText("5 / 5");
 });
 
-test("Giants catalogue has 81 playable stones, original images, strong original stats, and eight extra art presets", async ({
+test("Giants catalogue consolidates ranks, bundles character images and the studio offers unused portraits", async ({
   page,
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /^Collection/ }).click();
   await page.getByRole("button", { name: /^Giants/ }).click();
-  await expect(page.locator(".collection-card-button")).toHaveCount(81);
+  await expect(page.locator(".collection-card-button")).toHaveCount(39);
   await expect(page.locator(".giants-reference-note")).toContainText(
-    "Bark Demon",
+    "one card per character",
   );
   await page
     .getByRole("button", { name: "View CONQUERTRON", exact: true })
     .click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.locator(".edge b")).toHaveText(["4", "4", "4", "4"]);
+  await expect(page.getByRole("dialog").locator(".edge b")).toHaveText([
+    "4",
+    "4",
+    "4",
+    "4",
+  ]);
   expect(
-    await dialog
-      .locator("img.giants-art")
+    await page
+      .getByRole("dialog")
+      .locator("img.character-art")
       .evaluate(
         (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
       ),
   ).toBe(true);
-  const pending = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export card file" }).click();
-  const stream = await (await pending).createReadStream(),
-    chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(chunk);
-  const buffer = Buffer.concat(chunks);
-  expect(JSON.parse(buffer.toString()).card.edges).toEqual([4, 4, 4, 4]);
-  await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByLabel("Import card file").setInputFiles({
-    name: "conquertron.skystone.json",
-    mimeType: "application/json",
-    buffer,
-  });
-  await expect(
-    page.getByRole("button", { name: "View CONQUERTRON", exact: true }),
-  ).toHaveCount(1);
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Card studio", exact: true }).click();
-  for (const name of [
-    "Slime",
-    "Bat",
-    "Spider",
-    "Robot",
-    "Griffin",
-    "Crab",
-    "Serpent",
-    "Treasure chest",
-  ]) {
+  await page.getByLabel("Portraits without a default card").check();
+  await expect(page.locator(".portrait-grid button")).toHaveCount(116);
+  await page.getByLabel("Find a character portrait").fill("Dark Spyro");
+  await page
+    .getByRole("button", { name: "Use Dark Spyro portrait", exact: true })
+    .click();
+  await expect(page.getByLabel("Stone name")).toHaveValue("Dark Spyro");
+  expect(
     await page
-      .getByRole("button", { name: `Choose ${name} artwork`, exact: true })
-      .click();
-    await expect(
-      page.getByRole("button", { name: `Choose ${name} artwork`, exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
-      await page.locator(".preview-card .creature-art path").count(),
-    ).toBeGreaterThan(2);
-  }
+      .locator(".preview-card img")
+      .evaluate(
+        (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+      ),
+  ).toBe(true);
 });
 
 test("start, play and resume a four-by-four adventure, use a potion, claim a reward, and enter a chest event", async ({
@@ -254,7 +240,14 @@ test("shop purchases, all three workshop services, deck changes, and gold surviv
   current = await stored(page);
   expect(current.inventory[0].element).toBe(element);
   expect(current.inventory[0].keywords).toEqual([offer.keyword]);
-  expect(current.gold).toBe(220 - 38 - 25 - 25 - 20 - 35);
+  expect(current.gold).toBe(
+    220 -
+      cardPrice(run.shopCards[0]) -
+      POTIONS[run.shopPotions[0].type].price -
+      25 -
+      20 -
+      35,
+  );
   await page.reload();
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
   expect((await stored(page)).gold).toBe(current.gold);
@@ -360,13 +353,17 @@ for (const held of [true, false])
       .getByRole("button", { name: "D4, empty adventure square", exact: true })
       .click();
     if (held) {
-      await expect(
-        page.getByRole("heading", {
-          name: "A little legend, crowned.",
-          exact: true,
-        }),
-      ).toBeVisible();
-      expect((await stored(page)).victory).toBe(true);
+      await expect(page.locator(".run-message")).toContainText(
+        "Kaos is defeated",
+      );
+      expect((await stored(page)).victory).toBe(false);
+      await page
+        .getByRole("button", { name: "Skip relic", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Skip card reward", exact: true })
+        .click();
+      expect((await stored(page)).floor).toBe(9);
     } else {
       await expect(page.locator(".run-message")).toContainText(
         "You did not secure the throne",
@@ -377,7 +374,7 @@ for (const held of [true, false])
         .click();
       expect((await stored(page)).floor).toBe(8);
       await expect(page.locator(".run-map-row.current")).toContainText(
-        "The Crown Warden",
+        "Kaos · Throne of Chaos",
       );
     }
   });

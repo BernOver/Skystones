@@ -12,10 +12,18 @@ instructions = """SKYSTONES — START HERE
 2. Double-click Skystones.html. Choose Chrome or Microsoft Edge if asked.
 3. Play! No installation, account, or server is required.
 
+The collection contains 182 Skylanders/forms and 39 unique Giants opponents.
+Card studio has 337 searchable portraits, including 116 without a default card.
+Shield adds defense-only pips. Combo grants pips and/or keywords when your
+previous played card matches the new card's element. Hover a card for full rules.
+Captured cards flip to show their new owner.
+
 Use Card studio to make a stone. Save it, then add it to your deck in Collection.
 Use Adventure for the roguelike expedition. Both normal matches and adventures
 offer 3x3 (5-card hands) and 4x4 (8-card hands) boards.
 Use Draft for a two-player shared-pool draft, then play with your drafted hands.
+Adventure has two nine-stop acts: defeat Kaos, then Golden Queen.
+Start with 2-3-pip cards; enemies and rewards grow gradually.
 Adventure includes 31 relics, 15 potions, 54 adapted Spire encounters, and a
 12-pip Dizzy card event. Hover or tap cards
 to read their keywords. Draft picks and adventure progress save automatically.

@@ -1,9 +1,8 @@
-import { ELEMENTS, handSize, validateStone } from "./game.ts";
+import { CHARACTER_STONES } from "./characters.ts";
+import { handSize, validateStone } from "./game.ts";
 import type {
   BoardSize,
-  Creature,
   Edges,
-  Element,
   Owner,
   Side,
   Stone,
@@ -64,58 +63,14 @@ export function draftCards(seed: number): Stone[] {
             candidates.push([n, e, s, w]);
         }
   const rotation = Math.floor(rng() * 4);
-  const creatures: Creature[] = [
-    "slime",
-    "bat",
-    "fox",
-    "golem",
-    "turtle",
-    "owl",
-    "robot",
-    "griffin",
-    "crab",
-    "serpent",
-    "dragon",
-    "whale",
-    "mushroom",
-    "cat",
-    "spider",
-    "chest",
-  ];
-  const elements = Object.keys(ELEMENTS) as Element[];
-  const names = [
-    "Cinder",
-    "Moss",
-    "Tidal",
-    "Zephyr",
-    "Astral",
-    "Copper",
-    "Moon",
-    "Quartz",
-    "Ember",
-    "Dawn",
-    "Dusk",
-    "River",
-    "Storm",
-    "Velvet",
-    "Wild",
-    "Frost",
-    "Amber",
-    "Cloud",
-    "Grove",
-    "Iron",
-    "Mist",
-    "Solar",
-    "Coral",
-    "Jade",
-    "Rune",
-  ];
+  const identities = shuffle(CHARACTER_STONES, rng).slice(0, 25);
   const cards = shuffle(candidates, rng)
     .slice(0, 25)
     .map((base, index): Stone => {
       const side = Math.floor(rng() * 4) as Side,
-        element = elements[Math.floor(rng() * elements.length)];
-      const type = index < 6 ? index : Math.floor(rng() * 9);
+        identity = identities[index],
+        element = identity.element;
+      const type = index < 8 ? index : Math.floor(rng() * 11);
       const keywords: StoneKeyword[] =
         type === 0
           ? [{ type: "head-start", side }]
@@ -135,11 +90,28 @@ export function draftCards(seed: number): Stone[] {
                   ? [{ type: "silence" }]
                   : type === 5
                     ? [{ type: "dizzy" }]
-                    : [];
+                    : type === 6
+                      ? [{ type: "shield", side }]
+                      : type === 7
+                        ? [
+                            {
+                              type: "combo",
+                              pips: [{ side, amount: 1 }],
+                              keywords: [
+                                {
+                                  type: "shield",
+                                  side: ((side + 2) % 4) as Side,
+                                },
+                              ],
+                            },
+                          ]
+                        : [];
       return {
         id: `custom-draft-${seed}-${index}`,
-        name: `${names[index]} Familiar`,
-        creature: creatures[Math.floor(rng() * creatures.length)],
+        name: identity.name,
+        portrait: identity.portrait,
+        origin: "skylanders",
+        creature: identity.creature,
         element,
         edges: base.map((_, side) => base[(side + rotation) % 4]) as Edges,
         keywords,

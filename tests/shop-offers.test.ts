@@ -30,7 +30,7 @@ test("shops roll all keyword types and four directions, with complete valid offe
       if (!("side" in offer.keyword))
         assert.equal("side" in offer.keyword, false);
     }
-  assert.equal(types.size, 6);
+  assert.equal(types.size, 8);
   assert.equal(directions.size, 4);
   assert.equal(pipDirections.size, 4);
   assert.ok(

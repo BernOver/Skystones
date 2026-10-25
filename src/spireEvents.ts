@@ -117,7 +117,8 @@ export function spireRoll(
   return ((n ^ (n >>> 16)) >>> 0) / 0x100000000;
 }
 export function chooseSpireEvent(run: Adventure): SpireDefinition {
-  const act = run.floor < 3 ? 1 : run.floor < 6 ? 2 : 3;
+  const stop = run.floor % 9;
+  const act = stop < 3 ? 1 : stop < 6 ? 2 : 3;
   const pool = SPIRE_CATALOG.filter(
     (event) =>
       (event.act === 0 || event.act === act) &&
@@ -134,6 +135,7 @@ export function curseStone(name: string, index: number, seed: number): Stone {
     name,
     element: "undead",
     creature: "golem",
+    portrait: "hex",
     edges: [0, 0, 0, 0],
     keywords: [],
     custom: true,

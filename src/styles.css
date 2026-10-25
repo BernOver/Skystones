@@ -4714,3 +4714,250 @@ button:disabled:hover {
     padding: 9px 3px;
   }
 }
+
+/* Character portraits and defensive pips */
+.uploaded-art.character-art {
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  padding: 11px 20px 7px;
+  mix-blend-mode: multiply;
+}
+.edge .shield-pip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: #2e617e;
+  background: #e9f6fc;
+  border: 1px solid #9cbdcc;
+  padding: 1px 3px;
+  border-radius: 5px;
+  font-size: 9px;
+  line-height: 1.1;
+  white-space: nowrap;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.edge-2 .shield-pip {
+  top: auto;
+  bottom: 100%;
+}
+.edge-1 .shield-pip {
+  top: 50%;
+  left: auto;
+  right: 100%;
+  transform: translateY(-50%);
+}
+.edge-3 .shield-pip {
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+}
+.defense-stat {
+  color: #2e617e !important;
+  font-size: 9px !important;
+  line-height: 1.3;
+}
+.keyword-shield {
+  background: #e5f0f6;
+  color: #366a82;
+}
+.keyword-combo {
+  background: #ece3f5;
+  color: #78548a;
+}
+.combo-granted-rules {
+  border-left: 2px solid #b9a2ce;
+  padding-left: 10px;
+  margin: 10px 0;
+}
+.combo-rule > small {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  display: block;
+  margin-top: 8px;
+}
+.combo-editor {
+  background: #f2edf5;
+  border: 1px solid #e2d7e9;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 8px;
+  display: grid;
+  gap: 12px;
+}
+.combo-editor p,
+.combo-editor small {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.combo-pip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.combo-editor label,
+.portrait-filters label {
+  font-size: 10px;
+  font-weight: 600;
+  display: grid;
+  gap: 6px;
+}
+.combo-editor select,
+.combo-editor input {
+  width: 100%;
+  min-width: 0;
+}
+.combo-grant {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 30px;
+}
+.portrait-picker {
+  display: grid;
+  gap: 12px;
+}
+.portrait-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+}
+.portrait-filters input,
+.portrait-filters select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fffdf8;
+  padding: 10px;
+  min-width: 0;
+}
+.portrait-unused {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.portrait-unused input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--teal);
+}
+.portrait-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 430px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 3px;
+}
+.portrait-grid button {
+  background: #f2f0e8;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 6px;
+  display: grid;
+  align-content: start;
+  text-align: center;
+  gap: 4px;
+  min-width: 0;
+}
+.portrait-grid button.active {
+  border-color: var(--teal);
+  background: #e4eeea;
+  box-shadow: 0 0 0 1px var(--teal);
+}
+.portrait-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.portrait-grid strong {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.portrait-grid small {
+  font-size: 8px;
+  color: #7b8176;
+}
+.legacy-art-picker {
+  margin: 14px 0;
+}
+.legacy-art-picker summary {
+  cursor: pointer;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+/* A real half-turn swaps the old and new ownership faces at the midpoint. */
+.capture-flip {
+  display: block;
+  width: 100%;
+  perspective: 800px;
+}
+.capture-flip-inner {
+  display: block;
+  position: relative;
+  transform-style: preserve-3d;
+}
+.capture-flip-front,
+.capture-flip-back {
+  display: block;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.capture-flip-front {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(0deg);
+  pointer-events: none;
+}
+.is-flipping .capture-flip-back {
+  transform: rotateY(180deg);
+}
+.is-flipping .capture-flip-inner {
+  animation: card-capture-flip 620ms cubic-bezier(0.3, 0.05, 0.25, 1) both;
+}
+@keyframes card-capture-flip {
+  0% {
+    transform: rotateY(0deg) scale(1);
+  }
+  45% {
+    transform: rotateY(82deg) scale(1.04);
+  }
+  100% {
+    transform: rotateY(180deg) scale(1);
+  }
+}
+.just-captured,
+.run-captured {
+  animation: none;
+}
+@media (max-width: 540px) {
+  .portrait-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .portrait-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .combo-pip-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .combo-grant {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-flipping .capture-flip-inner {
+    animation: none !important;
+    transform: none;
+  }
+  .is-flipping .capture-flip-front {
+    display: none;
+  }
+  .is-flipping .capture-flip-back {
+    transform: none;
+  }
+}

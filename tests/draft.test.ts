@@ -41,7 +41,7 @@ test("draft tables contain 25 valid diverse cards, all keywords, and uncommon pi
     assert.ok(pairs.length <= 2);
     if (pairs.length) dominantPools++;
   }
-  assert.equal(types.size, 6);
+  assert.equal(types.size, 8);
   assert.ok(dominantPools > 0 && dominantPools < 40);
 });
 for (const size of [3, 4] as const)

@@ -1,3 +1,4 @@
+import { CaptureFlip } from "./CaptureFlip";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -54,6 +55,9 @@ import {
   ADVENTURE_NOTE_STORAGE,
   POTIONS,
   ROUTE,
+  adventureAct,
+  adventureStop,
+  adventureEventId,
   SERVICE_PRICES,
   adventureWorkshopOffer,
   adventureShopRerollPrice,
@@ -279,9 +283,9 @@ export function Expedition() {
           <br />A grand adventure<span className="orange-period">.</span>
         </h1>
         <p>
-          Climb a nine-stop path of battles, strange events, treasure, and
-          merchants. Start small, build stronger stones, and seize the Crown
-          Warden’s throne.
+          Travel through two nine-stop acts of battles, events, treasure, and
+          shops. Start with a modest deck, defeat Kaos, then challenge Golden
+          Queen in the Golden Isles.
         </p>
         <div className="adventure-promises">
           <span>
@@ -346,12 +350,11 @@ export function Expedition() {
     run.rewardPicksRemaining ?? (run.rewards.length ? cardRewardPicks(run) : 0);
   const shopOffer = adventureWorkshopOffer(run);
   const offeredKeyword = shopOffer.keyword;
-  const keywordDirection =
-    offeredKeyword.type === "silence" || offeredKeyword.type === "dizzy"
-      ? "Whole card"
-      : offeredKeyword.side === "any"
-        ? "Any edge"
-        : SIDE_NAMES[offeredKeyword.side];
+  const keywordDirection = !("side" in offeredKeyword)
+    ? "Whole card"
+    : offeredKeyword.side === "any"
+      ? "Any edge"
+      : SIDE_NAMES[offeredKeyword.side];
   const canInscribe = validateKeywords([
     ...(selectedService.keywords || []),
     offeredKeyword,
@@ -371,6 +374,10 @@ export function Expedition() {
       ? {
           edges: cell.edges || stone.edges,
           activeKeywords: cell.activeKeywords || [],
+          shields: cell.shields,
+          comboActive: cell.comboActive,
+          comboPrevious: cell.comboPrevious,
+          grantedKeywords: cell.grantedKeywords,
         }
       : evaluateKeywords(
           adventureStoneForPlay(run!, stone, owner),
@@ -401,7 +408,7 @@ export function Expedition() {
   function play(placement: number) {
     if (selected === null || ai || !battle) return;
     const stone = battle.hands[0][selected];
-    if (prepareTargeting(battle.board, stone).pending) {
+    if (prepareTargeting(battle.board, stone, [], 0).pending) {
       setTarget({ placement, cardIndex: selected, targets: [] });
       setInspection(null);
     } else act((current) => playAdventureCard(current, placement, selected));
@@ -409,7 +416,7 @@ export function Expedition() {
   function chooseTarget(boardIndex: number, chosenSide?: Side) {
     if (!target || !battle) return;
     const stone = battle.hands[0][target.cardIndex],
-      state = prepareTargeting(battle.board, stone, target.targets);
+      state = prepareTargeting(battle.board, stone, target.targets, 0);
     if (
       !state.pending?.options.some(
         (option) =>
@@ -425,7 +432,7 @@ export function Expedition() {
         ...(chosenSide !== undefined ? { side: chosenSide } : {}),
       },
     ];
-    if (prepareTargeting(battle.board, stone, targets).pending)
+    if (prepareTargeting(battle.board, stone, targets, 0).pending)
       setTarget({ ...target, targets });
     else {
       act((current) =>
@@ -511,8 +518,8 @@ export function Expedition() {
             Your expedition<span className="orange-period">.</span>
           </h1>
           <p>
-            {run.size}×{run.size} board · {count}-card battle hand · stop{" "}
-            {run.floor + 1} of {ROUTE.length}
+            {run.size}×{run.size} board · {count}-card battle hand · Act{" "}
+            {adventureAct(run.floor)} · stop {adventureStop(run.floor)} of 9
           </p>
         </div>
         <button
@@ -689,7 +696,12 @@ export function Expedition() {
       {run.phase === "map" && (
         <section className="run-map">
           <div className="section-heading">
-            <h2>Choose your path</h2>
+            <h2>
+              Act {adventureAct(run.floor)} ·{" "}
+              {adventureAct(run.floor) === 1
+                ? "Throne of Chaos"
+                : "The Golden Isles"}
+            </h2>
             <Map size={20} />
           </div>
           {!deckReady && (
@@ -704,7 +716,9 @@ export function Expedition() {
               className={`run-map-row ${floor === run.floor ? "current" : floor < run.floor ? "completed" : "future"}`}
             >
               <span className="floor-marker">
-                {floor < run.floor ? "✓" : floor + 1}
+                {floor < run.floor
+                  ? "✓"
+                  : `${adventureAct(floor)}.${adventureStop(floor)}`}
               </span>
               <div className="run-route-options">
                 {row.map((node) => (
@@ -739,8 +753,8 @@ export function Expedition() {
           <div className="run-battle-heading">
             <div>
               <div className="eyebrow">
-                {run.node?.kind === "boss"
-                  ? "FINAL BOSS"
+                {battle.boss || run.node?.kind === "boss"
+                  ? `ACT ${adventureAct(run.floor)} BOSS`
                   : run.node?.kind === "elite"
                     ? "ELITE KEEPER"
                     : "STONE KEEPER"}
@@ -766,7 +780,9 @@ export function Expedition() {
               <Crown size={17} />
               {battle.objectiveKind === "chest"
                 ? `Hold the chest at ${coordinate(battle.objective, run.size)} at the finish: +${45 + (hasRelic(run, "treasure-magnet") ? 30 : 0)} gold before percentage bonuses.`
-                : `Win the score AND hold the throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
+                : battle.boss === "golden-queen"
+                  ? `Win the score, hold Golden Queen’s shielded throne at ${coordinate(battle.objective, run.size)}, and control at least two corners.`
+                  : `Win the score AND hold Kaos’s throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
             </p>
           )}
           <div
@@ -804,12 +820,19 @@ export function Expedition() {
                 onBlur={() => setInspection(null)}
               >
                 {cell ? (
-                  <StoneCard
-                    stone={cell.stone}
+                  <CaptureFlip
+                    key={`${index}-${cell.owner}`}
+                    captured={battle.lastCaptured.includes(index)}
                     owner={cell.owner}
-                    edges={cell.edges || cell.stone.edges}
-                    silenced={cell.silenced}
-                  />
+                  >
+                    <StoneCard
+                      stone={cell.stone}
+                      owner={cell.owner}
+                      edges={cell.edges || cell.stone.edges}
+                      shields={cell.shields}
+                      silenced={cell.silenced}
+                    />
+                  </CaptureFlip>
                 ) : (
                   <span>
                     {coordinate(index, run.size)}
@@ -850,6 +873,7 @@ export function Expedition() {
                       stone={stone}
                       owner={1}
                       edges={evaluateKeywords(stone, battle.board, 1).edges}
+                      shields={evaluateKeywords(stone, battle.board, 1).shields}
                     />
                   </button>
                 ))}
@@ -891,6 +915,13 @@ export function Expedition() {
                     ).edges
                   }
                   selected={selected === index}
+                  shields={
+                    evaluateKeywords(
+                      adventureStoneForPlay(run, stone),
+                      battle.board,
+                      0,
+                    ).shields
+                  }
                 />
               </button>
             ))}
@@ -963,7 +994,7 @@ export function Expedition() {
                   Leave the chest
                 </button>
               </>
-            ) : run.node.id === "well" ? (
+            ) : adventureEventId(run.node.id) === "well" ? (
               <>
                 <button
                   className="button button-dark"
@@ -992,7 +1023,7 @@ export function Expedition() {
                   Walk away
                 </button>
               </>
-            ) : run.node.id === "whirling-idol" ? (
+            ) : adventureEventId(run.node.id) === "whirling-idol" ? (
               <div className="dizzy-event-card">
                 <StoneCard stone={dizzyEventCard(run)} />
                 <KeywordDetails stone={dizzyEventCard(run)} />
@@ -1015,7 +1046,7 @@ export function Expedition() {
                   Leave the idol
                 </button>
               </div>
-            ) : run.node.id === "rune-shrine" ? (
+            ) : adventureEventId(run.node.id) === "rune-shrine" ? (
               <InscriptionEvent
                 run={run}
                 onInspect={setCard}
@@ -1028,7 +1059,7 @@ export function Expedition() {
                   )
                 }
               />
-            ) : run.node.id === "fusion-forge" ? (
+            ) : adventureEventId(run.node.id) === "fusion-forge" ? (
               <FusionEvent
                 run={run}
                 onInspect={setCard}
@@ -1041,7 +1072,7 @@ export function Expedition() {
                   )
                 }
               />
-            ) : run.node.id === "reliquary" ? (
+            ) : adventureEventId(run.node.id) === "reliquary" ? (
               relicChoices(true)
             ) : run.node.kind === "camp" ? (
               <>
@@ -1442,7 +1473,7 @@ export function Expedition() {
           </h2>
           <p>
             {run.victory
-              ? "You won the score and seized the throne. The Warden yields."
+              ? "You defeated Kaos and Golden Queen. The Golden Isles are free."
               : "Your lives are spent. A new journey begins with a new little deck."}
           </p>
           <p>
@@ -1460,6 +1491,7 @@ export function Expedition() {
           onClose={() => setTarget(null)}
         >
           <TargetPicker
+            owner={0}
             key={target.targets.length}
             board={battle.board}
             stone={battle.hands[0][target.cardIndex]}
@@ -1529,6 +1561,7 @@ export function Expedition() {
             <StoneCard
               stone={inspected.stone}
               edges={inspected.edges}
+              shields={inspected.shields}
               silenced={inspected.silenced}
             />
           </div>

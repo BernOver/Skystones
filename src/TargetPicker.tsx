@@ -12,6 +12,7 @@ import type { Board, KeywordTarget, Side, Stone } from "./game";
 
 export function TargetPicker({
   board,
+  owner,
   stone,
   placement,
   targets,
@@ -20,6 +21,7 @@ export function TargetPicker({
   onCancel,
 }: {
   board: Board;
+  owner?: 0 | 1;
   stone: Stone;
   placement: number;
   targets: KeywordTarget[];
@@ -27,7 +29,7 @@ export function TargetPicker({
   onChoose: (index: number, side?: Side) => void;
   onCancel: () => void;
 }) {
-  const state = prepareTargeting(board, stone, targets);
+  const state = prepareTargeting(board, stone, targets, owner);
   const size = boardSize(board);
   const [chosen, setChosen] = useState<{
     keywordIndex: number;
@@ -120,6 +122,7 @@ export function TargetPicker({
               stone={selectedCard.stone}
               edges={selectedCard.edges || selectedCard.stone.edges}
               silenced={selectedCard.silenced}
+              shields={selectedCard.shields}
               owner={selectedCard.owner}
             />
           </div>
@@ -194,6 +197,7 @@ export function TargetPicker({
                       owner={cell.owner}
                       edges={cell.edges || cell.stone.edges}
                       silenced={cell.silenced}
+                      shields={cell.shields}
                       compact
                     />
                     <span className="target-change">

@@ -129,7 +129,7 @@ async function setup(page: Page, multiple = false) {
   await page.getByRole("button", { name: "Find a little magic" }).click();
   for (const [name, coordinate] of [
     ["Guard", "A2"],
-    ["Cloudpaws", "C3"],
+    ["Whirlwind", "C3"],
     ["Wild Breaker", "A1"],
   ]) {
     await page
@@ -159,7 +159,7 @@ test("choose a remote card and edge with zero-edge guards, back, cancel, keyboar
     dialog.getByRole("button", { name: "South: 4 → 1", exact: true }),
   ).toBeEnabled();
   await dialog.getByRole("button", { name: "Choose another card" }).click();
-  await dialog.getByRole("button", { name: /Target C3: Cloudpaws/ }).click();
+  await dialog.getByRole("button", { name: /Target C3: Whirlwind/ }).click();
   await dialog.getByRole("button", { name: "Cancel play" }).click();
   await expect(page.locator(".board-cell.filled")).toHaveCount(2);
   await expect(page.locator("#board-8 .edge-0 b")).toHaveText("3");
@@ -167,7 +167,7 @@ test("choose a remote card and edge with zero-edge guards, back, cancel, keyboar
   await page
     .getByRole("button", { name: "A1, empty square", exact: true })
     .click();
-  await dialog.getByRole("button", { name: /Target C3: Cloudpaws/ }).click();
+  await dialog.getByRole("button", { name: /Target C3: Whirlwind/ }).click();
   expect(
     await dialog.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
@@ -205,9 +205,9 @@ test("flexible and stronger fixed Sunder resolve separately in a single play", a
     .click();
   await expect(dialog).toContainText("Sunder: choose a card");
   await expect(
-    dialog.getByRole("button", { name: /Target C3: Cloudpaws/ }),
+    dialog.getByRole("button", { name: /Target C3: Whirlwind/ }),
   ).toContainText("North 3 → 0");
-  await dialog.getByRole("button", { name: /Target C3: Cloudpaws/ }).click();
+  await dialog.getByRole("button", { name: /Target C3: Whirlwind/ }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator("#board-1 .edge-2 b")).toHaveText("2");
   await expect(page.locator("#board-8 .edge-0 b")).toHaveText("0");

@@ -72,7 +72,7 @@ test("create a card, enforce its budget, persist it, and use it in a deck", asyn
   await page
     .getByLabel("A tiny backstory")
     .fill("Small paws, enormous thunderclouds.");
-  await page.getByRole("button", { name: "Choose Cloud cat artwork" }).click();
+  await page.getByRole("button", { name: "Use Scratch portrait" }).click();
   await page.getByRole("button", { name: "Air", exact: true }).click();
   for (let i = 0; i < 3; i++)
     await page.getByRole("button", { name: "Increase north strength" }).click();
@@ -91,7 +91,7 @@ test("create a card, enforce its budget, persist it, and use it in a deck", asyn
     page.getByRole("heading", { name: "Little Thunder" }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Remove Emberwing from deck" })
+    .getByRole("button", { name: "Remove Spyro from deck" })
     .click();
   await page
     .getByRole("button", { name: "Add Little Thunder to deck" })
@@ -234,7 +234,7 @@ test("an incomplete saved deck cannot strand the initial practice match", async 
   await page.getByRole("button", { name: /^Collection/ }).click();
   await page
     .locator(".deck-slots")
-    .getByRole("button", { name: "Remove Emberwing from deck" })
+    .getByRole("button", { name: "Remove Spyro from deck" })
     .click();
   await page.reload();
   await expect(page.locator(".hand-card-button")).toHaveCount(5);

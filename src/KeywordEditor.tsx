@@ -6,11 +6,254 @@ import {
   MAX_KEYWORDS,
   SIDE_NAMES,
   keywordKey,
+  validateKeywords,
 } from "./game";
-import type { Element, KeywordType, Side, StoneKeyword } from "./game";
+import type {
+  BasicKeyword,
+  ComboKeyword,
+  Element,
+  KeywordType,
+  Side,
+  Stone,
+  StoneKeyword,
+} from "./game";
 import { KeywordDetails } from "./CardInspection";
-import type { Stone } from "./game";
 
+export function defaultKeyword(
+  type: KeywordType,
+  side: Side = 0,
+  element: Element = "magic",
+): StoneKeyword {
+  if (type === "silence" || type === "dizzy") return { type };
+  if (type === "combo") return { type, pips: [{ side, amount: 1 }] };
+  if (type === "resonance") return { type, side, element };
+  return { type, side };
+}
+function Fields({
+  keyword,
+  label,
+  element,
+  allowCombo = true,
+  onChange,
+}: {
+  keyword: StoneKeyword;
+  label: string;
+  element: Element;
+  allowCombo?: boolean;
+  onChange: (value: StoneKeyword) => void;
+}) {
+  const suffix = label.replace(/\D/g, "");
+  const side = "side" in keyword && keyword.side !== "any" ? keyword.side : 0;
+  return (
+    <>
+      <div>
+        <label>
+          {label}
+          <select
+            aria-label={label}
+            value={keyword.type}
+            onChange={(e) =>
+              onChange(
+                defaultKeyword(e.target.value as KeywordType, side, element),
+              )
+            }
+          >
+            {Object.entries(KEYWORD_RULES)
+              .filter(([type]) => allowCombo || type !== "combo")
+              .map(([type, rule]) => (
+                <option key={type} value={type}>
+                  {rule.name} · {rule.condition}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+      {"side" in keyword && (
+        <div>
+          <label>
+            {keyword.type === "sunder" ? "Target edge" : "Affected edge"}{" "}
+            {suffix}
+            <select
+              aria-label={`${keyword.type === "sunder" ? "Target edge" : "Affected edge"} ${label.replace("Keyword ", "")}`}
+              value={keyword.side}
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  side:
+                    e.target.value === "any"
+                      ? "any"
+                      : (Number(e.target.value) as Side),
+                } as StoneKeyword)
+              }
+            >
+              {SIDE_NAMES.map((name, i) => (
+                <option key={i} value={i}>
+                  {name}
+                </option>
+              ))}
+              {keyword.type === "sunder" && (
+                <option value="any">Any · choose when played</option>
+              )}
+            </select>
+          </label>
+        </div>
+      )}
+      {keyword.type === "resonance" && (
+        <div className="resonance-element-field">
+          <label>
+            Counted element {suffix}
+            <select
+              aria-label={`Counted element ${label.replace("Keyword ", "")}`}
+              value={keyword.element}
+              onChange={(e) =>
+                onChange({ ...keyword, element: e.target.value as Element })
+              }
+            >
+              {Object.entries(ELEMENTS).map(([key, value]) => (
+                <option key={key} value={key}>
+                  {value.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      {(keyword.type === "sunder" || keyword.type === "shield") && (
+        <div className="sunder-strength-field">
+          <label>
+            {keyword.type === "sunder" ? "Pips removed" : "Shield pips"}{" "}
+            {suffix}
+            <input
+              aria-label={`${keyword.type === "sunder" ? "Pips removed" : "Shield pips"} ${label.replace("Keyword ", "")}`}
+              type="number"
+              min={1}
+              max={99}
+              value={keyword.amount ?? 1}
+              onChange={(e) => {
+                const amount = e.target.valueAsNumber;
+                if (Number.isInteger(amount) && amount >= 1 && amount <= 99)
+                  onChange({ ...keyword, amount });
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </>
+  );
+}
+function ComboFields({
+  keyword,
+  element,
+  onChange,
+}: {
+  keyword: ComboKeyword;
+  element: Element;
+  onChange: (value: ComboKeyword) => void;
+}) {
+  const grants = keyword.keywords || [];
+  return (
+    <div className="combo-editor">
+      <p>
+        If your previous played card has the same element, gain these pips and
+        keywords once before captures. Your first card cannot Combo.
+      </p>
+      <div className="combo-pip-grid">
+        {SIDE_NAMES.map((name, side) => (
+          <label key={name}>
+            Combo {name} pips
+            <select
+              aria-label={`Combo ${name} pips`}
+              value={
+                keyword.pips?.find((pip) => pip.side === side)?.amount || 0
+              }
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  pips: [
+                    ...(keyword.pips || []).filter((pip) => pip.side !== side),
+                    ...(Number(e.target.value)
+                      ? [{ side: side as Side, amount: Number(e.target.value) }]
+                      : []),
+                  ],
+                })
+              }
+            >
+              {[0, 1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value ? `+${value}` : "None"}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+      {grants.map((grant, index) => (
+        <div className="keyword-editor-row combo-grant" key={index}>
+          <Fields
+            keyword={grant}
+            label={`Combo keyword ${index + 1}`}
+            element={element}
+            allowCombo={false}
+            onChange={(value) =>
+              onChange({
+                ...keyword,
+                keywords: grants.map((old, i) =>
+                  i === index ? (value as BasicKeyword) : old,
+                ),
+              })
+            }
+          />
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={`Remove Combo keyword ${index + 1}`}
+            onClick={() =>
+              onChange({
+                ...keyword,
+                keywords: grants.filter((_, i) => i !== index),
+              })
+            }
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="button button-outline"
+        disabled={grants.length >= 5}
+        onClick={() => {
+          for (const type of [
+            "shield",
+            "sunder",
+            "silence",
+            "dizzy",
+            "head-start",
+            "comeback",
+            "resonance",
+          ] as const)
+            for (const side of [0, 1, 2, 3] as Side[]) {
+              const value = defaultKeyword(type, side, element) as BasicKeyword;
+              if (
+                !grants.some((old) => keywordKey(old) === keywordKey(value))
+              ) {
+                onChange({ ...keyword, keywords: [...grants, value] });
+                return;
+              }
+            }
+        }}
+      >
+        <Plus size={14} />
+        Add Combo keyword
+      </button>
+      <small>
+        Use pips, up to five granted keywords, or both. Granted Sunder and
+        Silence choose targets when played. Granted keywords stay on this card;
+        Silence removes all Combo bonuses.
+      </small>
+    </div>
+  );
+}
 export function KeywordEditor({
   stone,
   onChange,
@@ -21,46 +264,27 @@ export function KeywordEditor({
   const [error, setError] = useState("");
   const keywords = stone.keywords || [];
   function update(index: number, value: StoneKeyword) {
+    const next = keywords.map((old, i) => (i === index ? value : old));
     if (
       keywords.some(
-        (keyword, i) =>
-          i !== index && keywordKey(keyword) === keywordKey(value),
+        (old, i) => i !== index && keywordKey(old) === keywordKey(value),
       )
     ) {
       setError(
-        value.type === "silence" || value.type === "dizzy"
-          ? `${KEYWORD_RULES[value.type].name} is already on this card.`
-          : value.side === "any"
-            ? "Sunder with an edge chosen when played is already on this card."
-            : `${KEYWORD_RULES[value.type].name} is already assigned to ${SIDE_NAMES[value.side]}. Choose another edge.`,
+        value.type === "sunder" && value.side === "any"
+          ? "Sunder with an edge chosen when played is already on this card."
+          : `${KEYWORD_RULES[value.type].name} is already on this card.`,
+      );
+      return;
+    }
+    if (!validateKeywords(next)) {
+      setError(
+        "Choose a unique keyword and edge. Combo needs at least one pip bonus or granted keyword, with no duplicate grants.",
       );
       return;
     }
     setError("");
-    onChange(keywords.map((keyword, i) => (i === index ? value : keyword)));
-  }
-  function add() {
-    for (const type of Object.keys(KEYWORD_RULES) as KeywordType[]) {
-      for (const side of (type === "sunder"
-        ? [0, 1, 2, 3, "any"]
-        : [0, 1, 2, 3]) as (Side | "any")[]) {
-        const value: StoneKeyword =
-          type === "silence" || type === "dizzy"
-            ? { type }
-            : type === "sunder"
-              ? { type, side }
-              : type === "resonance"
-                ? { type, side: side as Side, element: stone.element }
-                : { type, side: side as Side };
-        if (
-          !keywords.some((keyword) => keywordKey(keyword) === keywordKey(value))
-        ) {
-          onChange([...keywords, value]);
-          setError("");
-          return;
-        }
-      }
-    }
+    onChange(next);
   }
   return (
     <section className="studio-section keyword-editor">
@@ -68,169 +292,41 @@ export function KeywordEditor({
         <span className="step-number">04</span>
         <div>
           <h2>A few clever words</h2>
-          <p>Boost your edges or disrupt a card already on the board.</p>
+          <p>Attack, defend, and chain matching elements.</p>
         </div>
         <Flag size={19} />
       </div>
       <div className="keyword-editor-list">
         {keywords.map((keyword, index) => (
-          <div
-            className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" ? "has-strength" : ""} ${keyword.type === "silence" || keyword.type === "dizzy" ? "no-edge" : ""}`}
-            key={index}
-          >
-            <div>
-              <label htmlFor={`keyword-type-${index}`}>
-                Keyword {index + 1}
-              </label>
-              <select
-                id={`keyword-type-${index}`}
-                value={keyword.type}
-                onChange={(e) =>
-                  update(
-                    index,
-                    e.target.value === "silence" || e.target.value === "dizzy"
-                      ? { type: e.target.value }
-                      : e.target.value === "resonance"
-                        ? {
-                            type: "resonance",
-                            side:
-                              keyword.type === "silence" ||
-                              keyword.type === "dizzy" ||
-                              keyword.side === "any"
-                                ? 0
-                                : keyword.side,
-                            element:
-                              keyword.type === "resonance"
-                                ? keyword.element
-                                : stone.element,
-                          }
-                        : {
-                            type: e.target.value as
-                              "head-start" | "comeback" | "sunder",
-                            side:
-                              keyword.type === "silence" ||
-                              keyword.type === "dizzy" ||
-                              keyword.side === "any"
-                                ? 0
-                                : keyword.side,
-                          },
-                  )
-                }
-              >
-                {Object.entries(KEYWORD_RULES).map(([type, rule]) => (
-                  <option key={type} value={type}>
-                    {type === "resonance"
-                      ? "Resonance · count an element"
-                      : type === "sunder"
-                        ? "Sunder · remove pips"
-                        : type === "silence"
-                          ? "Silence · disable keywords"
-                          : type === "dizzy"
-                            ? "Dizzy · shuffle pips after captures"
-                            : `${rule.name} · while ${rule.condition}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {keyword.type !== "silence" && keyword.type !== "dizzy" && (
-              <div>
-                <label htmlFor={`keyword-side-${index}`}>
-                  {keyword.type === "sunder" ? "Target edge" : "Affected edge"}{" "}
-                  {index + 1}
-                </label>
-                <select
-                  id={`keyword-side-${index}`}
-                  value={keyword.side}
-                  onChange={(e) =>
-                    update(
-                      index,
-                      keyword.type === "sunder"
-                        ? {
-                            ...keyword,
-                            side:
-                              e.target.value === "any"
-                                ? "any"
-                                : (Number(e.target.value) as Side),
-                          }
-                        : {
-                            ...keyword,
-                            side: Number(e.target.value) as Side,
-                          },
-                    )
-                  }
-                >
-                  {SIDE_NAMES.map((side, i) => (
-                    <option key={side} value={i}>
-                      {side}
-                      {keyword.type === "resonance"
-                        ? ""
-                        : keyword.type === "sunder"
-                          ? ` −${keyword.amount ?? 1}`
-                          : " +1"}
-                    </option>
-                  ))}
-                  {keyword.type === "sunder" && (
-                    <option value="any">Any · choose when played</option>
-                  )}
-                </select>
-              </div>
-            )}
-            {keyword.type === "resonance" && (
-              <div className="resonance-element-field">
-                <label htmlFor={`keyword-element-${index}`}>
-                  Counted element {index + 1}
-                </label>
-                <select
-                  id={`keyword-element-${index}`}
-                  value={keyword.element}
-                  onChange={(event) =>
-                    update(index, {
-                      ...keyword,
-                      element: event.target.value as Element,
-                    })
-                  }
-                >
-                  {Object.entries(ELEMENTS).map(([element, details]) => (
-                    <option value={element} key={element}>
-                      {details.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {keyword.type === "sunder" && (
-              <div className="sunder-strength-field">
-                <label htmlFor={`keyword-amount-${index}`}>
-                  Pips removed {index + 1}
-                </label>
-                <input
-                  id={`keyword-amount-${index}`}
-                  type="number"
-                  min={1}
-                  max={99}
-                  step={1}
-                  value={keyword.amount ?? 1}
-                  onChange={(event) => {
-                    const amount = event.target.valueAsNumber;
-                    if (!Number.isInteger(amount) || amount < 1 || amount > 99)
-                      return;
-                    const { amount: _, ...base } = keyword;
-                    update(index, amount === 1 ? base : { ...base, amount });
-                  }}
-                />
-              </div>
-            )}
-            <button
-              type="button"
-              className="icon-button"
-              aria-label={`Remove keyword ${index + 1}`}
-              onClick={() => {
-                onChange(keywords.filter((_, i) => i !== index));
-                setError("");
-              }}
+          <div className="keyword-editor-entry" key={index}>
+            <div
+              className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" || keyword.type === "shield" ? "has-strength" : ""} ${!("side" in keyword) ? "no-edge" : ""}`}
             >
-              <Trash2 size={15} />
-            </button>
+              <Fields
+                keyword={keyword}
+                label={`Keyword ${index + 1}`}
+                element={stone.element}
+                onChange={(value) => update(index, value)}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`Remove keyword ${index + 1}`}
+                onClick={() => {
+                  onChange(keywords.filter((_, i) => i !== index));
+                  setError("");
+                }}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+            {keyword.type === "combo" && (
+              <ComboFields
+                keyword={keyword}
+                element={stone.element}
+                onChange={(value) => update(index, value)}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -243,7 +339,21 @@ export function KeywordEditor({
         type="button"
         className="button button-outline add-keyword"
         disabled={keywords.length >= MAX_KEYWORDS}
-        onClick={add}
+        onClick={() => {
+          for (const type of Object.keys(KEYWORD_RULES) as KeywordType[])
+            for (const side of [0, 1, 2, 3] as Side[]) {
+              const value = defaultKeyword(type, side, stone.element);
+              if (
+                !keywords.some((old) => keywordKey(old) === keywordKey(value))
+              ) {
+                onChange([...keywords, value]);
+                setError("");
+                return;
+              }
+            }
+          if (!keywords.some((old) => keywordKey(old) === "sunder:any"))
+            onChange([...keywords, { type: "sunder", side: "any" }]);
+        }}
       >
         <Plus size={15} />
         Add keyword
@@ -251,53 +361,43 @@ export function KeywordEditor({
           {keywords.length} / {MAX_KEYWORDS}
         </span>
       </button>
-      {!!keywords.length ? (
+      {keywords.length ? (
         <KeywordDetails stone={stone} />
       ) : (
         <div className="keyword-editor-intro">
           <p>
-            <strong>Head Start</strong> activates if you’re winning before
-            placement.
+            <strong>Head Start</strong> gives +1 while winning before placement.{" "}
+            <strong>Comeback</strong> gives +1 while losing.
           </p>
           <p>
-            <strong>Comeback</strong> activates if you’re losing before
-            placement.
+            <strong>Resonance</strong> counts matching elements on both sides
+            before placement.
           </p>
           <p>
-            <strong>Resonance</strong> adds one pip per card of your chosen
-            element already on the board, from either player.
+            <strong>Sunder</strong> removes 1–99 pips from a chosen board card’s
+            edge. Choose a fixed edge or “Any · choose when played.”
           </p>
           <p>
-            <strong>Sunder</strong> removes your chosen number of pips from a
-            board card’s edge, down to zero. Set a fixed edge or choose it when
-            played; the target can be anywhere on the board.
-          </p>
-          <p>
-            <strong>Silence</strong> disables a chosen board card’s keywords and
+            <strong>Silence</strong> disables a board card’s keywords and
             removes their bonuses.
           </p>
           <p>
-            <strong>Dizzy</strong> redistributes this card’s pips once after
-            placement and captures. Each edge has at most four pips; totals
-            above 16 are capped at 16.
+            <strong>Dizzy</strong> shuffles pips after captures, at most four
+            per edge.
           </p>
-          <small>
-            Head Start and Comeback do not activate on a tie. All bonuses are
-            locked in before placement and stay after score changes and
-            captures, unless removed by Silence. Choose Sunder and Silence
-            targets when playing, before captures. Bonuses can raise an edge
-            above 5; your printed stats still use the 12-point budget.
-          </small>
+          <p>
+            <strong>Shield</strong> adds directional defense pips, never attack
+            pips.
+          </p>
+          <p>
+            <strong>Combo</strong> grants pips and/or keywords when your
+            previous played card has the same element.
+          </p>
         </div>
       )}
       <p className="field-note">
-        Set Sunder’s pip amount from 1–99. Its “Any · choose when played” option
-        lets the player pick any board card, then choose which edge loses pips.
-        Edges stop at zero.
-      </p>
-      <p className="field-note">
-        Keyword bonuses do not spend printed-stat points and can raise edges
-        above 5. Different keywords on the same edge add together.
+        Bonuses do not spend the printed 12-point budget. All on-play checks
+        happen once. Captures never retrigger keywords.
       </p>
     </section>
   );

@@ -4,7 +4,7 @@ test("hover and keyboard focus enlarge hand cards and explain keywords and flavo
   page,
 }) => {
   await page.goto("/");
-  const handCard = page.getByRole("button", { name: /^Select Emberwing/ });
+  const handCard = page.getByRole("button", { name: /^Select Spyro/ });
   await handCard.hover();
   const tooltip = page.getByRole("tooltip");
   await expect(tooltip).toBeVisible();
@@ -14,7 +14,7 @@ test("hover and keyboard focus enlarge hand cards and explain keywords and flavo
     "Will not activate with the current score",
   );
   await expect(tooltip).toContainText(
-    "Small wings. Unreasonably big ambitions.",
+    "Pips adapt the character",
   );
   await expect(tooltip).toContainText("Flavor text — no gameplay effect");
   const normal = await handCard.boundingBox();
@@ -39,7 +39,7 @@ test("Comeback activates before placement and stays visible on a board card afte
   await page.getByLabel("Who makes the first move?").selectOption("1");
   await page.getByRole("button", { name: "Find a little magic" }).click();
   await expect(page.locator(".board-cell.filled")).toHaveCount(1);
-  const mossback = page.getByRole("button", { name: /^Select Mossback/ });
+  const mossback = page.getByRole("button", { name: /^Select Stump Smash/ });
   await mossback.hover();
   await expect(page.getByRole("tooltip")).toContainText(
     "Will activate if played now",
@@ -50,7 +50,7 @@ test("Comeback activates before placement and stays visible on a board card afte
   await expect(page.locator(".board-cell.filled")).toHaveCount(3);
   const boardCard = page
     .locator(".board-cell.filled")
-    .filter({ hasText: "Mossback" });
+    .filter({ hasText: "Stump Smash" });
   await boardCard.hover();
   await expect(page.getByRole("tooltip")).toContainText(
     "Activated when played · bonus locked in",
@@ -59,7 +59,7 @@ test("Comeback activates before placement and stays visible on a board card afte
   await expect(boardCard.locator(".edge-0 b")).toHaveText("2");
   await boardCard.click();
   await expect(
-    page.getByRole("dialog", { name: "Inspect Mossback" }),
+    page.getByRole("dialog", { name: "Inspect Stump Smash" }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("Comeback");
   await expect(page.getByRole("dialog")).toContainText(
@@ -131,11 +131,11 @@ test.describe("touch inspection", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: /^Select Mossback/ }).tap();
+    await page.getByRole("button", { name: /^Select Stump Smash/ }).tap();
     await expect(page.getByRole("tooltip")).toHaveCount(0);
     await page.getByRole("button", { name: "Inspect selected" }).tap();
     await expect(
-      page.getByRole("dialog", { name: "Inspect Mossback" }),
+      page.getByRole("dialog", { name: "Inspect Stump Smash" }),
     ).toBeVisible();
     await expect(page.getByRole("dialog")).toContainText("Comeback");
     expect(
@@ -145,7 +145,7 @@ test.describe("touch inspection", () => {
     ).toBe(true);
     await page.getByRole("button", { name: "Close dialog" }).tap();
     await expect(
-      page.getByRole("button", { name: /^Select Mossback/ }),
+      page.getByRole("button", { name: /^Select Stump Smash/ }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 });

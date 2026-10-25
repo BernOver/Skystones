@@ -45,7 +45,7 @@ for (const size of [3, 4] as const)
     }
     await expect(page.locator(".draft-offers .draft-card")).toHaveCount(3);
     await page
-      .getByRole("button", { name: /^Pick .+ Familiar$/ })
+      .getByRole("button", { name: /^Pick .+$/ })
       .first()
       .click();
     await page.reload();
@@ -60,7 +60,7 @@ for (const size of [3, 4] as const)
           `Player ${(Math.floor(pick / 2) % 2) + 1}’s pick`,
         );
       await page
-        .getByRole("button", { name: /^Pick .+ Familiar$/ })
+        .getByRole("button", { name: /^Pick .+$/ })
         .first()
         .click();
     }
@@ -81,11 +81,9 @@ for (const size of [3, 4] as const)
     await expect(page.locator(".hand-card-button")).toHaveCount(handSize(size));
     for (const id of draft.hands[0])
       await expect(
-        page
-          .locator(".hand-card-button")
-          .filter({
-            hasText: draft.cards.find((card) => card.id === id)!.name,
-          }),
+        page.locator(".hand-card-button").filter({
+          hasText: draft.cards.find((card) => card.id === id)!.name,
+        }),
       ).toHaveCount(1);
     for (let turn = 0; turn < size * size; turn++) {
       await page.locator(".hand-card-button").first().click();
@@ -102,7 +100,7 @@ for (const size of [3, 4] as const)
     }
     await expect(page.locator(".result-card")).toBeVisible();
     await page.getByRole("button", { name: /^Collection/ }).click();
-    await expect(page.locator(".collection-card-button")).toHaveCount(93);
+    await expect(page.locator(".collection-card-button")).toHaveCount(221);
     expect(errors).toEqual([]);
   });
 test("draft setup changes board size and card inspection explains Dizzy without selecting it", async ({

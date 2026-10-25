@@ -61,6 +61,12 @@ export function transformedCard(
     candidates.push(
       { type: "head-start", side },
       { type: "comeback", side },
+      { type: "shield", side },
+      {
+        type: "combo",
+        pips: [{ side, amount: 1 + Math.floor(rng() * 2) }],
+        keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
+      },
       {
         type: "resonance",
         side,

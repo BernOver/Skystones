@@ -97,7 +97,7 @@ test("Dizzy is a singleton with no direction, and valid cards round-trip through
   assert.ok(validateKeywords([{ type: "dizzy" }, { type: "silence" }]));
   assert.equal(validateKeywords([{ type: "dizzy" }, { type: "dizzy" }]), false);
   assert.equal(validateKeywords([{ type: "dizzy", side: 0 }]), false);
-  assert.equal(MAX_KEYWORDS, 19);
+  assert.equal(MAX_KEYWORDS, 24);
 });
 test("the Whirling Idol event gives exactly one 12-pip Dizzy card on both board sizes", () => {
   for (const size of [3, 4] as const) {

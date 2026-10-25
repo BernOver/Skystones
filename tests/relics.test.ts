@@ -211,7 +211,7 @@ test("Stonewright's Hammer adds one printed reward pip within caps and leaves me
     for (const card of rewardCards(hammer)) {
       assert.equal(
         card.edges.reduce((a, b) => a + b),
-        Math.min(12, 5 + floor),
+        Math.min(12, 5 + Math.floor(floor * 0.5)),
       );
       assert.ok(validateStone(card));
     }
@@ -340,8 +340,8 @@ test("Haggler's Coin discounts every shop category consistently without double p
     ),
     id = shop.inventory[0].id;
   assert.equal(shopPrice(shop, 35), 28);
-  assert.equal(cardPrice(shop.shopCards[0], shop), 31);
-  assert.equal(buyAdventureCard(shop, shop.shopCards[0].id).gold, 469);
+  assert.equal(cardPrice(shop.shopCards[0], shop), 28);
+  assert.equal(buyAdventureCard(shop, shop.shopCards[0].id).gold, 472);
   assert.equal(
     buyAdventurePotion(shop, shop.shopPotions[0].id).gold,
     500 - Math.ceil(POTIONS[shop.shopPotions[0].type].price * 0.8),
@@ -613,7 +613,7 @@ test("Rune Echo inscribes opposite edges without duplicating singleton keywords 
     );
     seen.add(keyword.type);
   }
-  assert.equal(seen.size, 6);
+  assert.equal(seen.size, 8);
 });
 test("Market Map stocks four distinct merchant cards without applying card reward relics", () => {
   const base: Adventure = {

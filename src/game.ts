@@ -1,3 +1,4 @@
+import { CHARACTER_STONES, CHARACTER_PORTRAITS } from "./characters.ts";
 export type Element =
   | "fire"
   | "life"
@@ -7,6 +8,8 @@ export type Element =
   | "earth"
   | "tech"
   | "undead"
+  | "light"
+  | "dark"
   | "neutral";
 export type Creature =
   | "dragon"
@@ -30,14 +33,28 @@ export type Owner = 0 | 1;
 export type Edges = [number, number, number, number]; // North, east, south, west.
 export type Side = 0 | 1 | 2 | 3;
 export type KeywordType =
-  "head-start" | "comeback" | "resonance" | "sunder" | "silence" | "dizzy";
+  | "head-start"
+  | "comeback"
+  | "resonance"
+  | "sunder"
+  | "silence"
+  | "dizzy"
+  | "shield"
+  | "combo";
 export type TargetKeyword =
   { type: "sunder"; side: Side | "any"; amount?: number } | { type: "silence" };
-export type StoneKeyword =
+export type BasicKeyword =
   | { type: "head-start" | "comeback"; side: Side }
   | { type: "resonance"; side: Side; element: Element }
   | { type: "dizzy" }
+  | { type: "shield"; side: Side; amount?: number }
   | TargetKeyword;
+export type ComboKeyword = {
+  type: "combo";
+  pips?: { side: Side; amount: number }[];
+  keywords?: BasicKeyword[];
+};
+export type StoneKeyword = BasicKeyword | ComboKeyword;
 export type ActiveKeyword =
   | { type: "head-start" | "comeback"; side: Side }
   | { type: "resonance"; side: Side; element: Element; bonus: number };
@@ -64,10 +81,14 @@ export const KEYWORD_RULES = {
   sunder: { name: "Sunder", condition: "on play" },
   silence: { name: "Silence", condition: "on play" },
   dizzy: { name: "Dizzy", condition: "after captures" },
+  shield: { name: "Shield", condition: "defense only" },
+  combo: { name: "Combo", condition: "matching previous element" },
 } as const;
-export const MAX_KEYWORDS = 4 * 4 + 3;
+export const MAX_KEYWORDS = 24;
 export function keywordKey(keyword: StoneKeyword): string {
-  return keyword.type === "silence" || keyword.type === "dizzy"
+  return keyword.type === "silence" ||
+    keyword.type === "dizzy" ||
+    keyword.type === "combo"
     ? keyword.type
     : `${keyword.type}:${keyword.side}`;
 }
@@ -105,7 +126,8 @@ export interface Stone {
   description: string;
   custom?: boolean;
   image?: string;
-  origin?: "giants";
+  origin?: "giants" | "skylanders";
+  portrait?: string;
   keywords?: StoneKeyword[];
 }
 export interface PlacedStone {
@@ -118,6 +140,11 @@ export interface PlacedStone {
   reductions?: Edges;
   effects?: TargetEffect[];
   dizzy?: { before: Edges; after: Edges };
+  shields?: Edges;
+  grantedKeywords?: BasicKeyword[];
+  comboActive?: boolean;
+  comboPrevious?: Element;
+  playedOrder?: number;
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -138,6 +165,8 @@ export const ELEMENTS: Record<
   earth: { name: "Earth", color: "#b69a6a", pale: "#e9dfc7", ink: "#7b633c" },
   tech: { name: "Tech", color: "#c69d49", pale: "#f2e5bb", ink: "#896520" },
   undead: { name: "Undead", color: "#9a8fa5", pale: "#e8e0ee", ink: "#65536f" },
+  light: { name: "Light", color: "#d5b65d", pale: "#fff3cf", ink: "#816522" },
+  dark: { name: "Dark", color: "#74728f", pale: "#e5e2f2", ink: "#4e466c" },
   neutral: {
     name: "Neutral",
     color: "#a5a38c",
@@ -146,113 +175,7 @@ export const ELEMENTS: Record<
   },
 };
 
-export const STARTER_STONES: Stone[] = [
-  {
-    id: "emberwing",
-    name: "Emberwing",
-    element: "fire",
-    creature: "dragon",
-    edges: [3, 2, 1, 2],
-    description: "Small wings. Unreasonably big ambitions.",
-    keywords: [{ type: "head-start", side: 1 }],
-  },
-  {
-    id: "mossback",
-    name: "Mossback",
-    element: "life",
-    creature: "turtle",
-    edges: [1, 3, 3, 1],
-    description: "A wandering garden with nowhere to be.",
-    keywords: [{ type: "comeback", side: 0 }],
-  },
-  {
-    id: "tidecaller",
-    name: "Tidecaller",
-    element: "water",
-    creature: "whale",
-    edges: [2, 1, 2, 3],
-    description: "Carries a little ocean wherever it goes.",
-    keywords: [{ type: "resonance", side: 3, element: "water" }],
-  },
-  {
-    id: "nocturne",
-    name: "Nocturne",
-    element: "magic",
-    creature: "owl",
-    edges: [3, 1, 3, 1],
-    description: "Knows your next move. Usually keeps it secret.",
-    keywords: [{ type: "comeback", side: 3 }],
-  },
-  {
-    id: "sunfox",
-    name: "Sunfox",
-    element: "earth",
-    creature: "fox",
-    edges: [2, 3, 1, 2],
-    description: "Always finds the warmest corner of the board.",
-    keywords: [{ type: "head-start", side: 2 }],
-  },
-  {
-    id: "pebble",
-    name: "Pebble",
-    element: "earth",
-    creature: "golem",
-    edges: [2, 2, 3, 1],
-    description: "A mountain of courage in a pocket-sized stone.",
-  },
-  {
-    id: "cloudpaws",
-    name: "Cloudpaws",
-    element: "air",
-    creature: "cat",
-    edges: [3, 2, 2, 1],
-    description: "Made of clouds, curiosity, and a little trouble.",
-    keywords: [{ type: "comeback", side: 2 }],
-  },
-  {
-    id: "glowcap",
-    name: "Glowcap",
-    element: "life",
-    creature: "mushroom",
-    edges: [1, 2, 2, 3],
-    description: "A tiny light for the paths less traveled.",
-    keywords: [{ type: "resonance", side: 0, element: "life" }],
-  },
-  {
-    id: "cinder",
-    name: "Cinder",
-    element: "fire",
-    creature: "fox",
-    edges: [1, 1, 3, 3],
-    description: "A spark with a very impressive tail.",
-    keywords: [{ type: "head-start", side: 0 }],
-  },
-  {
-    id: "moonwatch",
-    name: "Moonwatch",
-    element: "air",
-    creature: "owl",
-    edges: [2, 3, 2, 1],
-    description: "Collects stories from the midnight sky.",
-  },
-  {
-    id: "seasprout",
-    name: "Seasprout",
-    element: "water",
-    creature: "turtle",
-    edges: [3, 1, 1, 3],
-    description: "A patient traveler with a sea-glass shell.",
-    keywords: [{ type: "comeback", side: 1 }],
-  },
-  {
-    id: "stardust",
-    name: "Stardust",
-    element: "magic",
-    creature: "cat",
-    edges: [2, 2, 1, 3],
-    description: "Lands on its feet. Sometimes in another dimension.",
-  },
-];
+export const STARTER_STONES: Stone[] = CHARACTER_STONES.slice(0, 12);
 export const DEFAULT_DECK = STARTER_STONES.slice(0, 5).map((s) => s.id);
 export const EMPTY_BOARD = (size: BoardSize = 3): Board =>
   Array.from({ length: size * size }, () => null);
@@ -274,19 +197,69 @@ export const COORDINATES = [
 ];
 
 // This result is computed before placement and retained on the placed stone.
-export function evaluateKeywords(
-  stone: Stone,
+export function previousElement(
   board: Board,
   player: Owner,
-): {
-  edges: Edges;
-  activeKeywords: ActiveKeyword[];
-} {
+): Element | undefined {
+  return board
+    .filter(
+      (cell) => cell?.playedBy === player && cell.playedOrder !== undefined,
+    )
+    .sort((a, b) => b!.playedOrder! - a!.playedOrder!)[0]?.stone.element;
+}
+export function comboKeywords(stone: Stone, board: Board, player: Owner) {
+  const combo = stone.keywords?.find((keyword) => keyword.type === "combo");
+  const previous = previousElement(board, player);
+  const active = !!combo && previous === stone.element;
+  return {
+    combo,
+    previous,
+    active,
+    granted: active ? combo!.keywords || [] : [],
+  };
+}
+export function effectiveKeywords(
+  stone: Stone,
+  board: Board,
+  player?: Owner,
+): BasicKeyword[] {
+  return (stone.keywords || []).flatMap((keyword) =>
+    keyword.type === "combo"
+      ? player !== undefined && previousElement(board, player) === stone.element
+        ? keyword.keywords || []
+        : []
+      : [keyword],
+  );
+}
+export function shieldEdges(
+  stone: Stone,
+  silenced = false,
+  granted: BasicKeyword[] = [],
+): Edges {
+  const shields: Edges = [0, 0, 0, 0];
+  if (!silenced)
+    for (const keyword of [...(stone.keywords || []), ...granted])
+      if (keyword.type === "shield")
+        shields[keyword.side] += keyword.amount ?? 1;
+  return shields;
+}
+export function defenseEdges(cell: PlacedStone): Edges {
+  const shields = cell.silenced
+    ? [0, 0, 0, 0]
+    : cell.shields || shieldEdges(cell.stone, false, cell.grantedKeywords);
+  return (cell.edges || cell.stone.edges).map(
+    (edge, side) => edge + shields[side],
+  ) as Edges;
+}
+export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
   const scores = score(board);
   const rival = player === 0 ? 1 : 0;
   const activeKeywords: ActiveKeyword[] = [];
   const edges = [...stone.edges] as Edges;
-  for (const keyword of stone.keywords || []) {
+  const combo = comboKeywords(stone, board, player);
+  if (combo.active)
+    for (const pip of combo.combo!.pips || []) edges[pip.side] += pip.amount;
+  for (const keyword of effectiveKeywords(stone, board, player)) {
     if (keyword.type === "resonance") {
       const bonus = board.filter(
         (cell) => cell?.stone.element === keyword.element,
@@ -305,7 +278,18 @@ export function evaluateKeywords(
       edges[keyword.side] += 1;
     }
   }
-  return { edges, activeKeywords };
+  return {
+    edges,
+    activeKeywords,
+    shields: shieldEdges(stone, false, combo.granted),
+    ...(combo.combo
+      ? {
+          comboActive: combo.active,
+          comboPrevious: combo.previous,
+          grantedKeywords: combo.granted,
+        }
+      : {}),
+  };
 }
 
 // Targeted effects resolve in printed order against cards already on the board.
@@ -314,6 +298,7 @@ export function prepareTargeting(
   board: Board,
   stone: Stone,
   targets: KeywordTarget[] = [],
+  owner?: Owner,
 ) {
   if (
     new Set(targets.map((choice) => choice.keywordIndex)).size !==
@@ -323,7 +308,11 @@ export function prepareTargeting(
   let next = board;
   const effects: TargetEffect[] = [];
   const used = new Set<number>();
-  for (const [keywordIndex, keyword] of (stone.keywords || []).entries()) {
+  for (const [keywordIndex, keyword] of effectiveKeywords(
+    stone,
+    board,
+    owner,
+  ).entries()) {
     if (keyword.type !== "sunder" && keyword.type !== "silence") continue;
     const options: KeywordTarget[] = next.flatMap((cell, boardIndex) => {
       if (!cell) return [];
@@ -393,7 +382,14 @@ export function prepareTargeting(
       ) as Edges;
       next = next.map((target, index) =>
         index === choice.boardIndex
-          ? { ...cell, edges, silenced: true, activeKeywords: [] }
+          ? {
+              ...cell,
+              edges,
+              silenced: true,
+              activeKeywords: [],
+              shields: [0, 0, 0, 0],
+              grantedKeywords: [],
+            }
           : target,
       );
       effects.push({ type: "silence", target: choice.boardIndex });
@@ -424,8 +420,7 @@ function capturesAt(
     return (
       target &&
       target.owner !== owner &&
-      edges[direction] >
-        (target.edges || target.stone.edges)[(direction + 2) % 4]
+      edges[direction] > defenseEdges(target)[(direction + 2) % 4]
     );
   });
 }
@@ -439,13 +434,18 @@ export function chooseKeywordTargets(
 ): KeywordTarget[] {
   const targets: KeywordTarget[] = [];
   const edges = evaluateKeywords(stone, board, owner).edges;
-  let state = prepareTargeting(board, stone, targets);
+  let state = prepareTargeting(board, stone, targets, owner);
   while (state.pending) {
     const { options } = state.pending;
     let best = options[0],
       bestValue = -Infinity;
     for (const option of options) {
-      const preview = prepareTargeting(board, stone, [...targets, option]);
+      const preview = prepareTargeting(
+        board,
+        stone,
+        [...targets, option],
+        owner,
+      );
       const weakening = preview.board.reduce((sum, cell, spot) => {
         if (!cell) return sum;
         const before = state.board[spot]!;
@@ -465,7 +465,7 @@ export function chooseKeywordTargets(
       }
     }
     targets.push(best);
-    state = prepareTargeting(board, stone, targets);
+    state = prepareTargeting(board, stone, targets, owner);
   }
   return targets;
 }
@@ -508,7 +508,7 @@ export function placeStone(
     throw new Error("Choose an empty square on the board.");
   }
   const resolved = evaluateKeywords(stone, board, owner);
-  const targeted = prepareTargeting(board, stone, targets);
+  const targeted = prepareTargeting(board, stone, targets, owner);
   if (targeted.pending)
     throw new Error("Choose a target before placing this card.");
   const next = targeted.board.map((cell) => (cell ? { ...cell } : null));
@@ -516,13 +516,19 @@ export function placeStone(
     stone,
     owner,
     playedBy: owner,
+    playedOrder:
+      1 + Math.max(0, ...board.map((cell) => cell?.playedOrder || 0)),
     ...resolved,
     ...(targeted.effects.length ? { effects: targeted.effects } : {}),
   };
   const captured = capturesAt(next, index, owner, resolved.edges);
   for (const neighbor of captured)
     next[neighbor] = { ...next[neighbor]!, owner };
-  if (stone.keywords?.some((keyword) => keyword.type === "dizzy")) {
+  if (
+    effectiveKeywords(stone, board, owner).some(
+      (keyword) => keyword.type === "dizzy",
+    )
+  ) {
     const seed =
       options.seed ??
       board.reduce(
@@ -644,6 +650,9 @@ export function chooseMove(
   };
 }
 
+const PORTRAIT_IDS = new Set(
+  CHARACTER_PORTRAITS.map((portrait) => portrait.id),
+);
 export function validateStone(value: unknown): value is Stone {
   if (!value || typeof value !== "object") return false;
   const s = value as Record<string, unknown>;
@@ -652,7 +661,8 @@ export function validateStone(value: unknown): value is Stone {
     s.id.startsWith("custom-") &&
     typeof s.name === "string" &&
     s.name.trim().length > 0 &&
-    s.name.length <= (s.origin === "giants" ? 40 : 24) &&
+    s.name.length <=
+      (s.origin === "giants" || s.origin === "skylanders" ? 40 : 24) &&
     typeof s.element === "string" &&
     Object.hasOwn(ELEMENTS, s.element) &&
     [
@@ -677,6 +687,8 @@ export function validateStone(value: unknown): value is Stone {
     s.edges.length === 4 &&
     s.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 5) &&
     s.edges.reduce((a, b) => a + b, 0) <= (s.origin === "giants" ? 16 : 12) &&
+    (s.portrait === undefined ||
+      (typeof s.portrait === "string" && PORTRAIT_IDS.has(s.portrait))) &&
     typeof s.description === "string" &&
     s.description.length <= 120 &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
@@ -699,7 +711,9 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
     )
       return false;
     if (
-      keyword.type === "silence" || keyword.type === "dizzy"
+      keyword.type === "silence" ||
+      keyword.type === "dizzy" ||
+      keyword.type === "combo"
         ? keyword.side !== undefined
         : !(keyword.type === "sunder" && keyword.side === "any") &&
           (!Number.isInteger(keyword.side) ||
@@ -721,6 +735,46 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
         keyword.amount > 99)
     )
       return false;
+    if (
+      keyword.type === "shield" &&
+      keyword.amount !== undefined &&
+      (!Number.isInteger(keyword.amount) ||
+        keyword.amount < 1 ||
+        keyword.amount > 99)
+    )
+      return false;
+    if (keyword.type === "combo") {
+      if (
+        keyword.pips !== undefined &&
+        (!Array.isArray(keyword.pips) ||
+          keyword.pips.length > 4 ||
+          new Set(keyword.pips.map((pip: { side: number }) => pip?.side))
+            .size !== keyword.pips.length ||
+          !keyword.pips.every(
+            (pip: { side: number; amount: number }) =>
+              pip &&
+              Number.isInteger(pip.side) &&
+              pip.side >= 0 &&
+              pip.side <= 3 &&
+              Number.isInteger(pip.amount) &&
+              pip.amount >= 1 &&
+              pip.amount <= 5,
+          ))
+      )
+        return false;
+      // A Combo can grant ordinary keywords, never another Combo.
+      if (
+        keyword.keywords !== undefined &&
+        (!Array.isArray(keyword.keywords) ||
+          keyword.keywords.length > 5 ||
+          keyword.keywords.some(
+            (grant: { type: string }) => !grant || grant.type === "combo",
+          ) ||
+          !validateKeywords(keyword.keywords))
+      )
+        return false;
+      if (!(keyword.pips?.length || keyword.keywords?.length)) return false;
+    }
     const key = keywordKey(keyword);
     if (seen.has(key)) return false;
     seen.add(key);

@@ -1,3 +1,4 @@
+import { CaptureFlip } from "./CaptureFlip";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { ChangeEvent, ReactNode } from "react";
@@ -55,7 +56,6 @@ import {
 } from "./game";
 import type {
   Board,
-  Creature,
   Element,
   Owner,
   Stone,
@@ -75,6 +75,8 @@ import { TargetPicker } from "./TargetPicker";
 import { Draft } from "./Draft";
 import { Expedition } from "./Expedition";
 import { GIANTS_STONES, GIANTS_REFERENCE } from "./giants";
+import { CHARACTER_STONES, migrateDeckId } from "./characters";
+import { PortraitPicker } from "./PortraitPicker";
 
 type Page = "table" | "collection" | "studio" | "run" | "draft";
 type Mode = "computer" | "local";
@@ -115,24 +117,6 @@ interface Match {
   lastPlaced: number;
 }
 const STORAGE_KEY = "skystones-library-v1";
-const CREATURE_NAMES: Record<Creature, string> = {
-  dragon: "Dragon",
-  turtle: "Turtle",
-  whale: "Whale",
-  owl: "Owl",
-  fox: "Fox",
-  golem: "Golem",
-  mushroom: "Mushroom",
-  cat: "Cloud cat",
-  slime: "Slime",
-  bat: "Bat",
-  spider: "Spider",
-  robot: "Robot",
-  griffin: "Griffin",
-  crab: "Crab",
-  serpent: "Serpent",
-  chest: "Treasure chest",
-};
 const freshDraft = (): Stone => ({
   id: "custom-draft",
   name: "",
@@ -142,6 +126,7 @@ const freshDraft = (): Stone => ({
   edges: [2, 2, 2, 2],
   custom: true,
   keywords: [],
+  portrait: "spyro",
 });
 
 function readLibrary(): Library {
@@ -152,14 +137,15 @@ function readLibrary(): Library {
         .filter(validateStone)
         .map((s: Stone) => ({ ...s, custom: true }));
       const ids = new Set(
-        [...STARTER_STONES, ...GIANTS_STONES, ...custom].map((s) => s.id),
+        [...CHARACTER_STONES, ...GIANTS_STONES, ...custom].map((s) => s.id),
       );
       const size: BoardSize = value.boardSize === 4 ? 4 : 3;
       const deck = [
         ...new Set<string>(
-          value.deck.filter(
-            (id: unknown) => typeof id === "string" && ids.has(id),
-          ),
+          value.deck
+            .filter((id: unknown): id is string => typeof id === "string")
+            .map(migrateDeckId)
+            .filter((id: string) => ids.has(id)),
         ),
       ].slice(0, handSize(size));
       return { custom, deck, sound: value.sound === true, boardSize: size };
@@ -175,7 +161,7 @@ function createMatch(
   mode: Mode = "computer",
   first: Owner = 0,
 ): Match {
-  const collection = [...STARTER_STONES, ...GIANTS_STONES, ...library.custom];
+  const collection = [...CHARACTER_STONES, ...GIANTS_STONES, ...library.custom];
   // A half-edited saved deck must not strand the initial practice match.
   const count = handSize(library.boardSize);
   const deck =
@@ -360,7 +346,7 @@ export default function App() {
   const detailRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const lastSound = useRef("");
-  const collection = [...STARTER_STONES, ...GIANTS_STONES, ...library.custom];
+  const collection = [...CHARACTER_STONES, ...GIANTS_STONES, ...library.custom];
   const scores = score(match.board);
   const size = boardSize(match.board);
   const capacity = handSize(library.boardSize);
@@ -493,6 +479,10 @@ export default function App() {
       ? {
           edges: cell.edges || stone.edges,
           activeKeywords: cell.activeKeywords || [],
+          shields: cell.shields,
+          comboActive: cell.comboActive,
+          comboPrevious: cell.comboPrevious,
+          grantedKeywords: cell.grantedKeywords,
         }
       : evaluateKeywords(stone, match.board, player);
     const rect = anchor.getBoundingClientRect();
@@ -571,7 +561,7 @@ export default function App() {
   function playAt(index: number) {
     if (aiTurn || done || match.board[index] || selected === null) return;
     const stone = match.hands[match.current][selected];
-    if (prepareTargeting(match.board, stone).pending) {
+    if (prepareTargeting(match.board, stone, [], match.current).pending) {
       setDialog({ kind: "target", index, cardIndex: selected, targets: [] });
       return;
     }
@@ -581,7 +571,12 @@ export default function App() {
   function chooseTarget(boardIndex: number, side?: Side) {
     if (dialog?.kind !== "target") return;
     const stone = match.hands[match.current][dialog.cardIndex];
-    const state = prepareTargeting(match.board, stone, dialog.targets);
+    const state = prepareTargeting(
+      match.board,
+      stone,
+      dialog.targets,
+      match.current,
+    );
     if (
       !state.pending ||
       !state.pending.options.some(
@@ -597,7 +592,7 @@ export default function App() {
         ...(side !== undefined ? { side } : {}),
       },
     ];
-    if (prepareTargeting(match.board, stone, targets).pending) {
+    if (prepareTargeting(match.board, stone, targets, match.current).pending) {
       setDialog({ ...dialog, targets });
     } else {
       setMatch(applyMove(match, dialog.index, dialog.cardIndex, targets));
@@ -1013,13 +1008,20 @@ export default function App() {
                           }
                         >
                           {cell ? (
-                            <StoneCard
-                              stone={cell.stone}
+                            <CaptureFlip
+                              key={`${index}-${cell.owner}`}
+                              captured={match.lastCaptured.includes(index)}
                               owner={cell.owner}
-                              edges={cell.edges || cell.stone.edges}
-                              silenced={cell.silenced}
-                              compact
-                            />
+                            >
+                              <StoneCard
+                                stone={cell.stone}
+                                owner={cell.owner}
+                                edges={cell.edges || cell.stone.edges}
+                                shields={cell.shields}
+                                silenced={cell.silenced}
+                                compact
+                              />
+                            </CaptureFlip>
                           ) : (
                             <>
                               <span className="cell-coordinate">
@@ -1206,6 +1208,10 @@ export default function App() {
                           edges={
                             evaluateKeywords(stone, match.board, handOwner)
                               .edges
+                          }
+                          shields={
+                            evaluateKeywords(stone, match.board, handOwner)
+                              .shields
                           }
                         />
                         {selected === index && !aiTurn && (
@@ -1526,8 +1532,8 @@ export default function App() {
 
             {onlyGiants && !onlyCustom && (
               <p className="giants-reference-note">
-                81 Giants Skystones, including rank variants. 80 use original
-                game art; Bark Demon uses an illustrated stand-in.{" "}
+                {GIANTS_STONES.length} unique Giants opponents. Numbered ranks
+                have been consolidated into one card per character.{" "}
                 <a href={GIANTS_REFERENCE} target="_blank" rel="noreferrer">
                   Community card reference
                 </a>
@@ -1548,9 +1554,9 @@ export default function App() {
                               MADE BY YOU
                             </>
                           ) : stone.origin === "giants" ? (
-                            "SKYLANDERS GIANTS"
+                            "GIANTS OPPONENT"
                           ) : (
-                            "THE ORIGINALS"
+                            "SKYLANDERS"
                           )}
                         </span>
                         <button
@@ -1672,14 +1678,13 @@ export default function App() {
                     <label htmlFor="stone-name">
                       Stone name
                       <span>
-                        {draft.name.length}/
-                        {draft.origin === "giants" ? 40 : 24}
+                        {draft.name.length}/{draft.origin ? 40 : 24}
                       </span>
                     </label>
                     <input
                       id="stone-name"
                       placeholder="What shall we call you?"
-                      maxLength={draft.origin === "giants" ? 40 : 24}
+                      maxLength={draft.origin ? 40 : 24}
                       value={draft.name}
                       required
                       onChange={(e) =>
@@ -1742,40 +1747,22 @@ export default function App() {
                     <span className="step-number">02</span>
                     <div>
                       <h2>A face to remember</h2>
-                      <p>Pick an illustrated friend, or bring your own.</p>
+                      <p>Search Skylanders portraits, or upload your own.</p>
                     </div>
                   </div>
-                  <div className="creature-picker">
-                    {Object.entries(CREATURE_NAMES).map(([key, name]) => (
-                      <button
-                        type="button"
-                        key={key}
-                        className={
-                          !draft.image && draft.creature === key ? "active" : ""
-                        }
-                        aria-label={`Choose ${name} artwork`}
-                        aria-pressed={!draft.image && draft.creature === key}
-                        onClick={() =>
-                          setDraft({
-                            ...draft,
-                            creature: key as Creature,
-                            image: undefined,
-                          })
-                        }
-                      >
-                        <CreatureArt
-                          creature={key as Creature}
-                          element={draft.element}
-                        />
-                        <span>{name}</span>
-                        {!draft.image && draft.creature === key && (
-                          <span className="creature-check">
-                            <Check size={11} />
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  <PortraitPicker
+                    selected={draft.portrait}
+                    onChoose={(portrait) =>
+                      setDraft({
+                        ...draft,
+                        portrait: portrait.id,
+                        image: undefined,
+                        element: portrait.element,
+                        name: draft.name || portrait.name,
+                        origin: "skylanders",
+                      })
+                    }
+                  />
                   <div className="upload-box">
                     <div>
                       <ImagePlus size={23} strokeWidth={1.3} />
@@ -1801,7 +1788,13 @@ export default function App() {
                     <button
                       type="button"
                       className="text-button remove-art"
-                      onClick={() => setDraft({ ...draft, image: undefined })}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          image: undefined,
+                          portrait: undefined,
+                        })
+                      }
                     >
                       <X size={13} />
                       Remove uploaded artwork
@@ -2016,6 +2009,7 @@ export default function App() {
               <StoneCard
                 stone={dialog.inspection.stone}
                 edges={dialog.inspection.edges}
+                shields={dialog.inspection.shields}
                 silenced={dialog.inspection.silenced}
               />
             </div>
@@ -2040,6 +2034,7 @@ export default function App() {
           className="target-dialog"
         >
           <TargetPicker
+            owner={match.current}
             key={dialog.targets.length}
             board={match.board}
             stone={match.hands[match.current][dialog.cardIndex]}
@@ -2151,6 +2146,23 @@ export default function App() {
               stay.
             </p>
           </div>
+          <div className="rule-line">
+            <Shield size={19} />
+            <p>
+              <strong>Shield</strong> adds pips only to defense on its listed
+              edge. It does not help the card capture, and it stays through
+              attacks and captures until Silence removes it.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Layers size={19} />
+            <p>
+              <strong>Combo</strong> checks the last card you played. Matching
+              this card’s element grants its listed pips and/or keywords once,
+              before captures. Your first card cannot Combo. Capturing or
+              silencing your previous card does not change its element history.
+            </p>
+          </div>
           <button
             className="button button-dark full-width"
             onClick={() => setDialog(null)}
@@ -2234,7 +2246,7 @@ export default function App() {
           {newMode === "local" && (
             <p className="dialog-small-note">
               Player one uses your selected deck. Player two gets {capacity}{" "}
-              original stones. Pass the screen after each move.
+              Skylanders stones. Pass the screen after each move.
             </p>
           )}
           {library.deck.length !== capacity && (
@@ -2274,7 +2286,7 @@ export default function App() {
             {dialog.stone.custom
               ? "ONE OF YOUR OWN"
               : dialog.stone.origin === "giants"
-                ? "SKYLANDERS GIANTS"
+                ? "GIANTS OPPONENT"
                 : "THE ORIGINAL COLLECTION"}
           </div>
           <h2>{dialog.stone.name}</h2>

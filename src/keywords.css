@@ -772,3 +772,32 @@
     font-size: 8px;
   }
 }
+/* Nested Combo controls retain full-width fields on small screens. */
+.keyword-editor-row.combo-grant {
+  grid-template-columns: minmax(0, 1.3fr) minmax(80px, 0.85fr) minmax(
+      60px,
+      0.6fr
+    ) 30px;
+}
+.keyword-editor-row.combo-grant > div {
+  min-width: 0;
+}
+.combo-editor .combo-pip-grid select {
+  padding: 9px 6px;
+  border: 1px solid #d5c9de;
+  border-radius: 5px;
+  background: #fffdf8;
+  font-size: 11px;
+}
+@media (max-width: 600px) {
+  .keyword-editor-row.combo-grant {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+  }
+  .keyword-editor-row.combo-grant > div:first-child {
+    grid-column: 1 / -1;
+  }
+  .keyword-editor-row.combo-grant > button {
+    justify-self: end;
+  }
+}
