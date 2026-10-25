@@ -3,6 +3,7 @@ import { Scissors, VolumeX } from "lucide-react";
 import { StoneCard } from "./Artwork";
 import {
   coordinate,
+  cardEdges,
   boardSize,
   KEYWORD_RULES,
   SIDE_NAMES,
@@ -120,7 +121,7 @@ export function TargetPicker({
           <div className="target-selected-card">
             <StoneCard
               stone={selectedCard.stone}
-              edges={selectedCard.edges || selectedCard.stone.edges}
+              edges={cardEdges(selectedCard)}
               silenced={selectedCard.silenced}
               shields={selectedCard.shields}
               owner={selectedCard.owner}
@@ -135,17 +136,19 @@ export function TargetPicker({
               const pips = (selectedCard.edges || selectedCard.stone.edges)[
                 side
               ];
+              const visible = cardEdges(selectedCard)[side];
+              const after = visible - Math.min(pips, amount);
               return (
                 <button
                   key={side}
                   className="button button-outline"
                   disabled={pips <= 0}
                   onClick={() => onChoose(selectedTarget, side as Side)}
-                  aria-label={`${name}: ${pips} → ${Math.max(0, pips - amount)}`}
+                  aria-label={`${name}: ${visible} → ${after}`}
                 >
                   <span>{name}</span>
                   <strong>
-                    {pips} → {Math.max(0, pips - amount)}
+                    {visible} → {after}
                   </strong>
                 </button>
               );
@@ -195,7 +198,7 @@ export function TargetPicker({
                     <StoneCard
                       stone={cell.stone}
                       owner={cell.owner}
-                      edges={cell.edges || cell.stone.edges}
+                      edges={cardEdges(cell)}
                       silenced={cell.silenced}
                       shields={cell.shields}
                       compact
@@ -205,7 +208,7 @@ export function TargetPicker({
                         ? keyword.type === "sunder"
                           ? keyword.side === "any"
                             ? "Choose an edge"
-                            : `${SIDE_NAMES[keyword.side]} ${(cell.edges || cell.stone.edges)[keyword.side]} → ${Math.max(0, (cell.edges || cell.stone.edges)[keyword.side] - amount)}`
+                            : `${SIDE_NAMES[keyword.side]} ${cardEdges(cell)[keyword.side]} → ${cardEdges(cell)[keyword.side] - Math.min((cell.edges || cell.stone.edges)[keyword.side], amount)}`
                           : "Disable keywords"
                         : "No valid effect"}
                     </span>

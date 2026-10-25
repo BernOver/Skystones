@@ -2,6 +2,8 @@ import {
   ELEMENTS,
   boardSize,
   coordinate,
+  cardEdges,
+  arenaEdges,
   keywordKey,
   prepareTargeting,
   rollDizzy,
@@ -16,6 +18,7 @@ import type {
   StoneKeyword,
 } from "./game.ts";
 import { earnedGold, hasRelic, maxLives, potionPotency } from "./relics.ts";
+import { hasSkystonesArtwork } from "./characters.ts";
 import type { Adventure } from "./adventure.ts";
 
 export type Potion =
@@ -318,6 +321,7 @@ export function potionSideOptions(
         ? !!cell && (cell.edges || cell.stone.edges)[side] > 0
         : type === "resonance"
           ? !!stone &&
+            !hasSkystonesArtwork(stone) &&
             validateKeywords([
               ...(stone.keywords || []),
               { type: "resonance", side, element: stone.element },
@@ -349,7 +353,11 @@ export function adventurePotionTargets(
       .map((stone) => ({
         target: stone.id,
         stone,
-        edges: stone.edges,
+        edges: arenaEdges(
+          stone.edges,
+          stone.element,
+          battle.elementCycle?.[battle.turns % battle.elementCycle.length],
+        ),
         label: `${type === "power" ? "Empower" : type === "sharpen" ? "Sharpen" : type === "compass" ? "Rotate" : type === "prism" ? "Recolor" : type === "resonance" ? "Enchant" : "Reshape"} ${stone.name}`,
       }));
   const swapCandidates = battle.board.flatMap((cell, index) =>
@@ -408,7 +416,7 @@ export function adventurePotionTargets(
         {
           target: index,
           stone: cell.stone,
-          edges,
+          edges: cardEdges(cell),
           label: `Freeze row ${String.fromCharCode(65 + row)} · ${enemies.length} enemy card${enemies.length === 1 ? "" : "s"}`,
         },
       ];
@@ -417,7 +425,7 @@ export function adventurePotionTargets(
       {
         target: index,
         stone: cell.stone,
-        edges,
+        edges: cardEdges(cell),
         label: `${type === "hex" ? "Hex" : type === "shatter" ? "Shatter" : type === "fortify" ? "Fortify" : type === "hush" ? "Silence" : type === "mend" ? "Restore" : "Swap"} ${coordinate(index, run.size)} · ${cell.stone.name}`,
       },
     ];

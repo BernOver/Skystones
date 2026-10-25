@@ -1,3 +1,7 @@
+import {
+  ADVENTURE_CHARACTERS,
+  hasSkystonesArtwork,
+} from "../../src/characters.ts";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import {
@@ -155,7 +159,7 @@ for (const size of [3, 4] as const)
         { ...newAdventure(size, 47), floor: 1 },
         "rune-shrine",
       ),
-      card = run.inventory[1],
+      card = run.inventory.find((card) => !hasSkystonesArtwork(card))!,
       offer = adventureInscriptionOffers(run)[2];
     await open(page, run);
     await expect(page.locator(".event-inscription-offer")).toHaveCount(3);
@@ -191,9 +195,14 @@ for (const size of [3, 4] as const)
     expect(saved.floor).toBe(2);
     expect(saved.gold).toBe(run.gold);
     expect(saved.deck).toEqual(run.deck);
-    expect(saved.inventory[1].keywords).toEqual([offer]);
+    expect(
+      saved.inventory.find((source) => source.id === card.id)!.keywords,
+    ).toEqual([offer]);
     await reload(page);
-    expect((await stored(page)).inventory[1].keywords).toEqual([offer]);
+    expect(
+      (await stored(page)).inventory.find((source) => source.id === card.id)!
+        .keywords,
+    ).toEqual([offer]);
     await expect(page.locator(".event-inscription-offer")).toHaveCount(0);
   });
 for (const size of [3, 4] as const)
@@ -211,6 +220,16 @@ for (const size of [3, 4] as const)
     };
     run.inventory[1] = {
       ...run.inventory[1],
+      name: "Drobot",
+      portrait: "drobot",
+      origin: "skylanders",
+      baseEdges: [
+        ...ADVENTURE_CHARACTERS.find((card) => card.portrait === "drobot")!
+          .edges,
+      ],
+      baseKeywords: ADVENTURE_CHARACTERS.find(
+        (card) => card.portrait === "drobot",
+      )!.keywords,
       edges: [0, 0, 2, 5],
       keywords: [{ type: "dizzy" }],
     };

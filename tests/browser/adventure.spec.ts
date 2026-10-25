@@ -85,7 +85,7 @@ test("Giants catalogue consolidates ranks, bundles character images and the stud
   expect(
     await page
       .getByRole("dialog")
-      .locator("img.character-art")
+      .locator(".stone-art img")
       .evaluate(
         (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
       ),

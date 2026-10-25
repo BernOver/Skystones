@@ -46,7 +46,15 @@ function battle(type: Potion): Adventure {
       keywords: [],
       edges: [3, 3, 3, 3] as Edges,
     },
-    enemy = { ...run.inventory[1], keywords: [], edges: [4, 3, 2, 1] as Edges };
+    enemy = {
+      ...run.inventory[1],
+      id: "custom-enemy-snapshot",
+      name: "Keeper Stone",
+      portrait: "spyro",
+      origin: "skylanders" as const,
+      keywords: [],
+      edges: [4, 3, 2, 1] as Edges,
+    };
   run.battle!.board[0] = {
     stone: own,
     owner: 0,

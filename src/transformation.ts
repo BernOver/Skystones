@@ -8,6 +8,7 @@ export type RunCardFactory = (
   id: string,
   tier?: number,
   bonus?: number,
+  excludedCharacters?: readonly string[],
 ) => Stone;
 export function transformedCard(
   run: Pick<Adventure, "seed" | "floor" | "relics">,

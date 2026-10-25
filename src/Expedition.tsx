@@ -1,4 +1,6 @@
+import { ElementalArena } from "./ElementalArena";
 import { CaptureFlip } from "./CaptureFlip";
+import { hasSkystonesArtwork } from "./characters";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -36,7 +38,7 @@ import {
   KEYWORD_RULES,
   SIDE_NAMES,
   coordinate,
-  evaluateKeywords,
+  cardEdges,
   handSize,
   prepareTargeting,
   score,
@@ -57,6 +59,8 @@ import {
   ROUTE,
   adventureAct,
   adventureStop,
+  adventureArena,
+  adventureCardStrengths,
   adventureEventId,
   SERVICE_PRICES,
   adventureWorkshopOffer,
@@ -80,7 +84,6 @@ import {
   buyAdventureRelic,
   RELIC_PRICE,
   potionDescription,
-  adventureStoneForPlay,
   dizzyEventCard,
 } from "./adventure";
 import {
@@ -355,10 +358,9 @@ export function Expedition() {
     : offeredKeyword.side === "any"
       ? "Any edge"
       : SIDE_NAMES[offeredKeyword.side];
-  const canInscribe = validateKeywords([
-    ...(selectedService.keywords || []),
-    offeredKeyword,
-  ]);
+  const canInscribe =
+    !hasSkystonesArtwork(selectedService) &&
+    validateKeywords([...(selectedService.keywords || []), offeredKeyword]);
   const canSharpen =
     selectedService.edges[shopOffer.pipSide] < 5 &&
     selectedService.edges.reduce((a, b) => a + b, 0) < 12;
@@ -372,18 +374,14 @@ export function Expedition() {
     const cell = boardIndex !== undefined ? battle?.board[boardIndex] : null;
     const resolved = cell
       ? {
-          edges: cell.edges || stone.edges,
+          edges: cardEdges(cell),
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
           comboActive: cell.comboActive,
           comboPrevious: cell.comboPrevious,
           grantedKeywords: cell.grantedKeywords,
         }
-      : evaluateKeywords(
-          adventureStoneForPlay(run!, stone, owner),
-          battle?.board || [],
-          owner,
-        );
+      : adventureCardStrengths(run!, stone, owner);
     const rect = anchor.getBoundingClientRect();
     const value: Inspection = {
       stone,
@@ -399,6 +397,7 @@ export function Expedition() {
       effects: cell?.effects,
       dizzy: cell?.dizzy,
       size: run!.size,
+      arenaElement: cell?.arenaElement || adventureArena(run!)?.current,
     };
     if (modal) {
       setInspected(value);
@@ -749,7 +748,18 @@ export function Expedition() {
         </section>
       )}
       {run.phase === "battle" && battle && (
-        <section className="run-battle">
+        <section
+          className={`run-battle ${adventureArena(run) ? "elemental-battle" : ""}`}
+          data-arena-element={adventureArena(run)?.current}
+          style={
+            adventureArena(run)
+              ? ({
+                  "--arena-pale": ELEMENTS[adventureArena(run)!.current].pale,
+                  "--arena-color": ELEMENTS[adventureArena(run)!.current].color,
+                } as React.CSSProperties)
+              : undefined
+          }
+        >
           <div className="run-battle-heading">
             <div>
               <div className="eyebrow">
@@ -775,6 +785,12 @@ export function Expedition() {
               </span>
             </div>
           </div>
+          {adventureArena(run) && (
+            <ElementalArena
+              current={adventureArena(run)!.current}
+              next={adventureArena(run)!.next}
+            />
+          )}
           {battle.objective !== undefined && (
             <p className="run-objective">
               <Crown size={17} />
@@ -798,7 +814,7 @@ export function Expedition() {
                 disabled={!cell && (ai || selected === null)}
                 aria-label={
                   cell
-                    ? `${coordinate(index, run.size)}: ${cell.stone.name}, ${cell.owner === 0 ? "You" : "Keeper"}, north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}`
+                    ? `${coordinate(index, run.size)}: ${cell.stone.name}, ${cell.owner === 0 ? "You" : "Keeper"}, north ${cardEdges(cell)[0]}, east ${cardEdges(cell)[1]}, south ${cardEdges(cell)[2]}, west ${cardEdges(cell)[3]}`
                     : `${coordinate(index, run.size)}, empty adventure square`
                 }
                 onClick={(event) =>
@@ -828,7 +844,7 @@ export function Expedition() {
                     <StoneCard
                       stone={cell.stone}
                       owner={cell.owner}
-                      edges={cell.edges || cell.stone.edges}
+                      edges={cardEdges(cell)}
                       shields={cell.shields}
                       silenced={cell.silenced}
                     />
@@ -872,8 +888,8 @@ export function Expedition() {
                     <StoneCard
                       stone={stone}
                       owner={1}
-                      edges={evaluateKeywords(stone, battle.board, 1).edges}
-                      shields={evaluateKeywords(stone, battle.board, 1).shields}
+                      edges={adventureCardStrengths(run, stone, 1).edges}
+                      shields={adventureCardStrengths(run, stone, 1).shields}
                     />
                   </button>
                 ))}
@@ -907,21 +923,9 @@ export function Expedition() {
               >
                 <StoneCard
                   stone={stone}
-                  edges={
-                    evaluateKeywords(
-                      adventureStoneForPlay(run, stone),
-                      battle.board,
-                      0,
-                    ).edges
-                  }
+                  edges={adventureCardStrengths(run, stone).edges}
                   selected={selected === index}
-                  shields={
-                    evaluateKeywords(
-                      adventureStoneForPlay(run, stone),
-                      battle.board,
-                      0,
-                    ).shields
-                  }
+                  shields={adventureCardStrengths(run, stone).shields}
                 />
               </button>
             ))}
@@ -1332,8 +1336,9 @@ export function Expedition() {
                 />
                 {!canInscribe && (
                   <p className="workshop-unavailable">
-                    This stone already has the offered keyword. Choose another
-                    stone.
+                    {hasSkystonesArtwork(selectedService)
+                      ? "Skystones artwork cards stay keyword-free in Adventure. Choose a character portrait card."
+                      : "This stone already has the offered keyword. Choose another stone."}
                   </p>
                 )}
               </section>

@@ -14,6 +14,11 @@ import {
 } from "./relics.ts";
 import type { RelicId } from "./relics.ts";
 import type { RunCardFactory } from "./transformation.ts";
+import {
+  characterIdentity,
+  ENEMY_STONES,
+  hasSkystonesArtwork,
+} from "./characters.ts";
 export interface SpireChoice {
   label: string;
   at?: number;
@@ -280,15 +285,27 @@ export function spireMemoryCards(
   run: Adventure,
   make: RunCardFactory,
 ): Stone[] {
+  const used = run.inventory
+    .filter(
+      (card) =>
+        !card.id.startsWith(`custom-run-memory-${run.seed}-${run.floor}-`),
+    )
+    .map(characterIdentity);
   const cards = Array.from({ length: 6 }, (_, i) =>
     i === 5
       ? curseStone("Doubt", 5, run.seed)
-      : make(
-          run.seed + run.floor * 131 + i * 73,
-          Math.min(12, 5 + run.floor + i),
-          `memory-${run.seed}-${run.floor}-${i}`,
-          run.floor + 3,
-        ),
+      : (() => {
+          const card = make(
+            run.seed + run.floor * 131 + i * 73,
+            Math.min(12, 5 + run.floor + i),
+            `memory-${run.seed}-${run.floor}-${i}`,
+            run.floor + 3,
+            0,
+            used,
+          );
+          used.push(characterIdentity(card));
+          return card;
+        })(),
   );
   const positions = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
   for (let i = 11; i > 0; i--) {
@@ -472,6 +489,10 @@ export function resolveSpireEvent(
         Math.min(12, 6 + run.floor),
         `event-${run.seed}-${run.floor}-${state.visits}-${i}`,
         run.floor + 3,
+        0,
+        [...next.inventory, ...(c.specialCard ? ENEMY_STONES : [])].map(
+          characterIdentity,
+        ),
       );
       if (c.specialCard) {
         stone.name =
@@ -499,12 +520,29 @@ export function resolveSpireEvent(
   }
   if (c.special === "note") {
     const given = next.inventory.find((card) => card.id === ids[0])!,
-      received = next.note || svc.card(144, 6, "first-note", 1);
+      received =
+        next.note ||
+        svc.card(
+          144,
+          6,
+          "first-note",
+          1,
+          0,
+          next.inventory.map(characterIdentity),
+        );
     next = {
       ...next,
       note: { ...given },
       inventory: next.inventory.map((card) =>
-        card.id === given.id ? { ...received, id: given.id } : card,
+        card.id === given.id
+          ? {
+              ...received,
+              id: given.id,
+              ...(hasSkystonesArtwork(received)
+                ? { keywords: [], baseKeywords: [] }
+                : {}),
+            }
+          : card,
       ),
     };
   }
@@ -585,22 +623,28 @@ export function resolveSpireEvent(
     };
   }
   if (c.battle) return svc.battle(next, c);
-  if (c.cardReward)
+  if (c.cardReward) {
+    const used = next.inventory.map(characterIdentity);
     return {
       ...next,
       phase: "reward",
-      rewards: Array.from({ length: 3 }, (_, i) =>
-        svc.card(
+      rewards: Array.from({ length: 3 }, (_, i) => {
+        const card = svc.card(
           run.seed + salt + i * 37,
           Math.min(12, 6 + run.floor),
           `library-${run.seed}-${run.floor}-${i}`,
           run.floor + 3,
-        ),
-      ),
+          0,
+          used,
+        );
+        used.push(characterIdentity(card));
+        return card;
+      }),
       rewardPicksRemaining: 1,
       relicOffers: [],
       message: "Choose a stone from the archive.",
     };
+  }
   const changes: string[] = [];
   if (next.gold !== run.gold)
     changes.push(

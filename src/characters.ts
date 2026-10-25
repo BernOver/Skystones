@@ -6419,8 +6419,17 @@ export function characterForBudget(
   seed: number,
   budget: number,
   element?: Element,
+  excluded: readonly string[] = [],
 ): Stone {
-  const all = [...CHARACTER_STONES, ...ENEMY_STONES];
+  // A Skystones picture includes its own pip markings. Only use that identity
+  // at its original printed budget; character portraits can take any budget.
+  const all = [
+    ...CHARACTER_STONES,
+    ...ENEMY_STONES.filter(
+      (stone) => stone.edges.reduce((a, b) => a + b, 0) === budget,
+    ),
+  ].filter((stone) => !excluded.includes(characterIdentity(stone)));
+  if (!all.length) throw new Error("No unused character is available.");
   const filtered = element
     ? all.filter((stone) => stone.element === element)
     : all;
@@ -6435,6 +6444,127 @@ export function characterForBudget(
       Math.abs(stone.edges.reduce((a, b) => a + b, 0) - budget) <= distance + 1,
   );
   return candidates[(seed >>> 0) % candidates.length];
+}
+export function characterIdentity(stone: Stone): string {
+  return stone.portrait || stone.name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+// Adventure difficulty selects stronger characters, rather than rerolling the
+// stats or abilities of a character that the player already knows.
+export const ADVENTURE_CHARACTERS: Stone[] = [
+  ...CHARACTER_STONES,
+  ...ENEMY_STONES,
+].map((stone) => {
+  const source = skystonesPicture(stone);
+  if (source) return { ...stone, edges: [...stone.edges], keywords: [] };
+  const hash = characterHash(characterIdentity(stone));
+  const role =
+    CHARACTER_PORTRAITS.find(
+      (portrait) => portrait.id === stone.portrait,
+    )?.role.toLowerCase() || "";
+  const budget = /mini|sidekick/.test(role)
+    ? 1 + (hash % 3)
+    : role.includes("sensei")
+      ? 10 + (hash % 3)
+      : role.includes("giant")
+        ? 8 + (hash % 3)
+        : role.includes("trap master")
+          ? 7 + (hash % 3)
+          : /swap|supercharger/.test(role)
+            ? 6 + (hash % 3)
+            : 4 + (hash % 3);
+  const edges: [number, number, number, number] = [0, 0, 0, 0];
+  for (let pip = 0; pip < budget; pip++) {
+    const side = [0, 1, 2, 3]
+      .filter((side) => edges[side] < 5)
+      .sort(
+        (a, b) =>
+          stone.edges[b] / (edges[b] + 1) - stone.edges[a] / (edges[a] + 1),
+      )[0];
+    edges[side]++;
+  }
+  return { ...stone, edges, keywords: structuredClone(stone.keywords || []) };
+});
+export function adventureCharacter(
+  seed: number,
+  budget: number,
+  excluded: readonly string[] = [],
+  keywords?: boolean,
+): Stone {
+  const available = ADVENTURE_CHARACTERS.filter(
+    (stone) => !excluded.includes(characterIdentity(stone)),
+  );
+  const preferred = available.filter(
+    (stone) => !!stone.keywords?.length === keywords,
+  );
+  const pool = preferred.length ? preferred : available;
+  if (!pool.length)
+    throw new Error("No unused Adventure character is available.");
+  const distance = Math.min(
+    ...pool.map((stone) =>
+      Math.abs(stone.edges.reduce((a, b) => a + b, 0) - budget),
+    ),
+  );
+  const candidates = pool.filter(
+    (stone) =>
+      Math.abs(stone.edges.reduce((a, b) => a + b, 0) - budget) === distance,
+  );
+  return candidates[(seed >>> 0) % candidates.length];
+}
+export function skystonesPicture(stone: Stone): Stone | undefined {
+  return ENEMY_STONES.find((original) => original.portrait === stone.portrait);
+}
+export function hasSkystonesArtwork(stone: Stone): boolean {
+  return (
+    !!skystonesPicture(stone) || (stone.origin === "giants" && !!stone.image)
+  );
+}
+// Preserve earned pips, keywords, and card IDs while repairing old random copies.
+// Deliberate Duplicator-event copies retain their chosen character.
+export function uniqueCharacters(
+  cards: Stone[],
+  seed: number,
+  excluded: readonly string[] = [],
+): Stone[] {
+  const used = [...excluded];
+  return cards.map((stone) => {
+    if (
+      !used.includes(characterIdentity(stone)) ||
+      stone.id.startsWith("custom-duplicate-")
+    ) {
+      used.push(characterIdentity(stone));
+      return stone;
+    }
+    const identity = characterForBudget(
+      seed ^ characterHash(stone.id),
+      stone.edges.reduce((a, b) => a + b, 0),
+      stone.element,
+      used,
+    );
+    used.push(characterIdentity(identity));
+    return {
+      ...stone,
+      name: identity.name,
+      portrait: identity.portrait,
+      image: undefined,
+      baseEdges: undefined,
+      baseKeywords: undefined,
+      origin:
+        stone.edges.reduce((a, b) => a + b, 0) > 12
+          ? "giants"
+          : identity.origin,
+    };
+  });
+}
+export function pictureMatchesStats(
+  stone: Stone,
+  edges = stone.edges,
+): boolean {
+  const original = skystonesPicture(stone);
+  return (
+    !!original &&
+    stone.element === original.element &&
+    edges.every((edge, side) => edge === original.edges[side])
+  );
 }
 export function characterHash(text: string): number {
   return (

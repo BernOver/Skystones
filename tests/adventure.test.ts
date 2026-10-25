@@ -120,8 +120,7 @@ test("adventures start with modest two-to-three-pip cards, weak early enemies, c
       run.inventory.every(
         (stone) =>
           [2, 3].includes(stone.edges.reduce((a, b) => a + b, 0)) &&
-          stone.edges.every((edge) => edge >= 0 && edge <= 2) &&
-          stone.edges.includes(1) &&
+          stone.edges.every((edge) => edge >= 0 && edge <= 3) &&
           stone.edges.includes(0),
       ),
     );

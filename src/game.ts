@@ -129,6 +129,8 @@ export interface Stone {
   origin?: "giants" | "skylanders";
   portrait?: string;
   keywords?: StoneKeyword[];
+  baseEdges?: Edges;
+  baseKeywords?: StoneKeyword[];
 }
 export interface PlacedStone {
   stone: Stone;
@@ -145,6 +147,7 @@ export interface PlacedStone {
   comboActive?: boolean;
   comboPrevious?: Element;
   playedOrder?: number;
+  arenaElement?: Element;
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -243,13 +246,30 @@ export function shieldEdges(
         shields[keyword.side] += keyword.amount ?? 1;
   return shields;
 }
+export function arenaEdges(
+  edges: Edges,
+  element: Element,
+  active?: Element,
+): Edges {
+  return edges.map((edge) => edge + (active === element ? 1 : 0)) as Edges;
+}
+export function cardEdges(cell: PlacedStone): Edges {
+  return arenaEdges(
+    cell.edges || cell.stone.edges,
+    cell.stone.element,
+    cell.arenaElement,
+  );
+}
+export function withArenaElement(board: Board, element: Element): Board {
+  return board.map((cell) =>
+    cell ? { ...cell, arenaElement: element } : null,
+  );
+}
 export function defenseEdges(cell: PlacedStone): Edges {
   const shields = cell.silenced
     ? [0, 0, 0, 0]
     : cell.shields || shieldEdges(cell.stone, false, cell.grantedKeywords);
-  return (cell.edges || cell.stone.edges).map(
-    (edge, side) => edge + shields[side],
-  ) as Edges;
+  return cardEdges(cell).map((edge, side) => edge + shields[side]) as Edges;
 }
 export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
   const scores = score(board);
@@ -431,9 +451,14 @@ export function chooseKeywordTargets(
   index: number,
   stone: Stone,
   owner: Owner,
+  arenaElement?: Element,
 ): KeywordTarget[] {
   const targets: KeywordTarget[] = [];
-  const edges = evaluateKeywords(stone, board, owner).edges;
+  const edges = arenaEdges(
+    evaluateKeywords(stone, board, owner).edges,
+    stone.element,
+    arenaElement,
+  );
   let state = prepareTargeting(board, stone, targets, owner);
   while (state.pending) {
     const { options } = state.pending;
@@ -496,7 +521,11 @@ export function placeStone(
   stone: Stone,
   owner: Owner,
   targets: KeywordTarget[] = [],
-  options: { seed?: number; minimumDizzyPips?: number } = {},
+  options: {
+    seed?: number;
+    minimumDizzyPips?: number;
+    arenaElement?: Element;
+  } = {},
 ): Move {
   if (
     (board.length !== 9 && board.length !== 16) ||
@@ -519,9 +548,10 @@ export function placeStone(
     playedOrder:
       1 + Math.max(0, ...board.map((cell) => cell?.playedOrder || 0)),
     ...resolved,
+    ...(options.arenaElement ? { arenaElement: options.arenaElement } : {}),
     ...(targeted.effects.length ? { effects: targeted.effects } : {}),
   };
-  const captured = capturesAt(next, index, owner, resolved.edges);
+  const captured = capturesAt(next, index, owner, cardEdges(next[index]!));
   for (const neighbor of captured)
     next[neighbor] = { ...next[neighbor]!, owner };
   if (
@@ -571,6 +601,7 @@ export function chooseMove(
   hand: Stone[],
   rivalHand: Stone[],
   owner: Owner,
+  arena: { current?: Element; next?: Element } = {},
 ): { index: number; cardIndex: number; targets: KeywordTarget[] } {
   let best = {
     index: -1,
@@ -581,30 +612,43 @@ export function chooseMove(
   hand.forEach((stone, cardIndex) =>
     board.forEach((cell, index) => {
       if (cell) return;
-      const targets = chooseKeywordTargets(board, index, stone, owner);
-      const move = placeStone(board, index, stone, owner, targets);
+      const targets = chooseKeywordTargets(
+        board,
+        index,
+        stone,
+        owner,
+        arena.current,
+      );
+      const move = placeStone(board, index, stone, owner, targets, {
+        arenaElement: arena.current,
+      });
+      const replyBoard = arena.next
+        ? withArenaElement(move.board, arena.next)
+        : move.board;
       let worstReply = 0;
       rivalHand.forEach((rival) =>
-        move.board.forEach((target, spot) => {
+        replyBoard.forEach((target, spot) => {
           if (!target)
             worstReply = Math.max(
               worstReply,
               placeStone(
-                move.board,
+                replyBoard,
                 spot,
                 rival,
                 owner === 0 ? 1 : 0,
                 chooseKeywordTargets(
-                  move.board,
+                  replyBoard,
                   spot,
                   rival,
                   owner === 0 ? 1 : 0,
+                  arena.next,
                 ),
+                { arenaElement: arena.next },
               ).captured.length,
             );
         }),
       );
-      const exposed = move.board[index]!.edges!.reduce(
+      const exposed = defenseEdges(replyBoard[index]!).reduce(
         (sum, edge, direction) => {
           const size = boardSize(board);
           const row = Math.floor(index / size),
@@ -692,6 +736,11 @@ export function validateStone(value: unknown): value is Stone {
     typeof s.description === "string" &&
     s.description.length <= 120 &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
+    (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
+    (s.baseEdges === undefined ||
+      (Array.isArray(s.baseEdges) &&
+        s.baseEdges.length === 4 &&
+        s.baseEdges.every((n) => Number.isInteger(n) && n >= 0 && n <= 5))) &&
     (s.image === undefined ||
       (typeof s.image === "string" &&
         /^data:image\/(png|jpeg|webp);base64,/.test(s.image) &&

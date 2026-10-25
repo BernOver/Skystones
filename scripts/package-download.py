@@ -16,13 +16,20 @@ The collection contains 182 Skylanders/forms and 39 unique Giants opponents.
 Card studio has 337 searchable portraits, including 116 without a default card.
 Shield adds defense-only pips. Combo grants pips and/or keywords when your
 previous played card matches the new card's element. Hover a card for full rules.
-Captured cards flip to show their new owner.
+Captured cards flip to show their new owner, then stay fully visible.
+Adventure characters have fixed starting pips and keywords across runs.
+Random packs and offers avoid duplicate characters; old saves repair them.
+Original Skystones pictures keep their original pips and have no Adventure
+keywords. Their embedded pip markings are hidden when an upgrade changes them.
 
 Use Card studio to make a stone. Save it, then add it to your deck in Collection.
 Use Adventure for the roguelike expedition. Both normal matches and adventures
 offer 3x3 (5-card hands) and 4x4 (8-card hands) boards.
 Use Draft for a two-player shared-pool draft, then play with your drafted hands.
 Adventure has two nine-stop acts: defeat Kaos, then Golden Queen.
+Act I offers Throne of Chaos or the new Elemental Vortex boss. The vortex
+changes element and arena color after every card. Matching cards on both
+sides gain +1 on all edges for that turn; the Next element icon previews it.
 Start with 2-3-pip cards; enemies and rewards grow gradually.
 Adventure includes 31 relics, 15 potions, 54 adapted Spire encounters, and a
 12-pip Dizzy card event. Hover or tap cards

@@ -774,10 +774,9 @@
 }
 /* Nested Combo controls retain full-width fields on small screens. */
 .keyword-editor-row.combo-grant {
-  grid-template-columns: minmax(0, 1.3fr) minmax(80px, 0.85fr) minmax(
-      60px,
-      0.6fr
-    ) 30px;
+  grid-template-columns:
+    minmax(0, 1.3fr) minmax(80px, 0.85fr) minmax(60px, 0.6fr)
+    30px;
 }
 .keyword-editor-row.combo-grant > div {
   min-width: 0;
@@ -800,4 +799,14 @@
   .keyword-editor-row.combo-grant > button {
     justify-self: end;
   }
+}
+.adventure-base-reference {
+  font-size: 10px;
+  line-height: 1.6;
+  color: #697c71;
+  background: #eef2e7;
+  border: 1px solid #dce5d6;
+  border-radius: 6px;
+  padding: 8px;
+  margin: 10px 0;
 }

@@ -1,3 +1,4 @@
+import { hasSkystonesArtwork } from "../src/characters.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -48,6 +49,7 @@ test("offers survive old-format saves, card selection, and purchases without rer
       "shop-one",
     ),
     offer = adventureWorkshopOffer(shop);
+  const eligible = shop.inventory.filter((card) => !hasSkystonesArtwork(card));
   assert.equal(validateAdventure(JSON.parse(JSON.stringify(shop))), true);
   assert.deepEqual(
     adventureWorkshopOffer(JSON.parse(JSON.stringify(shop))),
@@ -57,21 +59,27 @@ test("offers survive old-format saves, card selection, and purchases without rer
   assert.deepEqual(adventureWorkshopOffer(bought), offer);
   const first = buyAdventureService(bought, {
     type: "keyword",
-    cardId: shop.inventory[0].id,
+    cardId: eligible[0].id,
   });
   const second = buyAdventureService(first, {
     type: "keyword",
-    cardId: shop.inventory[1].id,
+    cardId: eligible[1].id,
   });
-  assert.deepEqual(second.inventory[0].keywords, [offer.keyword]);
-  assert.deepEqual(second.inventory[1].keywords, [offer.keyword]);
+  assert.deepEqual(
+    second.inventory.find((card) => card.id === eligible[0].id)!.keywords,
+    [offer.keyword],
+  );
+  assert.deepEqual(
+    second.inventory.find((card) => card.id === eligible[1].id)!.keywords,
+    [offer.keyword],
+  );
   assert.deepEqual(adventureWorkshopOffer(second), offer);
   assert.equal(second.gold, bought.gold - 70);
   assert.deepEqual(shop.inventory[0].keywords, []);
   assert.throws(() =>
     buyAdventureService(second, {
       type: "keyword",
-      cardId: shop.inventory[0].id,
+      cardId: eligible[0].id,
     }),
   );
   assert.equal(second.gold, bought.gold - 70);

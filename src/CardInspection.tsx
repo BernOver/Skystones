@@ -51,6 +51,7 @@ export interface Inspection {
   comboActive?: boolean;
   comboPrevious?: Element;
   grantedKeywords?: BasicKeyword[];
+  arenaElement?: Element;
 }
 
 export function KeywordDetails({
@@ -532,6 +533,30 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           </div>
         ))}
       </div>
+      {inspection.arenaElement && inspection.arenaElement === stone.element && (
+        <p className="arena-bonus-notice">
+          <strong>
+            {ELEMENTS[inspection.arenaElement].name} arena · +1 on every edge
+          </strong>
+          . Temporary attack and defense bonus for both players. It expires when
+          the element changes and cannot be removed by Sunder or Silence.
+        </p>
+      )}
+      {stone.baseEdges && (
+        <p className="adventure-base-reference">
+          <strong>Fixed Adventure base</strong> · {stone.baseEdges.join("/")}{" "}
+          (N/E/S/W)
+          {stone.baseKeywords?.length
+            ? ` · ${[...new Set(stone.baseKeywords.map((keyword) => KEYWORD_RULES[keyword.type].name))].join(", ")}`
+            : " · No base keywords"}
+          .
+          {JSON.stringify(stone.edges) !== JSON.stringify(stone.baseEdges) ||
+          JSON.stringify(stone.keywords || []) !==
+            JSON.stringify(stone.baseKeywords || [])
+            ? " This copy has upgrades or effects from this run."
+            : " The same character starts with these stats in every run."}
+        </p>
+      )}
       {reductions?.some(Boolean) && (
         <p className="sunder-notice">
           Sunder applied:{" "}

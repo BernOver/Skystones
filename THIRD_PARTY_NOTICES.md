@@ -14,7 +14,7 @@ https://github.com/AnthonyKalampogias/SkyRipper/tree/90cd4f9f2dd2bb378726090a4c7
 https://skylanders.fandom.com/
 https://creativecommons.org/licenses/by-sa/4.0/
 
-Pip strengths and keywords are an original, approximate balance adaptation. Minis, core characters, Giants, Trap Masters, and Senseis have different budgets; source stat profiles guide directional strengths where available. Draft and Adventure retain their own balance curves. These are not official Skystones cards or a claim of exact official combat rankings.
+Pip strengths and keywords are an original, approximate balance adaptation. Minis, core characters, Giants, Trap Masters, and Senseis have different budgets; source stat profiles guide directional strengths where available. Draft retains its directional tradeoff rules. Adventure uses fixed per-character profiles, chosen in gradually stronger tiers; original Skystones pictures retain their transcribed original pips and have no Adventure keywords. Modified copies display a cropped character view to avoid obsolete embedded pip markings. These are not official Skystones cards or a claim of exact official combat rankings.
 
 # Legacy Giants reference and artwork
 

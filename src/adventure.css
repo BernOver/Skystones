@@ -1780,3 +1780,116 @@
     width: 100%;
   }
 }
+.elemental-battle {
+  background: var(--arena-pale);
+  border-radius: 14px;
+  padding: 22px;
+  transition: background-color 0.35s ease;
+}
+.elemental-battle .adventure-board {
+  background: color-mix(in srgb, var(--arena-color) 32%, #eee8d7);
+  border-color: var(--arena-color);
+}
+.elemental-arena {
+  border: 1px solid #fff9;
+  background: #fffaf0b8;
+  border-radius: 12px;
+  margin: 14px 0 24px;
+  padding: 16px;
+}
+.elemental-arena-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: #485f58;
+}
+.elemental-arena-title > div {
+  display: grid;
+  gap: 3px;
+}
+.elemental-arena-title span {
+  font-size: 11px;
+}
+.elemental-forecast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(120px, 0.65fr);
+  align-items: center;
+  gap: 12px;
+}
+.elemental-current,
+.elemental-next {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 9px;
+}
+.elemental-current {
+  color: #304b43;
+  background: #fffdf3;
+}
+.elemental-current > span,
+.elemental-next > span {
+  display: grid;
+  gap: 3px;
+}
+.elemental-forecast small {
+  font-size: 8px;
+  letter-spacing: 1.2px;
+}
+.elemental-forecast strong {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 500;
+}
+.elemental-forecast b {
+  font-size: 10px;
+  font-weight: 500;
+}
+.elemental-arena p {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #5c7066;
+}
+.arena-bonus-notice {
+  background: #f5ecd4;
+  padding: 9px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.6;
+  margin: 8px 0;
+  color: #766035;
+}
+@media (max-width: 540px) {
+  .elemental-battle {
+    padding: 10px;
+  }
+  .elemental-arena {
+    padding: 10px;
+  }
+  .elemental-forecast {
+    grid-template-columns: minmax(0, 1fr) 16px minmax(95px, 0.8fr);
+    gap: 5px;
+  }
+  .elemental-current,
+  .elemental-next {
+    gap: 6px;
+    padding: 8px 6px;
+  }
+  .elemental-forecast strong {
+    font-size: 17px;
+  }
+  .elemental-forecast svg {
+    width: 21px;
+  }
+  .elemental-forecast b {
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .elemental-battle {
+    transition: none;
+  }
+}

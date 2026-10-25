@@ -9,6 +9,7 @@ import {
   adventureInscriptionOffers,
 } from "./adventure";
 import type { Adventure } from "./adventure";
+import { hasSkystonesArtwork } from "./characters";
 
 function EventPreview({
   stone,
@@ -49,14 +50,19 @@ export function InscriptionEvent({
   onLeave: () => void;
   onInspect: (stone: Stone) => void;
 }) {
-  const [cardId, setCardId] = useState(run.inventory[0].id);
+  const [cardId, setCardId] = useState(
+    (
+      run.inventory.find((card) => !hasSkystonesArtwork(card)) ||
+      run.inventory[0]
+    ).id,
+  );
   const [chosen, setChosen] = useState(0);
   const stone =
     run.inventory.find((card) => card.id === cardId) || run.inventory[0];
   const offers = adventureInscriptionOffers(run),
     keyword = offers[chosen];
   const keywords = [...(stone.keywords || []), keyword],
-    valid = validateKeywords(keywords);
+    valid = !hasSkystonesArtwork(stone) && validateKeywords(keywords);
   const preview = { ...stone, keywords };
   return (
     <div className="inscription-event">
@@ -113,8 +119,9 @@ export function InscriptionEvent({
       </div>
       {!valid && (
         <p className="event-unavailable" role="status">
-          This stone already has that keyword on this edge. Choose another stone
-          or inscription.
+          {hasSkystonesArtwork(stone)
+            ? "Skystones artwork cards stay keyword-free in Adventure. Choose a character portrait card."
+            : "This stone already has that keyword on this edge. Choose another stone or inscription."}
         </p>
       )}
       <p className="field-note">
@@ -199,6 +206,13 @@ export function FusionEvent({
         Take the stronger value on each edge and merge both stones’ keywords.
         Printed edges stay at five or less, with a total of twelve or less.
       </p>
+      {hasSkystonesArtwork(base) && (
+        <p className="field-note">
+          The base uses Skystones artwork, so the combined card stays
+          keyword-free. Choose a character portrait as the base to keep merged
+          keywords.
+        </p>
+      )}
       <div className="fusion-card-comparison">
         <EventPreview stone={base} label="Base stone" onInspect={onInspect} />
         <EventPreview

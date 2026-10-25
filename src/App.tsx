@@ -75,7 +75,7 @@ import { TargetPicker } from "./TargetPicker";
 import { Draft } from "./Draft";
 import { Expedition } from "./Expedition";
 import { GIANTS_STONES, GIANTS_REFERENCE } from "./giants";
-import { CHARACTER_STONES, migrateDeckId } from "./characters";
+import { CHARACTER_STONES, ENEMY_STONES, migrateDeckId } from "./characters";
 import { PortraitPicker } from "./PortraitPicker";
 
 type Page = "table" | "collection" | "studio" | "run" | "draft";
@@ -1752,16 +1752,20 @@ export default function App() {
                   </div>
                   <PortraitPicker
                     selected={draft.portrait}
-                    onChoose={(portrait) =>
+                    onChoose={(portrait) => {
+                      const original = ENEMY_STONES.find(
+                        (stone) => stone.portrait === portrait.id,
+                      );
                       setDraft({
                         ...draft,
                         portrait: portrait.id,
                         image: undefined,
                         element: portrait.element,
                         name: draft.name || portrait.name,
-                        origin: "skylanders",
-                      })
-                    }
+                        origin: original ? "giants" : "skylanders",
+                        edges: original ? [...original.edges] : draft.edges,
+                      });
+                    }}
                   />
                   <div className="upload-box">
                     <div>

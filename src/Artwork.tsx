@@ -20,7 +20,11 @@ import {
   keywordGroups,
   shieldEdges,
 } from "./game";
-import { withCharacterPortrait } from "./characters";
+import {
+  withCharacterPortrait,
+  pictureMatchesStats,
+  hasSkystonesArtwork,
+} from "./characters";
 import { portraitImage } from "./portraits";
 import type { Creature, Edges, Element, Stone } from "./game";
 
@@ -556,6 +560,7 @@ export function StoneCard({
   const Icon = ELEMENT_ICONS[stone.element];
   const artwork =
     stone.image || portraitImage(withCharacterPortrait(stone).portrait);
+  const statPicture = hasSkystonesArtwork(stone);
   return (
     <div
       className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
@@ -572,7 +577,7 @@ export function StoneCard({
           <img
             src={artwork}
             alt=""
-            className={`uploaded-art ${withCharacterPortrait(stone).portrait ? "character-art" : stone.origin === "giants" ? "giants-art" : ""}`}
+            className={`uploaded-art ${statPicture ? (pictureMatchesStats(stone, edges) && !stone.image ? "skystones-original-art" : "skystones-portrait-art") : "character-art"}`}
           />
         ) : (
           <CreatureArt creature={stone.creature} element={stone.element} />

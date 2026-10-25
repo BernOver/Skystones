@@ -59,7 +59,7 @@ export function PortraitPicker({
       </label>
       <p className="field-note">
         {choices.length} portraits · selecting one fills an empty name and sets
-        its element. Your pips and keywords stay as chosen.
+        its element. Skystones pictures also fill their original pip strengths.
       </p>
       <div
         className="portrait-grid"
