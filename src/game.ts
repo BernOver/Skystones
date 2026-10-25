@@ -66,12 +66,13 @@ export interface KeywordTarget {
 export type TargetEffect =
   | {
       type: "sunder";
+      keywordIndex?: number;
       side: Side;
       target: number;
       flexible?: true;
       amount?: number;
     }
-  | { type: "silence"; target: number };
+  | { type: "silence"; target: number; keywordIndex?: number };
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
@@ -98,6 +99,7 @@ export function keywordGroups(keywords: StoneKeyword[]) {
     if (keyword.type === "sunder" || keyword.type === "silence")
       return [
         {
+          keywordIndex: index,
           type: keyword.type as KeywordType,
           keywords: [keyword] as StoneKeyword[],
         },
@@ -109,6 +111,7 @@ export function keywordGroups(keywords: StoneKeyword[]) {
       return [];
     return [
       {
+        keywordIndex: index,
         type: keyword.type as KeywordType,
         keywords: keywords.filter(
           (candidate) => candidate.type === keyword.type,
@@ -328,11 +331,17 @@ export function prepareTargeting(
   let next = board;
   const effects: TargetEffect[] = [];
   const used = new Set<number>();
-  for (const [keywordIndex, keyword] of effectiveKeywords(
-    stone,
-    board,
-    owner,
-  ).entries()) {
+  const keywords = effectiveKeywords(stone, board, owner);
+  // Repeated Sunder needs an occurrence index so inspection can distinguish
+  // separate targets, including entries that had no valid target.
+  const repeatedSunder = keywords.some(
+    (keyword, index) =>
+      keyword.type === "sunder" &&
+      keywords
+        .slice(0, index)
+        .some((previous) => keywordKey(previous) === keywordKey(keyword)),
+  );
+  for (const [keywordIndex, keyword] of keywords.entries()) {
     if (keyword.type !== "sunder" && keyword.type !== "silence") continue;
     const options: KeywordTarget[] = next.flatMap((cell, boardIndex) => {
       if (!cell) return [];
@@ -391,6 +400,7 @@ export function prepareTargeting(
       );
       effects.push({
         type: "sunder",
+        ...(repeatedSunder ? { keywordIndex } : {}),
         side,
         target: choice.boardIndex,
         ...(keyword.side === "any" ? { flexible: true as const } : {}),
@@ -412,7 +422,11 @@ export function prepareTargeting(
             }
           : target,
       );
-      effects.push({ type: "silence", target: choice.boardIndex });
+      effects.push({
+        type: "silence",
+        target: choice.boardIndex,
+        ...(repeatedSunder ? { keywordIndex } : {}),
+      });
     }
   }
   if (targets.some((target) => !used.has(target.keywordIndex)))
@@ -825,7 +839,7 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
       if (!(keyword.pips?.length || keyword.keywords?.length)) return false;
     }
     const key = keywordKey(keyword);
-    if (seen.has(key)) return false;
+    if (keyword.type !== "sunder" && seen.has(key)) return false;
     seen.add(key);
     return true;
   });

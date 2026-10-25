@@ -64,6 +64,7 @@ export function KeywordDetails({
   size = 3,
   comboActive,
   comboPrevious,
+  keywordOffset = 0,
 }: {
   stone: Stone;
   activeKeywords?: ActiveKeyword[];
@@ -74,7 +75,22 @@ export function KeywordDetails({
   size?: BoardSize;
   comboActive?: boolean;
   comboPrevious?: Element;
+  keywordOffset?: number;
 }) {
+  const effectIndexFor = (index: number) =>
+    keywordOffset +
+    (stone.keywords || [])
+      .slice(0, index)
+      .reduce(
+        (count, keyword) =>
+          count +
+          (keyword.type === "combo"
+            ? comboActive
+              ? keyword.keywords?.length || 0
+              : 0
+            : 1),
+        0,
+      );
   return (
     <div className={`keyword-details ${silenced ? "keywords-disabled" : ""}`}>
       {silenced && (
@@ -88,7 +104,7 @@ export function KeywordDetails({
         </p>
       )}
       {keywordGroups(stone.keywords || []).map(
-        ({ type, keywords }, groupIndex) => {
+        ({ type, keywords, keywordIndex }, groupIndex) => {
           if (!keywords.length) return null;
           if (type === "shield")
             return (
@@ -165,6 +181,7 @@ export function KeywordDetails({
                     <KeywordDetails
                       stone={{ ...stone, keywords: combo.keywords }}
                       played={played && !!comboActive}
+                      keywordOffset={effectIndexFor(keywordIndex)}
                       activeKeywords={comboActive ? activeKeywords : undefined}
                       silenced={silenced}
                       effects={comboActive ? effects : undefined}
@@ -218,6 +235,8 @@ export function KeywordDetails({
             const matchingEffects = (effects || []).filter(
               (effect) =>
                 effect.type === type &&
+                (effect.keywordIndex === undefined ||
+                  effect.keywordIndex === effectIndexFor(keywordIndex)) &&
                 (effect.type === "silence" ||
                   keywords.some(
                     (keyword) =>

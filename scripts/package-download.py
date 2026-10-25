@@ -17,6 +17,9 @@ Card studio has 337 searchable portraits, including 116 without a default card.
 Shield adds defense-only pips. Combo grants pips and/or keywords when your
 previous played card matches the new card's element. Hover a card for full rules.
 Captured cards flip to show their new owner, then stay fully visible.
+Arkeyan Bomber has 3 pips on its right edge and 0 on its left.
+Sunder can repeat on the same edge. Choose a target for each entry; all
+entries resolve in order, before captures. Repeated Any-edge Sunder is allowed.
 Adventure characters have fixed starting pips and keywords across runs.
 Random packs and offers avoid duplicate characters; old saves repair them.
 Original Skystones pictures keep their original pips and have no Adventure

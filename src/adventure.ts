@@ -15,6 +15,7 @@ import {
   coordinate,
   handSize,
   keywordKey,
+  MAX_KEYWORDS,
   placeStone,
   score,
   validateKeywords,
@@ -1191,10 +1192,13 @@ export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
   }));
   for (const keyword of donor.keywords || []) {
     const existing = keywords.findIndex(
-      (candidate) => keywordKey(candidate) === keywordKey(keyword),
+      (candidate) =>
+        keyword.type !== "sunder" &&
+        keywordKey(candidate) === keywordKey(keyword),
     );
-    if (existing === -1) keywords.push({ ...keyword });
-    else if (keyword.type === "sunder" || keyword.type === "shield") {
+    if (existing === -1) {
+      if (keywords.length < MAX_KEYWORDS) keywords.push({ ...keyword });
+    } else if (keyword.type === "shield") {
       const current = keywords[existing];
       if (
         current.type === keyword.type &&
@@ -1683,6 +1687,10 @@ function validPlaced(value: unknown, length: number): boolean {
           (effect) =>
             effect &&
             ["sunder", "silence"].includes(effect.type) &&
+            (effect.keywordIndex === undefined ||
+              (Number.isInteger(effect.keywordIndex) &&
+                effect.keywordIndex >= 0 &&
+                effect.keywordIndex < MAX_KEYWORDS + 5)) &&
             Number.isInteger(effect.target) &&
             effect.target >= 0 &&
             effect.target < length &&
@@ -2062,6 +2070,20 @@ function repairAdventureCards(run: Adventure): Adventure {
     const base = ADVENTURE_CHARACTERS.find(
       (base) => base.portrait === stone.portrait,
     );
+    // Repair untouched Bomber copies saved before its east/west correction.
+    // Keep deliberate upgrades or potion/rotation results on modified copies.
+    if (
+      base?.portrait === "enemy-arkeyan-bomber" &&
+      stone.id.startsWith("custom-run-") &&
+      (stone.baseEdges?.join() === "2,0,1,3" ||
+        (!stone.baseEdges && stone.edges.join() === "2,0,1,3"))
+    ) {
+      stone = {
+        ...stone,
+        baseEdges: [...base.edges],
+        ...(stone.edges.join() === "2,0,1,3" ? { edges: [...base.edges] } : {}),
+      };
+    }
     return {
       ...stone,
       ...(base &&
@@ -2118,7 +2140,18 @@ function repairAdventureCards(run: Adventure): Adventure {
         comboActive: undefined,
         comboPrevious: undefined,
       };
-    return { ...cell, stone };
+    return {
+      ...cell,
+      stone,
+      ...(cell.edges &&
+      cell.stone.edges.some((edge, side) => edge !== stone.edges[side])
+        ? {
+            edges: cell.edges.map((edge, side) =>
+              Math.max(0, edge + stone.edges[side] - cell.stone.edges[side]),
+            ) as Edges,
+          }
+        : {}),
+    };
   });
   const enemyUsed = [
     ...(board || []).flatMap((cell) =>

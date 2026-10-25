@@ -266,20 +266,17 @@ export function KeywordEditor({
   function update(index: number, value: StoneKeyword) {
     const next = keywords.map((old, i) => (i === index ? value : old));
     if (
+      value.type !== "sunder" &&
       keywords.some(
         (old, i) => i !== index && keywordKey(old) === keywordKey(value),
       )
     ) {
-      setError(
-        value.type === "sunder" && value.side === "any"
-          ? "Sunder with an edge chosen when played is already on this card."
-          : `${KEYWORD_RULES[value.type].name} is already on this card.`,
-      );
+      setError(`${KEYWORD_RULES[value.type].name} is already on this card.`);
       return;
     }
     if (!validateKeywords(next)) {
       setError(
-        "Choose a unique keyword and edge. Combo needs at least one pip bonus or granted keyword, with no duplicate grants.",
+        "Sunder can repeat on the same edge. Other keywords need a unique edge; Combo needs at least one pip bonus or granted keyword.",
       );
       return;
     }
@@ -375,7 +372,9 @@ export function KeywordEditor({
           </p>
           <p>
             <strong>Sunder</strong> removes 1–99 pips from a chosen board card’s
-            edge. Choose a fixed edge or “Any · choose when played.”
+            edge. Choose a fixed edge or “Any · choose when played.” Add Sunder
+            more than once on the same edge to choose a separate target for each
+            entry.
           </p>
           <p>
             <strong>Silence</strong> disables a board card’s keywords and

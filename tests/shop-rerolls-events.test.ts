@@ -243,7 +243,7 @@ for (const size of [3, 4] as const)
     assert.throws(() => resolveAdventureEvent(run, "inscribe:3", id));
     assert.throws(() => resolveAdventureEvent(run, "inscribe:1", "missing"));
   });
-test("fusion previews combine best edges within caps and merge keywords without duplicating or weakening Sunder", () => {
+test("fusion previews combine best edges within caps and preserve separate Sunder entries", () => {
   const initial = newAdventure(3, 41);
   const base: Stone = {
     ...initial.inventory[0],
@@ -278,8 +278,9 @@ test("fusion previews combine best edges within caps and merge keywords without 
   assert.equal(result.creature, base.creature);
   assert.deepEqual(result.keywords, [
     { type: "resonance", side: 0, element: "fire" },
-    { type: "sunder", side: 1, amount: 3 },
+    { type: "sunder", side: 1, amount: 1 },
     { type: "dizzy" },
+    { type: "sunder", side: 1, amount: 3 },
     { type: "silence" },
   ]);
   assert.ok(validateStone(result));

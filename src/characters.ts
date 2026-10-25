@@ -6177,7 +6177,7 @@ export const ENEMY_STONES: Stone[] = [
     name: "Arkeyan Bomber",
     element: "air",
     creature: "robot",
-    edges: [2, 0, 1, 3],
+    edges: [2, 3, 1, 0],
     description:
       "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
     origin: "giants",

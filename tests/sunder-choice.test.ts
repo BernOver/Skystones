@@ -175,7 +175,7 @@ test("the computer chooses a target and edge that enables a capture and can simu
   );
 });
 
-test("imports accept one flexible Sunder alongside the fixed edges and validate all 18 assignments", () => {
+test("imports accept repeated flexible Sunder alongside the fixed edges and validate all 18 assignments", () => {
   const keywords: StoneKeyword[] = [
     { type: "silence" },
     { type: "sunder", side: "any" },
@@ -195,7 +195,7 @@ test("imports accept one flexible Sunder alongside the fixed edges and validate 
         { type: "sunder", side: "any" },
       ]),
     ),
-    false,
+    true,
   );
   assert.equal(validateStone(card([...keywords, { type: "silence" }])), false);
   for (const side of [undefined, null, "ANY", "choose", 4])

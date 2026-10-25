@@ -583,7 +583,7 @@ test("Whetstone Ring respects edge and total caps; Elemental Prism adds a weakes
   assert.deepEqual(full.inventory[0].edges, capped.inventory[0].edges);
   assert.equal(full.inventory[0].element, element);
 });
-test("Rune Echo inscribes opposite edges without duplicating singleton keywords or charging twice", () => {
+test("Rune Echo inscribes opposite edges, permits repeated Sunder purchases, and preserves singleton rules", () => {
   const seen = new Set<string>();
   for (let seed = 0; seed < 70; seed++) {
     const shop = enterAdventureNode(
@@ -605,12 +605,19 @@ test("Rune Echo inscribes opposite edges without duplicating singleton keywords 
         side: (keyword.side + 2) % 4,
       });
     } else assert.equal(keywords.length, 1);
-    assert.throws(() =>
+    const buyAgain = () =>
       buyAdventureService(bought, {
         type: "keyword",
         cardId: shop.inventory[0].id,
-      }),
-    );
+      });
+    if (keyword.type === "sunder") {
+      const second = buyAgain();
+      assert.equal(second.gold, 130);
+      assert.deepEqual(second.inventory[0].keywords, [
+        ...keywords,
+        ...keywords,
+      ]);
+    } else assert.throws(buyAgain);
     seen.add(keyword.type);
   }
   assert.equal(seen.size, 8);

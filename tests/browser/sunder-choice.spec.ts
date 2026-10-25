@@ -39,13 +39,11 @@ test("save and share configurable Sunder strength and choose-when-played targeti
     { type: "sunder", side: "any", amount: 3 },
   ]);
   await page.getByRole("button", { name: "Close dialog" }).click();
-  await page
-    .getByLabel("Import card file")
-    .setInputFiles({
-      name: "wild.skystone.json",
-      mimeType: "application/json",
-      buffer,
-    });
+  await page.getByLabel("Import card file").setInputFiles({
+    name: "wild.skystone.json",
+    mimeType: "application/json",
+    buffer,
+  });
   await expect(
     page.getByRole("button", { name: "View Wild Sunder" }),
   ).toHaveCount(2);
@@ -56,10 +54,8 @@ test("save and share configurable Sunder strength and choose-when-played targeti
   await page.getByRole("button", { name: /Add keyword/ }).click();
   await page.getByLabel("Keyword 2", { exact: true }).selectOption("sunder");
   await page.getByLabel("Target edge 2").selectOption("any");
-  await expect(page.getByRole("alert")).toContainText(
-    "chosen when played is already on this card",
-  );
-  await expect(page.getByLabel("Target edge 2")).toHaveValue("0");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByLabel("Target edge 2")).toHaveValue("any");
   await page.getByRole("button", { name: "Remove keyword 2" }).click();
   await page
     .getByLabel("Keyword 1", { exact: true })
