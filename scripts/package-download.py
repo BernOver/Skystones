@@ -25,7 +25,9 @@ Random packs and offers avoid duplicate characters; old saves repair them.
 Original Skystones pictures keep their original pips and have no Adventure
 keywords. Their embedded pip markings are hidden when an upgrade changes them.
 
-Use Card studio to make a stone. Save it, then add it to your deck in Collection.
+Use Card studio to make a stone. Selecting a portrait updates its name to
+that character; you can edit the name afterward. Save it, then add it to your
+deck in Collection.
 Use Adventure for the roguelike expedition. Both normal matches and adventures
 offer 3x3 (5-card hands) and 4x4 (8-card hands) boards.
 Use Draft for a two-player shared-pool draft, then play with your drafted hands.

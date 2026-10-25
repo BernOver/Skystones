@@ -58,8 +58,9 @@ export function PortraitPicker({
         Portraits without a default card
       </label>
       <p className="field-note">
-        {choices.length} portraits · selecting one fills an empty name and sets
-        its element. Skystones pictures also fill their original pip strengths.
+        {choices.length} portraits · selecting one updates the card’s name and
+        element. You can edit the name afterward. Skystones pictures also fill
+        their original pip strengths.
       </p>
       <div
         className="portrait-grid"

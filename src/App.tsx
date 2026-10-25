@@ -1761,7 +1761,7 @@ export default function App() {
                         portrait: portrait.id,
                         image: undefined,
                         element: portrait.element,
-                        name: draft.name || portrait.name,
+                        name: portrait.name,
                         origin: original ? "giants" : "skylanders",
                         edges: original ? [...original.edges] : draft.edges,
                       });

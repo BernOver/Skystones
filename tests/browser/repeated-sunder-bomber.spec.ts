@@ -144,7 +144,7 @@ for (const size of [3, 4] as const)
       page.getByRole("dialog").locator(".target-keyword-rule").nth(1),
     ).toContainText("North −1 on");
   });
-test("Bomber collection, maker and an old Adventure hand show right 3 / left 0", async ({
+test("Bomber uses right 3 / left 0; portrait selection replaces the maker name and permits later edits", async ({
   page,
 }) => {
   await page.goto("/");
@@ -159,10 +159,21 @@ test("Bomber collection, maker and an old Adventure hand show right 3 / left 0",
   ]);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Card studio", exact: true }).click();
+  await page.getByLabel("Stone name").fill("Previous custom name");
+  await page.getByLabel("Find a character portrait").fill("Dark Spyro");
+  await page
+    .getByRole("button", { name: "Use Dark Spyro portrait", exact: true })
+    .click();
+  await expect(page.getByLabel("Stone name")).toHaveValue("Dark Spyro");
+  await page.getByLabel("Stone name").fill("Another custom name");
   await page.getByLabel("Find a character portrait").fill("Arkeyan Bomber");
   await page
     .getByRole("button", { name: "Use Arkeyan Bomber portrait", exact: true })
     .click();
+  await expect(page.getByLabel("Stone name")).toHaveValue("Arkeyan Bomber");
+  await expect(page.locator(".preview-card")).toContainText("Arkeyan Bomber");
+  await page.getByLabel("Stone name").fill("My Bomber");
+  await expect(page.locator(".preview-card")).toContainText("My Bomber");
   await expect(page.locator(".preview-card .edge > b")).toHaveText([
     "2",
     "3",
