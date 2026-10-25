@@ -4,6 +4,7 @@ import {
   ELEMENTS,
   KEYWORD_RULES,
   MAX_KEYWORDS,
+  DIZZY_EDGE_CAP,
   SIDE_NAMES,
   keywordKey,
   validateKeywords,
@@ -381,7 +382,8 @@ export function KeywordEditor({
             removes their bonuses.
           </p>
           <p>
-            <strong>Dizzy</strong> shuffles pips after captures, at most four
+            <strong>Dizzy</strong> shuffles pips after captures, at most{" "}
+            {DIZZY_EDGE_CAP}
             per edge.
           </p>
           <p>

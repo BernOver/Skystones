@@ -37,7 +37,8 @@ changes element and arena color after every card. Matching cards on both
 sides gain +1 on all edges for that turn; the Next element icon previews it.
 Start with 2-3-pip cards; enemies and rewards grow gradually.
 Adventure includes 31 relics, 15 potions, 54 adapted Spire encounters, and a
-12-pip Dizzy card event. Hover or tap cards
+12-pip Dizzy card event. Dizzy reshuffles after captures with at most 5 pips
+per edge (20 total); existing saved shuffles stay fixed. Hover or tap cards
 to read their keywords. Draft picks and adventure progress save automatically.
 Shops reroll for 20 gold; Merchant’s Die gives one free reroll per shop.
 The Runesmith’s Shrine adds keywords; the Twinflame Forge combines two cards.

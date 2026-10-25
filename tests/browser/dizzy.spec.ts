@@ -114,7 +114,7 @@ test("Loaded Dice shuffles once, Oracle reveals the keeper, and Stout Heart disp
     (cell) => cell?.stone.id === card.id,
   )!;
   expect(snapshot.edges!.reduce((a, b) => a + b, 0)).toBe(12);
-  expect(snapshot.edges!.every((edge) => edge >= 2 && edge <= 4)).toBe(true);
+  expect(snapshot.edges!.every((edge) => edge >= 2 && edge <= 5)).toBe(true);
   const boardCard = page
     .locator(".adventure-square.occupied")
     .filter({ hasText: card.name });
@@ -129,6 +129,59 @@ test("Loaded Dice shuffles once, Oracle reveals the keeper, and Stout Heart disp
     )!.edges,
   ).toEqual(snapshot.edges);
 });
+for (const size of [3, 4] as const)
+  test(`${size}×${size} boosted Dizzy reaches five on every edge and keeps that snapshot after reload`, async ({
+    page,
+  }) => {
+    const run = enterAdventureNode(
+      { ...newAdventure(size, 42), relics: ["loaded-dice"] },
+      "moss",
+    );
+    const card = {
+      ...run.inventory[0],
+      name: "Dizzy Five",
+      portrait: "pop-fizz",
+      origin: "skylanders" as const,
+      edges: [3, 3, 3, 3] as [number, number, number, number],
+      baseEdges: [3, 3, 3, 3] as [number, number, number, number],
+      keywords: [{ type: "dizzy" as const }],
+      baseKeywords: [{ type: "dizzy" as const }],
+    };
+    run.inventory[0] = card;
+    run.battle!.hands[0][0] = card;
+    run.potions = ["power", "power"];
+    await page.clock.install({ time: new Date("2026-10-25T12:00:00Z") });
+    await page.clock.pauseAt(new Date("2026-10-25T12:00:01Z"));
+    await open(page, run);
+    for (let use = 0; use < 2; use++) {
+      await page
+        .getByRole("button", { name: "Use Power Tonic", exact: true })
+        .first()
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Empower Dizzy Five", exact: true })
+        .click();
+    }
+    await page.locator(".run-hand-card").first().click();
+    await page.locator("#adventure-board-0").click();
+    await expect(
+      page.locator("#adventure-board-0 .capture-flip-back .edge > b"),
+    ).toHaveText(["5", "5", "5", "5"]);
+    const snapshot = (await stored(page)).battle!.board[0]!;
+    expect(snapshot.dizzy!.after).toEqual([5, 5, 5, 5]);
+    await page.locator("#adventure-board-0").click();
+    await expect(page.getByRole("dialog")).toContainText(
+      "at most 5 pips per edge",
+    );
+    await expect(page.getByRole("dialog")).toContainText("up to 20");
+    await page.reload();
+    await page.getByRole("button", { name: "Adventure", exact: true }).click();
+    expect((await stored(page)).battle!.board[0]).toEqual(snapshot);
+    await expect(
+      page.locator("#adventure-board-0 .capture-flip-back .edge > b"),
+    ).toHaveText(["5", "5", "5", "5"]);
+  });
 test("Market Map and Rune Echo show expanded stock and opposite-edge upgrades", async ({
   page,
 }) => {

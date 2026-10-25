@@ -534,6 +534,8 @@ export function useAdventurePotion(
                   Math.imul(run.floor + 1, 0x85ebca6b) ^
                   Math.imul((battle.potionsUsed || 0) + 1, 0x9e3779b1) ^
                   battle.turns,
+                0,
+                4, // Gambler’s Brew keeps its own four-pip limit.
               ),
             };
           return {

@@ -16,6 +16,7 @@ import {
   handSize,
   keywordKey,
   MAX_KEYWORDS,
+  DIZZY_EDGE_CAP,
   placeStone,
   score,
   validateKeywords,
@@ -1653,12 +1654,19 @@ function validPlaced(value: unknown, length: number): boolean {
       (!!cell.dizzy &&
         edges(cell.dizzy.before) &&
         edges(cell.dizzy.after) &&
-        cell.dizzy.after.every((n) => n <= 4) &&
-        cell.dizzy.after.reduce((a, b) => a + b, 0) ===
+        cell.dizzy.after.every((n) => n <= DIZZY_EDGE_CAP) &&
+        (cell.dizzy.after.reduce((a, b) => a + b, 0) ===
           Math.min(
-            16,
+            DIZZY_EDGE_CAP * 4,
             cell.dizzy.before.reduce((a, b) => a + b, 0),
-          ))) &&
+          ) ||
+          // Keep snapshots made by the older four-per-edge version unchanged.
+          (cell.dizzy.after.every((n) => n <= 4) &&
+            cell.dizzy.after.reduce((a, b) => a + b, 0) ===
+              Math.min(
+                16,
+                cell.dizzy.before.reduce((a, b) => a + b, 0),
+              ))))) &&
     (cell.reductions === undefined || edges(cell.reductions)) &&
     (cell.silenced === undefined || typeof cell.silenced === "boolean") &&
     (cell.playedBy === undefined || [0, 1].includes(cell.playedBy)) &&

@@ -26,7 +26,7 @@ const stone = (edges: Edges, keywords: Stone["keywords"] = []): Stone => ({
   keywords,
   custom: true,
 });
-test("Dizzy redistributes totals once, has varied seeded outcomes, and caps every edge at four", () => {
+test("Dizzy redistributes totals once, has varied seeded outcomes, and caps every edge at five", () => {
   const outcomes = new Set<string>();
   for (let total = 0; total <= 24; total++)
     for (let seed = 1; seed <= 40; seed++) {
@@ -34,11 +34,11 @@ test("Dizzy redistributes totals once, has varied seeded outcomes, and caps ever
         rolled = rollDizzy(input, seed);
       assert.equal(
         rolled.reduce((a, b) => a + b, 0),
-        Math.min(16, total),
+        Math.min(20, total),
       );
       assert.ok(
         rolled.every(
-          (edge) => Number.isInteger(edge) && edge >= 0 && edge <= 4,
+          (edge) => Number.isInteger(edge) && edge >= 0 && edge <= 5,
         ),
       );
       assert.deepEqual(rollDizzy(input, seed), rolled);
@@ -46,6 +46,7 @@ test("Dizzy redistributes totals once, has varied seeded outcomes, and caps ever
       if (total === 12) outcomes.add(rolled.join());
     }
   assert.ok(outcomes.size > 5);
+  assert.deepEqual(rollDizzy([5, 5, 5, 5], 42), [5, 5, 5, 5]);
 });
 test("Dizzy captures with pre-shuffle strengths, then keeps its defensive snapshot through later turns and capture", () => {
   const board = EMPTY_BOARD();
@@ -120,11 +121,11 @@ test("the Whirling Idol event gives exactly one 12-pip Dizzy card on both board 
   }
 });
 test("Loaded Dice preserves total and ceiling while imposing the feasible minimum; saved Dizzy never rerolls", () => {
-  for (let total = 0; total <= 16; total++) {
+  for (let total = 0; total <= 20; total++) {
     const rolled = rollDizzy([total, 0, 0, 0], 15, 2);
     assert.ok(
       rolled.every(
-        (edge) => edge >= Math.min(2, Math.floor(total / 4)) && edge <= 4,
+        (edge) => edge >= Math.min(2, Math.floor(total / 4)) && edge <= 5,
       ),
     );
     assert.equal(
@@ -139,7 +140,7 @@ test("Loaded Dice preserves total and ceiling while imposing the feasible minimu
   run.battle!.hands[0][0] = stone([4, 4, 4, 0], [{ type: "dizzy" }]);
   const result = playAdventureCard(run, 4, 0);
   assert.ok(
-    result.battle!.board[4]!.edges!.every((edge) => edge >= 2 && edge <= 4),
+    result.battle!.board[4]!.edges!.every((edge) => edge >= 2 && edge <= 5),
   );
   assert.deepEqual(playAdventureCard(run, 4, 0), result);
   assert.deepEqual(
@@ -147,6 +148,27 @@ test("Loaded Dice preserves total and ceiling while imposing the feasible minimu
     JSON.parse(JSON.stringify(result)),
   );
   const malformed = JSON.parse(JSON.stringify(result));
-  malformed.battle.board[4].dizzy.after = [5, 4, 3, 0];
+  malformed.battle.board[4].dizzy.after = [6, 4, 2, 0];
   assert.equal(validateAdventure(malformed), false);
+});
+test("five-pip Dizzy snapshots and legacy capped snapshots both survive saves without rerolling", () => {
+  const run = enterAdventureNode(newAdventure(3, 42), "moss");
+  run.battle!.hands[0][0] = stone([6, 6, 6, 6], [{ type: "dizzy" }]);
+  const result = playAdventureCard(run, 4, 0);
+  assert.deepEqual(result.battle!.board[4]!.edges, [5, 5, 5, 5]);
+  assert.deepEqual(
+    restoreAdventure(JSON.parse(JSON.stringify(result))),
+    JSON.parse(JSON.stringify(result)),
+  );
+  const legacy = JSON.parse(JSON.stringify(result));
+  legacy.battle.board[4].edges = [4, 4, 4, 4];
+  legacy.battle.board[4].dizzy.after = [4, 4, 4, 4];
+  assert.deepEqual(restoreAdventure(legacy), legacy);
+  const malformed = JSON.parse(JSON.stringify(result));
+  malformed.battle.board[4].dizzy.after = [5, 5, 5, 4];
+  assert.equal(
+    validateAdventure(malformed),
+    false,
+    "new snapshots must preserve the total up to twenty",
+  );
 });

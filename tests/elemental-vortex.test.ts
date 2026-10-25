@@ -151,7 +151,7 @@ test("Sunder, Silence, Shield and Dizzy act on normal pips while the environment
     rolled.edges!.reduce((a, b) => a + b),
     12,
   );
-  assert.ok(rolled.edges!.every((edge) => edge <= 4));
+  assert.ok(rolled.edges!.every((edge) => edge <= 5));
   assert.equal(
     cardEdges(rolled).reduce((a, b) => a + b),
     16,

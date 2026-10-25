@@ -17,6 +17,7 @@ import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
   coordinate,
   ELEMENTS,
+  DIZZY_EDGE_CAP,
   KEYWORD_RULES,
   SIDE_NAMES,
   keywordGroups,
@@ -208,9 +209,10 @@ export function KeywordDetails({
                 </div>
                 <p>
                   After this card is placed and finishes its captures, randomly
-                  redistribute its pips once. Keep the total, up to 16, with{" "}
-                  <strong>at most 4 pips per edge</strong>. Captures use its
-                  strengths before the shuffle.
+                  redistribute its pips once. Keep the total, up to{" "}
+                  {DIZZY_EDGE_CAP * 4}, with{" "}
+                  <strong>at most {DIZZY_EDGE_CAP} pips per edge</strong>.
+                  Captures use its strengths before the shuffle.
                 </p>
                 <span className="keyword-status">
                   {silenced

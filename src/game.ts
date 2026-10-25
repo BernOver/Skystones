@@ -86,6 +86,7 @@ export const KEYWORD_RULES = {
   combo: { name: "Combo", condition: "matching previous element" },
 } as const;
 export const MAX_KEYWORDS = 24;
+export const DIZZY_EDGE_CAP = 5;
 export function keywordKey(keyword: StoneKeyword): string {
   return keyword.type === "silence" ||
     keyword.type === "dizzy" ||
@@ -509,21 +510,28 @@ export function chooseKeywordTargets(
   return targets;
 }
 
-// Redistribute once, retaining the total up to the four-per-edge ceiling.
+// Redistribute once, retaining the total up to the edge ceiling.
 // A seed keeps previews, AI searches, and saved expedition turns reproducible.
-export function rollDizzy(edges: Edges, seed: number, minimum = 0): Edges {
+export function rollDizzy(
+  edges: Edges,
+  seed: number,
+  minimum = 0,
+  edgeCap = DIZZY_EDGE_CAP,
+): Edges {
   const total = Math.min(
-    16,
+    edgeCap * 4,
     edges.reduce((sum, edge) => sum + edge, 0),
   );
-  const floor = Math.min(minimum, Math.floor(total / 4), 4);
+  const floor = Math.min(minimum, Math.floor(total / 4), edgeCap);
   const result: Edges = [floor, floor, floor, floor];
   let state = seed >>> 0 || 0x9e3779b9;
   for (let pip = floor * 4; pip < total; pip++) {
     state ^= state << 13;
     state ^= state >>> 17;
     state ^= state << 5;
-    const available = result.flatMap((edge, side) => (edge < 4 ? [side] : []));
+    const available = result.flatMap((edge, side) =>
+      edge < edgeCap ? [side] : [],
+    );
     result[available[(state >>> 0) % available.length]]++;
   }
   return result;
