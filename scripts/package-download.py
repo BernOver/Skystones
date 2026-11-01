@@ -12,6 +12,12 @@ instructions = """SKYSTONES — START HERE
 2. Double-click Skystones.html. Choose Chrome or Microsoft Edge if asked.
 3. Play! No installation, account, or server is required.
 
+Choose Board skins (the palette button at the top) for six themed tables:
+Giants Table, Arkeyan Ruins, Sky Citadel, Lava Forge, Frozen Vault, Golden Court.
+Skins work on both board sizes in normal, Draft, and Adventure play, and your
+choice is saved. Choose a villain in New match > Opponent. Adventure map
+combat choices show the enemy portrait before you enter the encounter.
+
 The collection contains 182 Skylanders/forms and 39 unique Giants opponents.
 Card studio has 337 searchable portraits, including 116 without a default card.
 Shield adds defense-only pips. Combo grants pips and/or keywords when your

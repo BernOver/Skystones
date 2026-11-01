@@ -1,3 +1,6 @@
+import { CharacterAvatar } from "./CharacterAvatar";
+import { adventureOpponent } from "./presentation";
+import type { BoardSkinId } from "./presentation";
 import { ElementalArena } from "./ElementalArena";
 import { CaptureFlip } from "./CaptureFlip";
 import { hasSkystonesArtwork } from "./characters";
@@ -183,7 +186,7 @@ export function RunDialog({
     </div>
   );
 }
-export function Expedition() {
+export function Expedition({ skin }: { skin: BoardSkinId }) {
   const [run, setRun] = useState<Adventure | null>(loadAdventure),
     [setup, setSetup] = useState(false),
     [size, setSize] = useState<BoardSize>(3),
@@ -734,7 +737,21 @@ export function Expedition() {
                       act((current) => enterAdventureNode(current, node.id));
                     }}
                   >
-                    {nodeIcon(node.kind)}
+                    {["battle", "elite", "boss", "chest"].includes(
+                      node.kind,
+                    ) ? (
+                      <CharacterAvatar
+                        {...adventureOpponent({
+                          ...run,
+                          floor,
+                          node,
+                          battle: undefined,
+                        })}
+                        small
+                      />
+                    ) : (
+                      nodeIcon(node.kind)
+                    )}
                     <span>
                       <strong>{node.name}</strong>
                       <small>{node.description}</small>
@@ -750,6 +767,7 @@ export function Expedition() {
       {run.phase === "battle" && battle && (
         <section
           className={`run-battle ${adventureArena(run) ? "elemental-battle" : ""}`}
+          data-board-skin={skin}
           data-arena-element={adventureArena(run)?.current}
           style={
             adventureArena(run)
@@ -761,20 +779,27 @@ export function Expedition() {
           }
         >
           <div className="run-battle-heading">
-            <div>
-              <div className="eyebrow">
-                {battle.boss || run.node?.kind === "boss"
-                  ? `ACT ${adventureAct(run.floor)} BOSS`
-                  : run.node?.kind === "elite"
-                    ? "ELITE KEEPER"
-                    : "STONE KEEPER"}
+            <div className="encounter-opponent">
+              <CharacterAvatar
+                id={adventureOpponent(run).id}
+                name={adventureOpponent(run).name}
+                color={adventureOpponent(run).color}
+              />
+              <div>
+                <div className="eyebrow">
+                  {battle.boss || run.node?.kind === "boss"
+                    ? `ACT ${adventureAct(run.floor)} BOSS`
+                    : run.node?.kind === "elite"
+                      ? "ELITE KEEPER"
+                      : `STONE KEEPER · ${adventureOpponent(run).name}`}
+                </div>
+                <h2>{battle.name}</h2>
+                <p>
+                  {ai
+                    ? "The keeper is thinking…"
+                    : "Your turn — select a stone, then an empty square."}
+                </p>
               </div>
-              <h2>{battle.name}</h2>
-              <p>
-                {ai
-                  ? "The keeper is thinking…"
-                  : "Your turn — select a stone, then an empty square."}
-              </p>
             </div>
             <div className="run-score">
               <span>
@@ -803,6 +828,7 @@ export function Expedition() {
           )}
           <div
             className={`adventure-board adventure-board-${run.size}`}
+            data-board-skin={skin}
             role="group"
             aria-label={`Adventure ${run.size} by ${run.size} game board`}
           >

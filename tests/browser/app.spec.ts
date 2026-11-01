@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("play a complete match against Willow and start again", async ({
+test("play a complete match against a villain and start again", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -42,7 +42,7 @@ test("local two-player mode alternates hands and finishes a match", async ({
   await expect(page.locator(".result-card")).toBeVisible();
 });
 
-test("Willow can start and a replaced match cancels the old computer turn", async ({
+test("the villain can start and a replaced match cancels the old computer turn", async ({
   page,
 }) => {
   await page.goto("/");
@@ -68,11 +68,11 @@ test("create a card, enforce its budget, persist it, and use it in a deck", asyn
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Card studio", exact: true }).click();
-  await page.getByLabel("Stone name").fill("Little Thunder");
   await page
     .getByLabel("A tiny backstory")
     .fill("Small paws, enormous thunderclouds.");
   await page.getByRole("button", { name: "Use Scratch portrait" }).click();
+  await page.getByLabel("Stone name").fill("Little Thunder");
   await page.getByRole("button", { name: "Air", exact: true }).click();
   for (let i = 0; i < 3; i++)
     await page.getByRole("button", { name: "Increase north strength" }).click();
@@ -90,9 +90,7 @@ test("create a card, enforce its budget, persist it, and use it in a deck", asyn
   await expect(
     page.getByRole("heading", { name: "Little Thunder" }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Remove Spyro from deck" })
-    .click();
+  await page.getByRole("button", { name: "Remove Spyro from deck" }).click();
   await page
     .getByRole("button", { name: "Add Little Thunder to deck" })
     .click();

@@ -1,0 +1,447 @@
+[data-board-skin="giants"] {
+  --table-glow: #c6b791;
+  --table-pale: #ede6d4;
+  --frame-light: #b78b46;
+  --frame-dark: #54361f;
+  --frame-edge: #503a27;
+  --metal: #d6b86e;
+  --metal-dark: #7b5b30;
+  --socket: #363b40;
+  --tile-light: #777b7c;
+  --tile-dark: #4b5057;
+  --tile-edge: #272f37;
+  --tile-ink: #f4e7c7;
+  --rune: #d4c6a5;
+}
+[data-board-skin="arkeyan"] {
+  --table-glow: #69968d;
+  --table-pale: #dde6df;
+  --frame-light: #708683;
+  --frame-dark: #283b3b;
+  --frame-edge: #1e3034;
+  --metal: #a9c1ac;
+  --metal-dark: #456f63;
+  --socket: #152b30;
+  --tile-light: #45676c;
+  --tile-dark: #233a46;
+  --tile-edge: #142733;
+  --tile-ink: #d6faf1;
+  --rune: #62dfc9;
+}
+[data-board-skin="sky"] {
+  --table-glow: #9dbbc9;
+  --table-pale: #e1edf0;
+  --frame-light: #c6d8e0;
+  --frame-dark: #54738b;
+  --frame-edge: #385d79;
+  --metal: #e8f5f8;
+  --metal-dark: #7197ad;
+  --socket: #294c6f;
+  --tile-light: #8dafc4;
+  --tile-dark: #527fa4;
+  --tile-edge: #365f82;
+  --tile-ink: #f5fbff;
+  --rune: #d9f4ff;
+}
+[data-board-skin="lava"] {
+  --table-glow: #a8765b;
+  --table-pale: #efdfd3;
+  --frame-light: #7d5542;
+  --frame-dark: #2f2426;
+  --frame-edge: #2a2023;
+  --metal: #e7a25d;
+  --metal-dark: #9c512e;
+  --socket: #3d2425;
+  --tile-light: #625357;
+  --tile-dark: #332e38;
+  --tile-edge: #a64e31;
+  --tile-ink: #ffe3c6;
+  --rune: #faab5f;
+}
+[data-board-skin="frost"] {
+  --table-glow: #b0d0d5;
+  --table-pale: #e4f0ee;
+  --frame-light: #d8e8e8;
+  --frame-dark: #6d9aab;
+  --frame-edge: #527f92;
+  --metal: #f3ffff;
+  --metal-dark: #8eafb8;
+  --socket: #537e95;
+  --tile-light: #c3e0e4;
+  --tile-dark: #82b6c9;
+  --tile-edge: #5e95af;
+  --tile-ink: #244c65;
+  --rune: #f0ffff;
+}
+[data-board-skin="golden"] {
+  --table-glow: #cbb17d;
+  --table-pale: #f0e7d6;
+  --frame-light: #e2c36e;
+  --frame-dark: #8e6228;
+  --frame-edge: #77532a;
+  --metal: #fff0a3;
+  --metal-dark: #b3873c;
+  --socket: #42344e;
+  --tile-light: #8b7093;
+  --tile-dark: #574566;
+  --tile-edge: #473148;
+  --tile-ink: #ffefc7;
+  --rune: #e4c784;
+}
+.arena[data-board-skin],
+.run-battle[data-board-skin] {
+  background:
+    radial-gradient(ellipse at 50% 48%, #fff9, transparent 70%),
+    var(--table-pale);
+}
+.board-wrap {
+  max-width: 480px;
+}
+.arena[data-board-skin] .player-strip {
+  max-width: 480px;
+}
+.game-board[data-board-skin],
+.adventure-board[data-board-skin] {
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 1;
+  gap: 7px;
+  padding: 18px;
+  border: 7px solid var(--frame-edge);
+  border-radius: 13px;
+  background:
+    repeating-linear-gradient(3deg, #ffffff04 0 2px, transparent 2px 9px),
+    linear-gradient(135deg, var(--frame-light), var(--frame-dark));
+  box-shadow:
+    0 6px 0 var(--frame-dark),
+    0 12px 22px #17212e30,
+    inset 0 3px 2px #ffffff45,
+    inset 0 -3px 2px #0008;
+}
+.game-board[data-board-skin]::before,
+.adventure-board[data-board-skin]::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 3px solid var(--metal-dark);
+  border-radius: 4px;
+  pointer-events: none;
+  background: var(--socket);
+  box-shadow:
+    0 0 0 1px var(--metal),
+    inset 0 2px 10px #0008;
+  z-index: -1;
+}
+.game-board[data-board-skin]::after,
+.adventure-board[data-board-skin]::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  border-radius: 8px;
+  background:
+    radial-gradient(
+      circle at 10px 10px,
+      var(--metal) 0 3px,
+      var(--metal-dark) 4px 7px,
+      transparent 8px
+    ),
+    radial-gradient(
+      circle at calc(100% - 10px) 10px,
+      var(--metal) 0 3px,
+      var(--metal-dark) 4px 7px,
+      transparent 8px
+    ),
+    radial-gradient(
+      circle at 10px calc(100% - 10px),
+      var(--metal) 0 3px,
+      var(--metal-dark) 4px 7px,
+      transparent 8px
+    ),
+    radial-gradient(
+      circle at calc(100% - 10px) calc(100% - 10px),
+      var(--metal) 0 3px,
+      var(--metal-dark) 4px 7px,
+      transparent 8px
+    );
+}
+[data-board-skin] > .board-cell.empty,
+[data-board-skin] > .adventure-square.vacant {
+  background:
+    linear-gradient(147deg, transparent 49%, #ffffff0d 50%, transparent 51%),
+    linear-gradient(130deg, var(--tile-light), var(--tile-dark));
+  border: 2px solid var(--tile-edge);
+  border-radius: 4px;
+  color: var(--tile-ink);
+  box-shadow:
+    inset 2px 2px 1px #ffffff30,
+    inset -2px -2px 1px #0005,
+    0 2px 2px #0005;
+}
+[data-board-skin] > .board-cell.empty::after,
+[data-board-skin] > .adventure-square.vacant::after {
+  content: "";
+  position: absolute;
+  width: 27%;
+  height: 27%;
+  left: 36.5%;
+  top: 36.5%;
+  border: 2px solid var(--rune);
+  border-radius: 2px;
+  transform: rotate(45deg);
+  opacity: 0.22;
+  box-shadow:
+    0 0 0 5px #00000010,
+    inset 0 0 0 5px #0000000a;
+  pointer-events: none;
+}
+[data-board-skin] .cell-coordinate {
+  color: var(--tile-ink);
+  opacity: 0.82;
+  font-size: 9px;
+}
+[data-board-skin] .cell-plus {
+  display: none;
+}
+[data-board-skin] > .adventure-square.vacant > span {
+  color: var(--tile-ink);
+  position: relative;
+  z-index: 1;
+}
+[data-board-skin] > .adventure-square.vacant small {
+  opacity: 0.72;
+}
+[data-board-skin] > .board-cell.empty:not(:disabled):hover,
+[data-board-skin] > .board-cell.empty:not(:disabled):focus-visible,
+[data-board-skin] > .adventure-square.vacant:not(:disabled):hover,
+[data-board-skin] > .adventure-square.vacant:not(:disabled):focus-visible {
+  background: linear-gradient(130deg, var(--tile-light), var(--tile-dark));
+  border-color: #9eecff;
+  box-shadow:
+    inset 0 0 0 2px #8ee6ff88,
+    0 0 9px #7ad8f988;
+}
+[data-board-skin] .place-label {
+  color: var(--tile-ink);
+}
+.arena[data-board-skin] .board-decoration {
+  color: var(--frame-dark);
+}
+.character-avatar {
+  --portrait-color: #547f9a;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 3px solid #efdbab;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, #fff8, transparent 65%),
+    var(--portrait-color);
+  box-shadow:
+    0 0 0 2px var(--portrait-color),
+    0 3px 6px #17212e26;
+}
+.character-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.character-avatar-small {
+  width: 38px;
+  height: 38px;
+  border-width: 2px;
+}
+.encounter-opponent {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+}
+.encounter-opponent > div {
+  min-width: 0;
+}
+.encounter-opponent > .character-avatar {
+  width: 72px;
+  height: 72px;
+}
+.run-node > .character-avatar {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 0;
+}
+.run-node .character-avatar img {
+  max-width: 100%;
+}
+.run-battle[data-board-skin] {
+  border-radius: 16px;
+  padding: 22px;
+}
+.run-battle.elemental-battle[data-board-skin] {
+  background: var(--arena-pale);
+}
+.elemental-battle .adventure-board[data-board-skin] {
+  border-color: var(--arena-color);
+}
+.opponent-select {
+  margin: 18px 0;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #dbd9ca;
+  border-radius: 10px;
+  background: #f6f1e5;
+}
+.opponent-select label {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.opponent-select select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cec7b4;
+  border-radius: 5px;
+  background: #fffdf4;
+  color: #4e5f54;
+}
+.board-skins-button {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 10px;
+  color: #728277;
+  padding: 7px;
+  border-radius: 6px;
+}
+.board-skins-button:hover {
+  background: #e9ecdf;
+}
+.board-skin-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.board-skin-option {
+  text-align: left;
+  padding: 12px;
+  border: 2px solid #e1decf;
+  background: #f6f2e6;
+  border-radius: 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+.board-skin-option[aria-pressed="true"] {
+  border-color: #608b79;
+  background: #edf1e2;
+}
+.board-skin-option:focus-visible {
+  outline: 3px solid #86b3c6;
+  outline-offset: 2px;
+}
+.board-skin-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  aspect-ratio: 1.75;
+  padding: 10px;
+  background: linear-gradient(135deg, var(--frame-light), var(--frame-dark));
+  border: 4px solid var(--frame-edge);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px var(--metal-dark);
+}
+.board-skin-preview i {
+  border: 1px solid var(--tile-edge);
+  border-radius: 2px;
+  background: linear-gradient(135deg, var(--tile-light), var(--tile-dark));
+  box-shadow: inset 1px 1px #ffffff30;
+}
+.board-skin-name {
+  margin: 12px 0 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #435f53;
+}
+.board-skin-description {
+  font-size: 10px;
+  color: #738071;
+  line-height: 1.5;
+  display: block;
+}
+@media (max-width: 540px) {
+  .board-skins-button span {
+    display: none;
+  }
+  .game-board[data-board-skin],
+  .adventure-board[data-board-skin] {
+    border-width: 5px;
+    padding: 11px;
+    gap: 4px;
+    border-radius: 10px;
+  }
+  .game-board[data-board-skin]::before,
+  .adventure-board[data-board-skin]::before {
+    inset: 5px;
+    border-width: 2px;
+  }
+  .character-avatar {
+    width: 38px;
+    height: 38px;
+    border-width: 2px;
+  }
+  .character-avatar-small {
+    width: 32px;
+    height: 32px;
+  }
+  .encounter-opponent {
+    gap: 10px;
+  }
+  .encounter-opponent > .character-avatar {
+    width: 52px;
+    height: 52px;
+  }
+  .run-battle[data-board-skin] {
+    padding: 10px;
+  }
+  .board-skin-option {
+    padding: 8px;
+  }
+  .board-skin-name {
+    font-size: 11px;
+  }
+  .board-skin-description {
+    font-size: 9px;
+  }
+  [data-board-skin] .cell-coordinate {
+    font-size: 7px;
+    top: 5px;
+    left: 5px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1150px) {
+  .board-skins-button span,
+  .header-actions .rules-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}

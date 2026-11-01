@@ -10,6 +10,7 @@ import "@fontsource/fraunces/latin-500.css";
 import "./styles.css";
 import "./keywords.css";
 import "./adventure.css";
+import "./board-skins.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

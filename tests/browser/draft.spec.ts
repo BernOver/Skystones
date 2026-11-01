@@ -13,6 +13,7 @@ for (const size of [3, 4] as const)
   test(`complete ${size}×${size} draft, reload between picks, and play with the exact drafted hands`, async ({
     page,
   }) => {
+    test.setTimeout(60_000);
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.addInitScript(

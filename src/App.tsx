@@ -1,3 +1,7 @@
+import { BoardSkins } from "./BoardSkins";
+import { CharacterAvatar } from "./CharacterAvatar";
+import { boardSkin, opponent, OPPONENTS } from "./presentation";
+import type { BoardSkinId, OpponentId } from "./presentation";
 import { CaptureFlip } from "./CaptureFlip";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
@@ -18,7 +22,7 @@ import {
   ImagePlus,
   Info,
   Layers,
-  Leaf,
+  Palette,
   LoaderCircle,
   Minus,
   Pencil,
@@ -36,7 +40,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { CreatureArt, ELEMENT_ICONS, StoneCard } from "./Artwork";
+import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
   coordinate,
   boardSize,
@@ -81,7 +85,7 @@ import { PortraitPicker } from "./PortraitPicker";
 type Page = "table" | "collection" | "studio" | "run" | "draft";
 type Mode = "computer" | "local";
 type DialogState =
-  | { kind: "rules" | "new" }
+  | { kind: "rules" | "new" | "skins" }
   | { kind: "card" | "delete"; stone: Stone }
   | { kind: "inspect"; inspection: Inspection }
   | {
@@ -96,6 +100,8 @@ interface Library {
   deck: string[];
   sound: boolean;
   boardSize: BoardSize;
+  boardSkin: BoardSkinId;
+  opponent: OpponentId;
 }
 interface JournalEntry {
   id: number;
@@ -110,6 +116,7 @@ interface Match {
   hands: [Stone[], Stone[]];
   current: Owner;
   mode: Mode;
+  opponent: OpponentId;
   draft?: boolean;
   entries: JournalEntry[];
   moves: number;
@@ -148,12 +155,26 @@ function readLibrary(): Library {
             .filter((id: string) => ids.has(id)),
         ),
       ].slice(0, handSize(size));
-      return { custom, deck, sound: value.sound === true, boardSize: size };
+      return {
+        custom,
+        deck,
+        sound: value.sound === true,
+        boardSize: size,
+        boardSkin: boardSkin(value.boardSkin),
+        opponent: opponent(value.opponent).id,
+      };
     }
   } catch {
     /* A malformed local save should never prevent the app from opening. */
   }
-  return { custom: [], deck: DEFAULT_DECK, sound: false, boardSize: 3 };
+  return {
+    custom: [],
+    deck: DEFAULT_DECK,
+    sound: false,
+    boardSize: 3,
+    boardSkin: "giants",
+    opponent: OPPONENTS[0].id,
+  };
 }
 
 function createMatch(
@@ -186,6 +207,7 @@ function createMatch(
     hands: [human, opponent],
     current: first,
     mode,
+    opponent: library.opponent,
     entries: [],
     moves: 0,
     lastCaptured: [],
@@ -353,9 +375,10 @@ export default function App() {
   const done = match.board.every(Boolean);
   const tied = scores[0] === scores[1];
   const aiTurn = match.mode === "computer" && match.current === 1 && !done;
+  const rival = opponent(match.opponent);
   const names =
     match.mode === "computer"
-      ? ["You", "Willow"]
+      ? ["You", rival.name]
       : ["Player one", "Player two"];
   const currentHand = match.hands[match.current];
   const handOwner: Owner = match.mode === "computer" ? 0 : match.current;
@@ -811,6 +834,15 @@ export default function App() {
           </nav>
           <div className="header-actions">
             <button
+              className="board-skins-button"
+              aria-label="Board skins"
+              title="Board skins"
+              onClick={() => setDialog({ kind: "skins" })}
+            >
+              <Palette size={18} />
+              <span>Board skins</span>
+            </button>
+            <button
               className="icon-button sound-button"
               aria-label={
                 library.sound ? "Mute game sounds" : "Enable game sounds"
@@ -833,7 +865,7 @@ export default function App() {
       </header>
 
       <main className={`main-content page-${page}`}>
-        {page === "run" && <Expedition />}
+        {page === "run" && <Expedition skin={library.boardSkin} />}
         {page === "draft" && (
           <Draft
             onPlay={(draftSize, hands) => {
@@ -843,6 +875,7 @@ export default function App() {
                 hands,
                 current: 0,
                 mode: "local",
+                opponent: library.opponent,
                 draft: true,
                 entries: [],
                 moves: 0,
@@ -900,18 +933,23 @@ export default function App() {
                     {match.mode === "computer"
                       ? "SOLO PLAY"
                       : "LOCAL TWO-PLAYER"}
-                    <span>·</span>3 × 3
+                    <span>·</span>
+                    {size} × {size}
                   </span>
                 </div>
-                <div className="arena">
+                <div className="arena" data-board-skin={library.boardSkin}>
                   <div className="player-strip">
                     <div
                       className={`player player-one ${!done && match.current === 0 ? "player-active" : ""}`}
                     >
-                      <div className="avatar avatar-you">
-                        <span>Y</span>
-                        <span className="avatar-star">✦</span>
-                      </div>
+                      <CharacterAvatar
+                        id="spyro"
+                        name={
+                          match.mode === "computer"
+                            ? "Spyro"
+                            : "Player one · Spyro"
+                        }
+                      />
                       <div>
                         <span className="player-name">
                           {names[0]}
@@ -929,17 +967,16 @@ export default function App() {
                       className={`player player-two ${!done && match.current === 1 ? "player-active" : ""}`}
                     >
                       <div className="player-copy">
-                        <span className="player-name">
-                          {names[1]}
-                          <Leaf size={13} />
-                        </span>
+                        <span className="player-name">{names[1]}</span>
                         <span className="player-subtitle">
                           {match.hands[1].length} stones in hand
                         </span>
                       </div>
-                      <div className="avatar avatar-rival">
-                        <CreatureArt creature="fox" element="earth" />
-                      </div>
+                      <CharacterAvatar
+                        id={rival.id}
+                        name={rival.name}
+                        color={rival.color}
+                      />
                     </div>
                   </div>
 
@@ -948,6 +985,7 @@ export default function App() {
                     <span className="board-decoration decoration-two">✦</span>
                     <div
                       className={`game-board board-size-${size} ${selected !== null && !aiTurn && !done ? "ready-to-place" : ""}`}
+                      data-board-skin={library.boardSkin}
                       role="group"
                       aria-label={`Game board, ${size === 3 ? "three rows and three columns" : "four rows and four columns"}`}
                     >
@@ -1055,7 +1093,7 @@ export default function App() {
                                   ? "Your little victory."
                                   : "Player one wins!"
                                 : match.mode === "computer"
-                                  ? "Willow takes this one."
+                                  ? `${rival.name} takes this one.`
                                   : "Player two wins!"}
                           </h2>
                           <p>
@@ -1107,7 +1145,7 @@ export default function App() {
                         </>
                       ) : aiTurn ? (
                         <>
-                          <strong>Willow is thinking</strong>
+                          <strong>{rival.name} is thinking</strong>
                           <span className="thinking-dots">...</span> Good things
                           take a moment.
                         </>
@@ -2177,6 +2215,19 @@ export default function App() {
         </Dialog>
       )}
 
+      {dialog?.kind === "skins" && (
+        <Dialog
+          title="Board skins"
+          onClose={() => setDialog(null)}
+          className="board-skins-dialog"
+        >
+          <BoardSkins
+            selected={library.boardSkin}
+            onSelect={(skin) => saveLibrary({ ...library, boardSkin: skin })}
+          />
+        </Dialog>
+      )}
+
       {dialog?.kind === "new" && (
         <Dialog
           title="Start a new match"
@@ -2200,9 +2251,9 @@ export default function App() {
               className={newMode === "computer" ? "active" : ""}
               onClick={() => setNewMode("computer")}
             >
-              <Leaf size={23} strokeWidth={1.4} />
-              <strong>Meet Willow</strong>
-              <span>A thoughtful computer rival</span>
+              <Swords size={23} strokeWidth={1.4} />
+              <strong>Face a villain</strong>
+              <span>Choose a Skylanders computer rival</span>
               {newMode === "computer" && <Check size={15} />}
             </button>
             <button
@@ -2215,6 +2266,35 @@ export default function App() {
               {newMode === "local" && <Check size={15} />}
             </button>
           </div>
+          {newMode === "computer" && (
+            <div className="opponent-select">
+              <CharacterAvatar
+                id={opponent(library.opponent).id}
+                name={opponent(library.opponent).name}
+                color={opponent(library.opponent).color}
+              />
+              <label htmlFor="normal-opponent">
+                Opponent
+                <select
+                  id="normal-opponent"
+                  aria-label="Opponent"
+                  value={library.opponent}
+                  onChange={(event) =>
+                    saveLibrary({
+                      ...library,
+                      opponent: opponent(event.target.value).id,
+                    })
+                  }
+                >
+                  {OPPONENTS.map((enemy) => (
+                    <option key={enemy.id} value={enemy.id}>
+                      {enemy.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           <div className="first-player-field">
             <label htmlFor="normal-board-size">Board size</label>
             <select
@@ -2242,7 +2322,7 @@ export default function App() {
               </option>
               <option value="1">
                 {newMode === "computer"
-                  ? "Willow — let’s see what she has"
+                  ? `${opponent(library.opponent).name} — let’s see their stones`
                   : "Player two — a shuffled starter deck"}
               </option>
             </select>

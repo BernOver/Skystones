@@ -36,7 +36,7 @@ Browser tests use system Chromium when available. Otherwise install the browser 
 
 Select a stone from your hand, then an empty square. A higher facing edge captures an adjacent opposing stone. Equal facing edges leave ownership unchanged. There are no diagonal or chain captures. When the board fills, the player controlling more stones wins; unplayed cards do not count. Equal final scores on 4×4 are a draw.
 
-- Play against Willow, a computer rival that weighs captures and possible counterattacks.
+- Choose one of **ten Skylanders villains** in **New match → Opponent**, including Chompy Mage, Wolfgang, Kaos, and Golden Queen. Their character portraits and names appear beside the board. The computer weighs captures and possible counterattacks. Your opponent preference is saved in this browser.
 - Choose **New match → Bring a friend** for local two-player play. Player one uses your selected deck; player two receives a shuffled original deck.
 - Choose **3×3** for five-card hands and nine squares, or **4×4** for eight-card hands and sixteen squares. Both computer and local play support either board. Choose the board size in New match or Collection; a complete deck automatically expands or trims when switching size.
 - In **Collection**, choose exactly five or eight distinct stones for your next game, depending on the board size. Deck changes do not modify a match in progress.
@@ -44,6 +44,12 @@ Select a stone from your hand, then an empty square. A higher facing edge captur
 - Save your creation, then add it to your deck in Collection. Elements determine Resonance counts; captures still compare facing pips.
 - Cards show their artwork and pips without hovering, including after a capture flip. Hover over a card in your hand or on the board for an enlarged card, edge strengths, keyword explanations, and backstory. Keyboard focus also opens the larger view. On touch screens, tap a board card, or select a hand card and choose **Inspect selected**.
 - Download card images as PNG files. Export and import `.skystone.json` card files to back up or share playable cards.
+
+## Board skins and enemy portraits
+
+Open **Board skins** (the palette button in the header) to choose **Giants Table, Arkeyan Ruins, Sky Citadel, Lava Forge, Frozen Vault, or Golden Court**. Each table has a raised carved frame, metal corner pieces, beveled stone spaces, and engraved centers inspired by the original Skystones boards. Previews show all six finishes. The choice applies to normal, drafted, and Adventure matches on both 3×3 and 4×4 boards, and stays selected after reload. Changing a skin leaves the current cards, deck, and progress in place.
+
+**Adventure map combat choices display enemy portraits before you enter.** Different branches at the same stop show different villains. The chosen portrait appears again in the battle header and remains the same when you resume the run. Both Act I boss choices show Kaos; the Act II boss shows Golden Queen. All portraits and skins work offline in the download.
 
 ## Giants collection and artwork
 
@@ -192,6 +198,7 @@ Custom cards, board size, deck selection, and sound preference are saved in this
 - `src/Artwork.tsx`: bundled character portraits, card rendering, and legacy illustrations.
 - `src/characters.ts`: character roster, portrait metadata, and legacy deck migration.
 - `src/CaptureFlip.tsx`: ownership flip animation.
+- `src/presentation.ts`, `src/CharacterAvatar.tsx`, `src/BoardSkins.tsx`, and `src/board-skins.css`: villain portraits, stable Adventure map identities, and six saved board skins.
 - `src/App.tsx`: game table, collection, card studio, persistence, and dialogs.
 - `src/CardInspection.tsx` and `src/KeywordEditor.tsx`: enlarged card rules and directional keyword editing.
 - `src/adventure.ts` and `src/Expedition.tsx`: saved adventure state, rewards, encounters, potions, merchants, boss conditions, and adventure interface.
@@ -200,6 +207,7 @@ Custom cards, board size, deck selection, and sound preference are saved in this
 - `tests/game.test.ts`: isolated rules and validation checks.
 - `tests/keywords.test.ts`: keyword timing, capture and defense bonuses, permanent activation, and import validation.
 - `tests/browser/app.spec.ts`: Playwright browser workflows.
+- `tests/browser/board-skins-portraits.spec.ts`: all skins across modes and board sizes, unchanged games during skin changes, opponent selection, Adventure map and boss portraits, preference migration, reloads, and phone layouts.
 - `tests/browser/keywords.spec.ts`: mouse, keyboard and touch inspection, keyword editing, saved cards, and card-file sharing.
 - `tests/adventure-identity.test.ts` and `tests/browser/card-visibility-identity.spec.ts`: fixed profiles across seeds, original Skystones pips, keyword restrictions, duplicate repair, and always-visible artwork.
 - `tests/elemental-vortex.test.ts` and `tests/browser/elemental-vortex.spec.ts`: temporary attack and defense bonuses, keyword interactions, saved element cycles, both boss outcomes, next-element icons, and phone layouts.
