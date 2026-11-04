@@ -16,7 +16,8 @@ Choose Board skins (the palette button at the top) for six themed tables:
 Giants Table, Arkeyan Ruins, Sky Citadel, Lava Forge, Frozen Vault, Golden Court.
 Skins work on both board sizes in normal, Draft, and Adventure play, and your
 choice is saved. Choose a villain in New match > Opponent. Adventure map
-combat choices show the enemy portrait before you enter the encounter.
+combat choices show the enemy portrait, character name, and matching flavor
+text before you enter. The same title and story follow you into the battle.
 
 The collection contains 182 Skylanders/forms and 39 unique Giants opponents.
 Card studio has 337 searchable portraits, including 116 without a default card.

@@ -445,3 +445,12 @@
     border: 0;
   }
 }
+.encounter-flavor {
+  color: #687d6e;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0 0 20px;
+}
+.run-node > span:not(.character-avatar) {
+  min-width: 0;
+}

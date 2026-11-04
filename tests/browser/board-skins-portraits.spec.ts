@@ -200,7 +200,7 @@ test("all ten normal opponent portraits load; chosen villain appears in the matc
   await page.reload();
   await expect(page.locator(".player-two")).toContainText("Wolfgang");
 });
-test("Adventure map choices have distinct enemy portraits that match their battle and stay after reload", async ({
+test("Adventure map names, flavor and portraits match the enemy and stay consistent in battle and after reload", async ({
   page,
 }) => {
   const run = newAdventure(3, 81);
@@ -220,6 +220,15 @@ test("Adventure map choices have distinct enemy portraits that match their battl
     els.map((el) => el.alt),
   );
   expect(new Set(portraits).size).toBe(2);
+  for (let index = 0; index < portraits.length; index++) {
+    const name = portraits[index].replace(/ portrait$/, "");
+    await expect(options.nth(index).locator("strong")).toContainText(name);
+    await expect(options.nth(index).locator("small")).toContainText(name);
+  }
+  await expect(options.nth(0).locator("small")).toContainText(/goo/i);
+  await expect(options.nth(1).locator("small")).toContainText(
+    /harp|music|rhythm/i,
+  );
   await expect
     .poll(() =>
       page
@@ -230,6 +239,8 @@ test("Adventure map choices have distinct enemy portraits that match their battl
     )
     .toBe(true);
   const selected = await options.nth(1).locator("img").getAttribute("alt");
+  const selectedName = await options.nth(1).locator("strong").textContent();
+  const selectedFlavor = await options.nth(1).locator("small").textContent();
   await page.setViewportSize({ width: 390, height: 1000 });
   expect(
     await page.evaluate(
@@ -244,6 +255,10 @@ test("Adventure map choices have distinct enemy portraits that match their battl
     "alt",
     selected!,
   );
+  await expect(page.locator(".encounter-opponent h2")).toHaveText(
+    selectedName!,
+  );
+  await expect(page.locator(".encounter-flavor")).toHaveText(selectedFlavor!);
   await chooseSkin(page, "Arkeyan Ruins");
   await page.reload();
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
@@ -251,6 +266,10 @@ test("Adventure map choices have distinct enemy portraits that match their battl
     "alt",
     selected!,
   );
+  await expect(page.locator(".encounter-opponent h2")).toHaveText(
+    selectedName!,
+  );
+  await expect(page.locator(".encounter-flavor")).toHaveText(selectedFlavor!);
   await expect(page.locator(".adventure-board")).toHaveAttribute(
     "data-board-skin",
     "arkeyan",
@@ -270,12 +289,10 @@ for (const [floor, id, name] of [
     );
     await page.goto("/");
     await page.getByRole("button", { name: "Adventure", exact: true }).click();
-    const node = page
-      .locator(".run-map-row.current .run-node")
-      .filter({
-        hasText:
-          id === "elemental-vortex" ? "Elemental Vortex" : "The Golden Court",
-      });
+    const node = page.locator(".run-map-row.current .run-node").filter({
+      hasText:
+        id === "elemental-vortex" ? "Elemental Vortex" : "The Golden Court",
+    });
     await expect(
       node.getByRole("img", { name: `${name} portrait`, exact: true }),
     ).toBeVisible();

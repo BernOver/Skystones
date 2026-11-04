@@ -263,7 +263,7 @@ for (const size of [3, 4] as const)
     await reload(page);
     await page.getByRole("button", { name: /The Lantern Market/ }).click();
     await page.getByRole("button", { name: "Leave shop", exact: true }).click();
-    await page.getByRole("button", { name: /The Stone Sentinel/ }).click();
+    await page.locator('.run-node[data-node-id="sentinel"]').click();
     await expect(page.locator(".run-hand-card")).toHaveCount(handSize(size));
     await expect(
       page.locator(".run-hand-card").filter({ hasText: expected.name }),

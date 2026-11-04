@@ -342,7 +342,7 @@ test("curse bargains create a zero-pip battle hand slot which can still be stren
   await expect(page.getByLabel("Encounter conditions")).toContainText("Doubt");
   await page.getByRole("button", { name: /The Wandering Merchant/ }).click();
   await page.getByRole("button", { name: "Leave shop", exact: true }).click();
-  await page.getByRole("button", { name: /Tideglass Crossing/ }).click();
+  await page.locator('.run-node[data-node-id="reef"]').click();
   await expect(
     page.locator(".run-hand-card").filter({ hasText: "Doubt" }),
   ).toHaveCount(1);

@@ -1,5 +1,5 @@
 import { CharacterAvatar } from "./CharacterAvatar";
-import { adventureOpponent } from "./presentation";
+import { adventureOpponent, adventureEncounter } from "./presentation";
 import type { BoardSkinId } from "./presentation";
 import { ElementalArena } from "./ElementalArena";
 import { CaptureFlip } from "./CaptureFlip";
@@ -343,6 +343,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
         </p>
       </section>
     );
+  const encounter = adventureEncounter(run);
   const battle = run.battle,
     count = handSize(run.size),
     deckReady = run.deck.length === count,
@@ -723,42 +724,41 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                   : `${adventureAct(floor)}.${adventureStop(floor)}`}
               </span>
               <div className="run-route-options">
-                {row.map((node) => (
-                  <button
-                    key={node.id}
-                    className={`run-node node-${node.kind}`}
-                    disabled={
-                      floor !== run.floor ||
-                      (!deckReady &&
-                        ["battle", "elite", "boss"].includes(node.kind))
-                    }
-                    onClick={() => {
-                      setDeckOpen(false);
-                      act((current) => enterAdventureNode(current, node.id));
-                    }}
-                  >
-                    {["battle", "elite", "boss", "chest"].includes(
-                      node.kind,
-                    ) ? (
-                      <CharacterAvatar
-                        {...adventureOpponent({
-                          ...run,
-                          floor,
-                          node,
-                          battle: undefined,
-                        })}
-                        small
-                      />
-                    ) : (
-                      nodeIcon(node.kind)
-                    )}
-                    <span>
-                      <strong>{node.name}</strong>
-                      <small>{node.description}</small>
-                    </span>
-                    {floor === run.floor && <ArrowRight size={17} />}
-                  </button>
-                ))}
+                {row.map((node) => {
+                  const preview = adventureEncounter({
+                    ...run,
+                    floor,
+                    node,
+                    battle: undefined,
+                  });
+                  return (
+                    <button
+                      key={node.id}
+                      className={`run-node node-${node.kind}`}
+                      data-node-id={node.id}
+                      disabled={
+                        floor !== run.floor ||
+                        (!deckReady &&
+                          ["battle", "elite", "boss"].includes(node.kind))
+                      }
+                      onClick={() => {
+                        setDeckOpen(false);
+                        act((current) => enterAdventureNode(current, node.id));
+                      }}
+                    >
+                      {preview.opponent ? (
+                        <CharacterAvatar {...preview.opponent} small />
+                      ) : (
+                        nodeIcon(node.kind)
+                      )}
+                      <span>
+                        <strong>{preview.name}</strong>
+                        <small>{preview.description}</small>
+                      </span>
+                      {floor === run.floor && <ArrowRight size={17} />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -793,7 +793,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                       ? "ELITE KEEPER"
                       : `STONE KEEPER · ${adventureOpponent(run).name}`}
                 </div>
-                <h2>{battle.name}</h2>
+                <h2>{encounter.name}</h2>
                 <p>
                   {ai
                     ? "The keeper is thinking…"
@@ -810,6 +810,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               </span>
             </div>
           </div>
+          <p className="encounter-flavor">{encounter.description}</p>
           {adventureArena(run) && (
             <ElementalArena
               current={adventureArena(run)!.current}
@@ -980,16 +981,22 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
       )}
       {run.phase === "event" && run.node && (
         <section className="run-panel run-event">
-          <div className="event-symbol">{nodeIcon(run.node.kind)}</div>
+          <div className="event-symbol">
+            {encounter.opponent ? (
+              <CharacterAvatar {...encounter.opponent} />
+            ) : (
+              nodeIcon(run.node.kind)
+            )}
+          </div>
           <h2>
             {run.spireEvent
               ? getSpireEvent(run.spireEvent.id)!.sourceName
-              : run.node.name}
+              : encounter.name}
           </h2>
           <p>
             {run.spireEvent
               ? getSpireEvent(run.spireEvent.id)!.text
-              : run.node.description}
+              : encounter.description}
           </p>
           <div className="event-options">
             {run.spireEvent ? (

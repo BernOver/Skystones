@@ -115,7 +115,7 @@ test("start, play and resume a four-by-four adventure, use a potion, claim a rew
   page.on("pageerror", (error) => errors.push(error.message));
   await openRun(page, newAdventure(4, 102));
   await expect(page.locator(".run-toolbar")).toContainText("8/8");
-  await page.getByRole("button", { name: /Mossy Footpath/ }).click();
+  await page.locator('.run-node[data-node-id="moss"]').click();
   await expect(page.locator(".adventure-square")).toHaveCount(16);
   const original = await stored(page);
   await page
@@ -171,7 +171,7 @@ test("start, play and resume a four-by-four adventure, use a potion, claim a rew
     await page
       .getByRole("button", { name: "Continue expedition", exact: true })
       .click();
-  await page.getByRole("button", { name: /The Brass Chest/ }).click();
+  await page.locator('.run-node[data-node-id="chest-one"]').click();
   await page
     .getByRole("button", { name: /Challenge the chest keeper/ })
     .click();
@@ -399,7 +399,7 @@ test("adventure map, battle, chest and shop fit a phone and malformed saves reco
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole("button", { name: /Tideglass Crossing/ }).click();
+  await page.locator('.run-node[data-node-id="reef"]').click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

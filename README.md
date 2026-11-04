@@ -49,7 +49,7 @@ Select a stone from your hand, then an empty square. A higher facing edge captur
 
 Open **Board skins** (the palette button in the header) to choose **Giants Table, Arkeyan Ruins, Sky Citadel, Lava Forge, Frozen Vault, or Golden Court**. Each table has a raised carved frame, metal corner pieces, beveled stone spaces, and engraved centers inspired by the original Skystones boards. Previews show all six finishes. The choice applies to normal, drafted, and Adventure matches on both 3×3 and 4×4 boards, and stays selected after reload. Changing a skin leaves the current cards, deck, and progress in place.
 
-**Adventure map combat choices display enemy portraits before you enter.** Different branches at the same stop show different villains. The chosen portrait appears again in the battle header and remains the same when you resume the run. Both Act I boss choices show Kaos; the Act II boss shows Golden Queen. All portraits and skins work offline in the download.
+**Adventure map combat choices display enemy portraits before you enter.** Different branches at the same stop show different villains. Each villain has matching encounter titles and flavor text for battles, elites, and treasure guards, drawing on their personality and equipment. The title, story, and portrait stay together on the map, in treasure introductions, and in the battle, including when you resume an older save. Reward and boss-condition descriptions remain visible. Both Act I boss choices show Kaos; the Act II boss shows Golden Queen. All portraits and skins work offline in the download.
 
 ## Giants collection and artwork
 
