@@ -226,22 +226,28 @@ test("Combo grants targeted effects in order before captures, and skips all gran
   assert.deepEqual(placeStone(board, 3, inactive, 0).effects, []);
 });
 
-test("Dizzy granted by Combo shuffles after captures without shuffling defense-only pips", () => {
+test("Dizzy granted by Combo rolls only its selected side before captures and leaves shields unchanged", () => {
   let board = placeStone(EMPTY_BOARD(), 8, card(), 0).board;
   const combo = card([
     { type: "shield", side: 0, amount: 2 },
     {
       type: "combo",
       pips: [{ side: 1, amount: 2 }],
-      keywords: [{ type: "dizzy" }],
+      keywords: [{ type: "dizzy", sides: [1] }],
     },
   ]);
   const move = placeStone(board, 0, combo, 0, [], { seed: 42 });
   assert.deepEqual(move.board[0]!.dizzy!.before, [2, 4, 2, 2]);
-  assert.equal(
-    move.board[0]!.edges!.reduce((a, b) => a + b),
-    10,
+  assert.deepEqual(
+    [
+      move.board[0]!.edges![0],
+      move.board[0]!.edges![2],
+      move.board[0]!.edges![3],
+    ],
+    [2, 2, 2],
   );
+  assert.ok(move.board[0]!.edges![1] >= 0 && move.board[0]!.edges![1] <= 5);
+  assert.equal(move.board[0]!.dizzy!.timing, "before-captures");
   assert.equal(move.board[0]!.shields![0], 2);
 });
 

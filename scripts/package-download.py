@@ -29,8 +29,15 @@ Sunder can repeat on the same edge. Choose a target for each entry; all
 entries resolve in order, before captures. Repeated Any-edge Sunder is allowed.
 Adventure characters have fixed starting pips and keywords across runs.
 Random packs and offers avoid duplicate characters; old saves repair them.
-Original Skystones pictures keep their original pips and have no Adventure
-keywords. Their embedded pip markings are hidden when an upgrade changes them.
+Original Skystones bases match their pictures and start without keywords.
+Adventure shops can add keywords to them, which persist through reloads.
+Their embedded pip markings are hidden when an upgrade changes the pips.
+
+In Collection, open a built-in character > Edit character default. Save its
+name, portrait, element, pips, and keywords as the base for that character in
+new games, new Draft pools, and newly generated Adventure cards. Existing
+games and copies in an Adventure keep their saved cards. Restore original
+default in the character details to reset it. Defaults save in this browser.
 
 Use Card studio to make a stone. Selecting a portrait updates its name to
 that character; you can edit the name afterward. Save it, then add it to your
@@ -42,10 +49,12 @@ Adventure has two nine-stop acts: defeat Kaos, then Golden Queen.
 Act I offers Throne of Chaos or the new Elemental Vortex boss. The vortex
 changes element and arena color after every card. Matching cards on both
 sides gain +1 on all edges for that turn; the Next element icon previews it.
-Start with 2-3-pip cards; enemies and rewards grow gradually.
+Start with 2-3-pip cards and no potions; enemies and rewards grow gradually.
 Adventure includes 31 relics, 15 potions, 54 adapted Spire encounters, and a
-12-pip Dizzy card event. Dizzy reshuffles after captures with at most 5 pips
-per edge (20 total); existing saved shuffles stay fixed. Hover or tap cards
+12-pip Dizzy card event. Dizzy independently rolls 0-5 on its selected sides
+before captures. A ? marks each affected side until played; other sides stay
+unchanged. Results stay fixed. Loaded Dice changes the range to 2-5.
+Older whole-card Dizzy cards roll all four sides. Hover or tap cards
 to read their keywords. Draft picks and adventure progress save automatically.
 Shops reroll for 20 gold; Merchant’s Die gives one free reroll per shop.
 The Runesmith’s Shrine adds keywords; the Twinflame Forge combines two cards.

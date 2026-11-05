@@ -121,6 +121,7 @@ export function TargetPicker({
           <div className="target-selected-card">
             <StoneCard
               stone={selectedCard.stone}
+              played
               edges={cardEdges(selectedCard)}
               silenced={selectedCard.silenced}
               shields={selectedCard.shields}
@@ -197,6 +198,7 @@ export function TargetPicker({
                   <>
                     <StoneCard
                       stone={cell.stone}
+                      played
                       owner={cell.owner}
                       edges={cardEdges(cell)}
                       silenced={cell.silenced}

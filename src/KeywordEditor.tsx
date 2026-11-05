@@ -5,6 +5,7 @@ import {
   KEYWORD_RULES,
   MAX_KEYWORDS,
   DIZZY_EDGE_CAP,
+  dizzySides,
   SIDE_NAMES,
   keywordKey,
   validateKeywords,
@@ -25,7 +26,8 @@ export function defaultKeyword(
   side: Side = 0,
   element: Element = "magic",
 ): StoneKeyword {
-  if (type === "silence" || type === "dizzy") return { type };
+  if (type === "silence") return { type };
+  if (type === "dizzy") return { type, sides: [side] };
   if (type === "combo") return { type, pips: [{ side, amount: 1 }] };
   if (type === "resonance") return { type, side, element };
   return { type, side };
@@ -69,6 +71,29 @@ function Fields({
           </select>
         </label>
       </div>
+      {keyword.type === "dizzy" && (
+        <fieldset className="dizzy-side-options">
+          <legend>Dizzy sides</legend>
+          {SIDE_NAMES.map((name, side) => (
+            <label key={name}>
+              <input
+                type="checkbox"
+                aria-label={`Dizzy ${name} · ${label}`}
+                checked={dizzySides(keyword).includes(side as Side)}
+                onChange={(event) =>
+                  onChange({
+                    ...keyword,
+                    sides: event.target.checked
+                      ? [...dizzySides(keyword), side as Side].sort()
+                      : dizzySides(keyword).filter((value) => value !== side),
+                  })
+                }
+              />
+              {name}
+            </label>
+          ))}
+        </fieldset>
+      )}
       {"side" in keyword && (
         <div>
           <label>
@@ -277,7 +302,7 @@ export function KeywordEditor({
     }
     if (!validateKeywords(next)) {
       setError(
-        "Sunder can repeat on the same edge. Other keywords need a unique edge; Combo needs at least one pip bonus or granted keyword.",
+        "Choose at least one Dizzy side. Sunder can repeat on the same edge; other keywords need a unique edge. Combo needs a pip bonus or granted keyword.",
       );
       return;
     }
@@ -382,9 +407,8 @@ export function KeywordEditor({
             removes their bonuses.
           </p>
           <p>
-            <strong>Dizzy</strong> shuffles pips after captures, at most{" "}
-            {DIZZY_EDGE_CAP}
-            per edge.
+            <strong>Dizzy</strong> rolls each selected edge from 0 to{" "}
+            {DIZZY_EDGE_CAP} before captures. A ? marks each affected edge.
           </p>
           <p>
             <strong>Shield</strong> adds directional defense pips, never attack

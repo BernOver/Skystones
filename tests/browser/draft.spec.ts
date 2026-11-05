@@ -119,9 +119,7 @@ test("draft setup changes board size and card inspection explains Dizzy without 
     .filter({ hasText: "Dizzy" })
     .first();
   await dizzy.locator(".draft-preview").hover();
-  await expect(page.getByRole("tooltip")).toContainText(
-    "at most 5 pips per edge",
-  );
+  await expect(page.getByRole("tooltip")).toContainText("0 to 5");
   await dizzy.locator(".draft-preview").click();
   await expect(page.getByRole("dialog")).toContainText("Dizzy");
   await page.keyboard.press("Escape");

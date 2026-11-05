@@ -14,11 +14,7 @@ import {
 } from "./relics.ts";
 import type { RelicId } from "./relics.ts";
 import type { RunCardFactory } from "./transformation.ts";
-import {
-  characterIdentity,
-  ENEMY_STONES,
-  hasSkystonesArtwork,
-} from "./characters.ts";
+import { characterIdentity, ENEMY_STONES } from "./characters.ts";
 export interface SpireChoice {
   label: string;
   at?: number;
@@ -538,9 +534,6 @@ export function resolveSpireEvent(
           ? {
               ...received,
               id: given.id,
-              ...(hasSkystonesArtwork(received)
-                ? { keywords: [], baseKeywords: [] }
-                : {}),
             }
           : card,
       ),

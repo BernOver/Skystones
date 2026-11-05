@@ -1,8 +1,12 @@
 import {
+  characterDefault,
+  withAdditionalKeywords,
+  readCharacterDefaults,
+} from "./cardDefaults.ts";
+import {
   adventureCharacter,
   ADVENTURE_CHARACTERS,
   characterIdentity,
-  hasSkystonesArtwork,
   uniqueCharacters,
   ENEMY_STONES,
 } from "./characters.ts";
@@ -17,6 +21,7 @@ import {
   keywordKey,
   MAX_KEYWORDS,
   DIZZY_EDGE_CAP,
+  dizzySides,
   placeStone,
   score,
   validateKeywords,
@@ -117,7 +122,7 @@ export const ROUTE: AdventureNode[][] = [
       name: "The Whirling Idol",
       kind: "event",
       description:
-        "Claim a 12-pip Magic stone with Dizzy. Powerful attacks, unpredictable defenses.",
+        "Claim a 12-pip Magic stone with Dizzy. Its marked sides roll before captures.",
     },
     {
       id: "rune-shrine",
@@ -457,11 +462,13 @@ export function makeRunCard(
   rng();
   const wantKeywords =
     rng() < Math.min(1, (keywordTier > 0 ? 0.55 : 0) + keywordBonus);
+  const defaults = readCharacterDefaults();
   const identity = adventureCharacter(
     Math.floor(rng() * 0xffffffff),
     budget,
     excludedCharacters,
     wantKeywords,
+    ADVENTURE_CHARACTERS.map((card) => characterDefault(card, defaults)),
   );
   return {
     ...identity,
@@ -470,7 +477,9 @@ export function makeRunCard(
     keywords: structuredClone(identity.keywords || []),
     baseEdges: [...identity.edges],
     baseKeywords: structuredClone(identity.keywords || []),
-    description: "A Skylanders stone found during the adventure.",
+    description: identity.defaultRevision
+      ? identity.description
+      : "A Skylanders stone found during the adventure.",
     custom: true,
   };
 }
@@ -533,7 +542,7 @@ export function newAdventure(
     lives: 3,
     inventory,
     deck: inventory.slice(0, handSize(size)).map((s) => s.id),
-    potions: ["power", "heal"],
+    potions: [],
     rewards: [],
     shopCards: [],
     shopPotions: [],
@@ -884,8 +893,6 @@ export function adventureStoneForPlay(
   stone: Stone,
   owner: Owner = 0,
 ): Stone {
-  if (hasSkystonesArtwork(stone) && stone.keywords?.length)
-    stone = { ...stone, keywords: [] };
   return run.phase === "battle" &&
     !!run.battle &&
     owner === 0 &&
@@ -1151,6 +1158,18 @@ export function dizzyEventCard(run: Adventure): Stone {
     run.seed ^ run.floor,
     run.inventory.map(characterIdentity),
   );
+  const base = characterDefault(unique);
+  if (base.defaultRevision)
+    return {
+      ...base,
+      name: `${base.name.replace(/ · Whirling$/, "")} · Whirling`.slice(0, 40),
+      edges: [...card.edges],
+      keywords: withAdditionalKeywords(base.keywords || [], [
+        { type: "dizzy" },
+      ]),
+      baseEdges: [...base.edges],
+      baseKeywords: structuredClone(base.keywords || []),
+    };
   return unique.portrait === card.portrait
     ? card
     : {
@@ -1199,6 +1218,15 @@ export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
     );
     if (existing === -1) {
       if (keywords.length < MAX_KEYWORDS) keywords.push({ ...keyword });
+    } else if (keyword.type === "dizzy") {
+      const current = keywords[existing];
+      if (current.type === "dizzy")
+        keywords[existing] = {
+          type: "dizzy",
+          sides: [
+            ...new Set([...dizzySides(current), ...dizzySides(keyword)]),
+          ].sort(),
+        };
     } else if (keyword.type === "shield") {
       const current = keywords[existing];
       if (
@@ -1212,7 +1240,7 @@ export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
     ...base,
     name: `Fused ${base.name.replace(/^Fused /, "")}`.slice(0, 24),
     edges,
-    keywords: hasSkystonesArtwork(base) ? [] : keywords,
+    keywords,
     description: `Forged from ${base.name} and ${donor.name}.`.slice(0, 120),
   };
 }
@@ -1241,10 +1269,6 @@ export function resolveAdventureEvent(
   if (eventId === "rune-shrine" && /^inscribe:[0-2]$/.test(choice)) {
     const stone = run.inventory.find((card) => card.id === cardId);
     if (!stone) throw new Error("Choose a stone in your pack.");
-    if (hasSkystonesArtwork(stone))
-      throw new Error(
-        "Skystones artwork cards stay keyword-free in Adventure. Choose a character portrait card.",
-      );
     const keyword = adventureInscriptionOffers(run)[Number(choice.slice(-1))];
     const keywords = [...(stone.keywords || []), keyword];
     if (!validateKeywords(keywords))
@@ -1382,17 +1406,19 @@ function rollWorkshopOffer(
           pips: [{ side, amount: 1 }],
           keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
         }
-      : type === "silence" || type === "dizzy"
-        ? { type }
-        : type === "resonance"
-          ? {
-              type,
-              side,
-              element: elements[Math.floor(rng() * elements.length)],
-            }
-          : type === "sunder"
-            ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
-            : { type, side };
+      : type === "dizzy"
+        ? { type, sides: [side] }
+        : type === "silence"
+          ? { type }
+          : type === "resonance"
+            ? {
+                type,
+                side,
+                element: elements[Math.floor(rng() * elements.length)],
+              }
+            : type === "sunder"
+              ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
+              : { type, side };
   return { pipSide, keyword };
 }
 export function adventureWorkshopOffer(
@@ -1513,15 +1539,23 @@ export function buyAdventureService(
       edges[edges.indexOf(Math.min(...edges))]++;
     upgraded = { ...stone, edges, element: order.element };
   } else {
-    if (hasSkystonesArtwork(stone))
-      throw new Error(
-        "Skystones artwork cards stay keyword-free in Adventure. Choose a character portrait card.",
-      );
     const keywords = [...(stone.keywords || []), offer.keyword];
     if (!validateKeywords(keywords))
       throw new Error(
         "That keyword is already assigned here, or its settings are invalid.",
       );
+    if (hasRelic(run, "rune-echo") && offer.keyword.type === "dizzy") {
+      const sides = offer.keyword.sides || [0, 1, 2, 3];
+      keywords[keywords.length - 1] = {
+        ...offer.keyword,
+        sides: [
+          ...new Set([
+            ...sides,
+            ...sides.map((side) => ((side + 2) % 4) as Side),
+          ]),
+        ],
+      };
+    }
     if (
       hasRelic(run, "rune-echo") &&
       "side" in offer.keyword &&
@@ -1654,19 +1688,33 @@ function validPlaced(value: unknown, length: number): boolean {
       (!!cell.dizzy &&
         edges(cell.dizzy.before) &&
         edges(cell.dizzy.after) &&
-        cell.dizzy.after.every((n) => n <= DIZZY_EDGE_CAP) &&
-        (cell.dizzy.after.reduce((a, b) => a + b, 0) ===
-          Math.min(
-            DIZZY_EDGE_CAP * 4,
-            cell.dizzy.before.reduce((a, b) => a + b, 0),
-          ) ||
-          // Keep snapshots made by the older four-per-edge version unchanged.
-          (cell.dizzy.after.every((n) => n <= 4) &&
-            cell.dizzy.after.reduce((a, b) => a + b, 0) ===
+        (cell.dizzy.timing === "before-captures"
+          ? Array.isArray(cell.dizzy.sides) &&
+            cell.dizzy.sides.length > 0 &&
+            cell.dizzy.sides.length <= 4 &&
+            new Set(cell.dizzy.sides).size === cell.dizzy.sides.length &&
+            cell.dizzy.sides.every(
+              (side) => Number.isInteger(side) && side >= 0 && side < 4,
+            ) &&
+            cell.dizzy.after.every((edge, side) =>
+              cell.dizzy!.sides!.includes(side as Side)
+                ? edge <= DIZZY_EDGE_CAP
+                : edge === cell.dizzy!.before[side],
+            )
+          : cell.dizzy.timing === undefined &&
+            cell.dizzy.after.every((edge) => edge <= DIZZY_EDGE_CAP) &&
+            (cell.dizzy.after.reduce((a, b) => a + b, 0) ===
               Math.min(
-                16,
+                DIZZY_EDGE_CAP * 4,
                 cell.dizzy.before.reduce((a, b) => a + b, 0),
-              ))))) &&
+              ) ||
+              // Keep snapshots made by the older four-per-edge version unchanged.
+              (cell.dizzy.after.every((n) => n <= 4) &&
+                cell.dizzy.after.reduce((a, b) => a + b, 0) ===
+                  Math.min(
+                    16,
+                    cell.dizzy.before.reduce((a, b) => a + b, 0),
+                  )))))) &&
     (cell.reductions === undefined || edges(cell.reductions)) &&
     (cell.silenced === undefined || typeof cell.silenced === "boolean") &&
     (cell.playedBy === undefined || [0, 1].includes(cell.playedBy)) &&
@@ -2103,7 +2151,6 @@ function repairAdventureCards(run: Adventure): Adventure {
             baseKeywords: structuredClone(base.keywords || []),
           }
         : {}),
-      ...(hasSkystonesArtwork(stone) ? { keywords: [], baseKeywords: [] } : {}),
     };
   };
   const inventory = uniqueCharacters(run.inventory.map(plain), run.seed).map(
@@ -2131,23 +2178,6 @@ function repairAdventureCards(run: Adventure): Adventure {
   const board = run.battle?.board.map((cell) => {
     if (!cell) return cell;
     const stone = appearance(cell.stone);
-    if (
-      hasSkystonesArtwork(stone) &&
-      (cell.stone.keywords?.length || cell.grantedKeywords?.length)
-    )
-      return {
-        ...cell,
-        stone,
-        edges: stone.edges.map((edge, side) =>
-          Math.max(0, edge - (cell.reductions?.[side] || 0)),
-        ) as Edges,
-        activeKeywords: [],
-        shields: [0, 0, 0, 0] as Edges,
-        grantedKeywords: [],
-        dizzy: undefined,
-        comboActive: undefined,
-        comboPrevious: undefined,
-      };
     return {
       ...cell,
       stone,

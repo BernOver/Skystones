@@ -279,7 +279,7 @@ test("fusion previews combine best edges within caps and preserve separate Sunde
   assert.deepEqual(result.keywords, [
     { type: "resonance", side: 0, element: "fire" },
     { type: "sunder", side: 1, amount: 1 },
-    { type: "dizzy" },
+    { type: "dizzy", sides: [0, 1, 2, 3] },
     { type: "sunder", side: 1, amount: 3 },
     { type: "silence" },
   ]);

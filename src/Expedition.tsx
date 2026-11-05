@@ -3,7 +3,6 @@ import { adventureOpponent, adventureEncounter } from "./presentation";
 import type { BoardSkinId } from "./presentation";
 import { ElementalArena } from "./ElementalArena";
 import { CaptureFlip } from "./CaptureFlip";
-import { hasSkystonesArtwork } from "./characters";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -307,7 +306,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
           </span>
           <span>
             <FlaskConical />
-            Potions & upgrades
+            Find potions along the route
           </span>
         </div>
         <label className="run-size-label">
@@ -357,14 +356,20 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     run.rewardPicksRemaining ?? (run.rewards.length ? cardRewardPicks(run) : 0);
   const shopOffer = adventureWorkshopOffer(run);
   const offeredKeyword = shopOffer.keyword;
-  const keywordDirection = !("side" in offeredKeyword)
-    ? "Whole card"
-    : offeredKeyword.side === "any"
-      ? "Any edge"
-      : SIDE_NAMES[offeredKeyword.side];
-  const canInscribe =
-    !hasSkystonesArtwork(selectedService) &&
-    validateKeywords([...(selectedService.keywords || []), offeredKeyword]);
+  const keywordDirection =
+    offeredKeyword.type === "dizzy"
+      ? (offeredKeyword.sides || [0, 1, 2, 3])
+          .map((side) => SIDE_NAMES[side])
+          .join("/")
+      : !("side" in offeredKeyword)
+        ? "Whole card"
+        : offeredKeyword.side === "any"
+          ? "Any edge"
+          : SIDE_NAMES[offeredKeyword.side];
+  const canInscribe = validateKeywords([
+    ...(selectedService.keywords || []),
+    offeredKeyword,
+  ]);
   const canSharpen =
     selectedService.edges[shopOffer.pipSide] < 5 &&
     selectedService.edges.reduce((a, b) => a + b, 0) < 12;
@@ -870,6 +875,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                   >
                     <StoneCard
                       stone={cell.stone}
+                      played
                       owner={cell.owner}
                       edges={cardEdges(cell)}
                       shields={cell.shields}
@@ -915,6 +921,9 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                     <StoneCard
                       stone={stone}
                       owner={1}
+                      grantedKeywords={
+                        adventureCardStrengths(run, stone, 1).grantedKeywords
+                      }
                       edges={adventureCardStrengths(run, stone, 1).edges}
                       shields={adventureCardStrengths(run, stone, 1).shields}
                     />
@@ -950,6 +959,9 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               >
                 <StoneCard
                   stone={stone}
+                  grantedKeywords={
+                    adventureCardStrengths(run, stone).grantedKeywords
+                  }
                   edges={adventureCardStrengths(run, stone).edges}
                   selected={selected === index}
                   shields={adventureCardStrengths(run, stone).shields}
@@ -1369,9 +1381,8 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                 />
                 {!canInscribe && (
                   <p className="workshop-unavailable">
-                    {hasSkystonesArtwork(selectedService)
-                      ? "Skystones artwork cards stay keyword-free in Adventure. Choose a character portrait card."
-                      : "This stone already has the offered keyword. Choose another stone."}
+                    This stone already has that keyword or has reached its
+                    keyword limit. Choose another stone.
                   </p>
                 )}
               </section>
@@ -1601,6 +1612,8 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               edges={inspected.edges}
               shields={inspected.shields}
               silenced={inspected.silenced}
+              played={inspected.played}
+              grantedKeywords={inspected.grantedKeywords}
             />
           </div>
           <h2>{inspected.stone.name}</h2>

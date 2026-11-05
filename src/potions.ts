@@ -6,7 +6,7 @@ import {
   arenaEdges,
   keywordKey,
   prepareTargeting,
-  rollDizzy,
+  redistributePips,
   validateKeywords,
 } from "./game.ts";
 import type {
@@ -18,7 +18,6 @@ import type {
   StoneKeyword,
 } from "./game.ts";
 import { earnedGold, hasRelic, maxLives, potionPotency } from "./relics.ts";
-import { hasSkystonesArtwork } from "./characters.ts";
 import type { Adventure } from "./adventure.ts";
 
 export type Potion =
@@ -257,9 +256,16 @@ export function rotatedPotionStone(stone: Stone): Stone {
               rotate(grant) as Exclude<StoneKeyword, { type: "combo" }>,
           ),
         }
-      : "side" in keyword && keyword.side !== "any"
-        ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
-        : { ...keyword };
+      : keyword.type === "dizzy"
+        ? {
+            ...keyword,
+            ...(keyword.sides
+              ? { sides: keyword.sides.map((side) => ((side + 1) % 4) as Side) }
+              : {}),
+          }
+        : "side" in keyword && keyword.side !== "any"
+          ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
+          : { ...keyword };
   return {
     ...stone,
     edges: [stone.edges[3], stone.edges[0], stone.edges[1], stone.edges[2]],
@@ -274,7 +280,7 @@ function rotationChanges(stone: Stone) {
       (card.keywords || [])
         .map(
           (keyword) =>
-            `${keywordKey(keyword)}:${keyword.type === "resonance" ? keyword.element : keyword.type === "sunder" ? (keyword.amount ?? 1) : ""}`,
+            `${keywordKey(keyword)}:${keyword.type === "resonance" ? keyword.element : keyword.type === "sunder" ? (keyword.amount ?? 1) : keyword.type === "dizzy" ? keyword.sides?.join() || "all" : ""}`,
         )
         .sort(),
     ]);
@@ -321,7 +327,6 @@ export function potionSideOptions(
         ? !!cell && (cell.edges || cell.stone.edges)[side] > 0
         : type === "resonance"
           ? !!stone &&
-            !hasSkystonesArtwork(stone) &&
             validateKeywords([
               ...(stone.keywords || []),
               { type: "resonance", side, element: stone.element },
@@ -528,7 +533,7 @@ export function useAdventurePotion(
           if (type === "gambit")
             return {
               ...stone,
-              edges: rollDizzy(
+              edges: redistributePips(
                 [stone.edges.reduce((a, b) => a + b, 0) + 2 + extra, 0, 0, 0],
                 run.seed ^
                   Math.imul(run.floor + 1, 0x85ebca6b) ^

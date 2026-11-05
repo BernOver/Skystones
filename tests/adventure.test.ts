@@ -326,7 +326,10 @@ test("shop purchases charge exactly once, upgrades persist, and failed purchases
   assert.equal(validateAdventure(next), true);
 });
 test("potions are capped, heal correctly, improve only this battle's hand, and never take a turn", () => {
-  const base = newAdventure(4, 55),
+  const base = {
+      ...newAdventure(4, 55),
+      potions: ["power", "heal"] as Adventure["potions"],
+    },
     battle = enterAdventureNode(base, "moss"),
     id = battle.battle!.hands[0][0].id,
     edges = battle.battle!.hands[0][0].edges;

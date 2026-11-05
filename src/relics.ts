@@ -137,7 +137,7 @@ export const RELICS = {
   "loaded-dice": {
     name: "Loaded Dice",
     description:
-      "Your Dizzy cards keep at least 2 pips on each edge when their total allows. Lower totals use the highest possible equal minimum.",
+      "Your Dizzy edges roll from 2 to 5 instead of 0 to 5, before captures.",
   },
   "oracles-eye": {
     name: "Oracle\u2019s Eye",

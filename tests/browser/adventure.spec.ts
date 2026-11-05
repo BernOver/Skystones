@@ -113,7 +113,7 @@ test("start, play and resume a four-by-four adventure, use a potion, claim a rew
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await openRun(page, newAdventure(4, 102));
+  await openRun(page, { ...newAdventure(4, 102), potions: ["power", "heal"] });
   await expect(page.locator(".run-toolbar")).toContainText("8/8");
   await page.locator('.run-node[data-node-id="moss"]').click();
   await expect(page.locator(".adventure-square")).toHaveCount(16);

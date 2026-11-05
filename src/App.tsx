@@ -1,3 +1,11 @@
+import {
+  characterDefault,
+  readCharacterDefaults,
+  saveCharacterDefaults,
+  editedCharacterDefault,
+  originalCharacter,
+} from "./cardDefaults";
+import type { CharacterDefaults } from "./cardDefaults";
 import { BoardSkins } from "./BoardSkins";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { boardSkin, opponent, OPPONENTS } from "./presentation";
@@ -23,6 +31,7 @@ import {
   Info,
   Layers,
   Palette,
+  RotateCcw,
   LoaderCircle,
   Minus,
   Pencil,
@@ -182,7 +191,9 @@ function createMatch(
   mode: Mode = "computer",
   first: Owner = 0,
 ): Match {
-  const collection = [...CHARACTER_STONES, ...GIANTS_STONES, ...library.custom];
+  const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
+    .map((card) => characterDefault(card))
+    .concat(library.custom);
   // A half-edited saved deck must not strand the initial practice match.
   const count = handSize(library.boardSize);
   const deck =
@@ -200,7 +211,7 @@ function createMatch(
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const opponent = pool.slice(0, count);
+  const opponent = pool.slice(0, count).map((card) => characterDefault(card));
   return {
     id: createId(),
     board: EMPTY_BOARD(library.boardSize),
@@ -345,6 +356,12 @@ function Brand({ small = false }: { small?: boolean }) {
 export default function App() {
   const [page, setPage] = useState<Page>("table");
   const [library, setLibrary] = useState<Library>(readLibrary);
+  const [characterDefaults, setCharacterDefaults] = useState<CharacterDefaults>(
+    readCharacterDefaults,
+  );
+  const [editingDefaultKey, setEditingDefaultKey] = useState<string | null>(
+    null,
+  );
   const [match, setMatch] = useState<Match>(() => createMatch(readLibrary()));
   const [selected, setSelected] = useState<number | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -368,7 +385,9 @@ export default function App() {
   const detailRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const lastSound = useRef("");
-  const collection = [...CHARACTER_STONES, ...GIANTS_STONES, ...library.custom];
+  const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
+    .map((card) => characterDefault(card, characterDefaults))
+    .concat(library.custom);
   const scores = score(match.board);
   const size = boardSize(match.board);
   const capacity = handSize(library.boardSize);
@@ -563,10 +582,49 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function openStudio(stone?: Stone) {
+    setEditingDefaultKey(null);
     setDraft(stone ? { ...stone, edges: [...stone.edges] } : freshDraft());
     setEditingId(stone?.id || null);
     setDialog(null);
     navigate("studio");
+  }
+  function openCharacterDefault(stone: Stone) {
+    const key = stone.characterKey || stone.portrait;
+    if (!key || !originalCharacter(key)) return;
+    setDraft({
+      ...stone,
+      edges: [...stone.edges],
+      keywords: structuredClone(stone.keywords || []),
+    });
+    setEditingId(null);
+    setEditingDefaultKey(key);
+    setDialog(null);
+    navigate("studio");
+  }
+  function persistCharacterDefaults(next: CharacterDefaults): boolean {
+    try {
+      saveCharacterDefaults(next);
+      setCharacterDefaults(next);
+      return true;
+    } catch {
+      setToast(
+        "The character defaults could not be saved. Your browser storage may be full.",
+      );
+      return false;
+    }
+  }
+  function resetCharacterDefault(stone: Stone) {
+    const key = stone.characterKey || stone.portrait;
+    const original = originalCharacter(key);
+    if (!key || !original) return;
+    const next = { ...characterDefaults };
+    delete next[key];
+    if (persistCharacterDefaults(next)) {
+      setDialog({ kind: "card", stone: original });
+      setToast(
+        `${original.name}'s original default restored for new games and cards.`,
+      );
+    }
   }
   function startMatch() {
     if (library.deck.length !== capacity) {
@@ -649,6 +707,30 @@ export default function App() {
   }
   function saveDraft(event: React.FormEvent) {
     event.preventDefault();
+    if (editingDefaultKey) {
+      try {
+        const next = editedCharacterDefault(
+          editingDefaultKey,
+          { ...draft, name: draft.name.trim() },
+          characterDefaults,
+        );
+        if (persistCharacterDefaults(next)) {
+          setDraft(
+            characterDefault(originalCharacter(editingDefaultKey)!, next),
+          );
+          setToast(
+            `${originalCharacter(editingDefaultKey)!.name}'s default saved for new games and newly generated cards in every mode.`,
+          );
+        }
+      } catch (error) {
+        setToast(
+          error instanceof Error
+            ? error.message
+            : "Choose valid card settings.",
+        );
+      }
+      return;
+    }
     const stone: Stone = {
       ...draft,
       name: draft.name.trim(),
@@ -1053,6 +1135,7 @@ export default function App() {
                             >
                               <StoneCard
                                 stone={cell.stone}
+                                played
                                 owner={cell.owner}
                                 edges={cell.edges || cell.stone.edges}
                                 shields={cell.shields}
@@ -1242,6 +1325,10 @@ export default function App() {
                       >
                         <StoneCard
                           stone={stone}
+                          grantedKeywords={
+                            evaluateKeywords(stone, match.board, handOwner)
+                              .grantedKeywords
+                          }
                           selected={selected === index && !aiTurn}
                           edges={
                             evaluateKeywords(stone, match.board, handOwner)
@@ -1673,17 +1760,21 @@ export default function App() {
                   IMAGINATION
                 </div>
                 <h1>
-                  {editingId
-                    ? "A legend in the making"
-                    : "Make a little legend"}
+                  {editingDefaultKey
+                    ? "Edit character default"
+                    : editingId
+                      ? "A legend in the making"
+                      : "Make a little legend"}
                   <span className="orange-period">.</span>
                 </h1>
                 <p>
-                  A name. A face. A little personality. The rest is up to you.
+                  {editingDefaultKey
+                    ? `Default for ${originalCharacter(editingDefaultKey)?.name}. Used in new normal games, Draft pools, and newly generated Adventure cards. Existing games and run upgrades keep their saved cards.`
+                    : "A name. A face. A little personality. The rest is up to you."}
                 </p>
               </div>
               <div className="heading-actions">
-                {editingId && (
+                {(editingId || editingDefaultKey) && (
                   <button
                     className="button button-outline"
                     onClick={() => openStudio()}
@@ -1933,7 +2024,11 @@ export default function App() {
                   </span>
                   <button type="submit" className="button button-dark">
                     <Check size={17} />
-                    {editingId ? "Save changes" : "Save to collection"}
+                    {editingDefaultKey
+                      ? "Save character default"
+                      : editingId
+                        ? "Save changes"
+                        : "Save to collection"}
                   </button>
                 </div>
               </form>
@@ -2050,6 +2145,8 @@ export default function App() {
             <div className="detail-card">
               <StoneCard
                 stone={dialog.inspection.stone}
+                played={dialog.inspection.played}
+                grantedKeywords={dialog.inspection.grantedKeywords}
                 edges={dialog.inspection.edges}
                 shields={dialog.inspection.shields}
                 silenced={dialog.inspection.silenced}
@@ -2367,11 +2464,13 @@ export default function App() {
             </div>
           </div>
           <div className="eyebrow">
-            {dialog.stone.custom
-              ? "ONE OF YOUR OWN"
-              : dialog.stone.origin === "giants"
-                ? "GIANTS OPPONENT"
-                : "THE ORIGINAL COLLECTION"}
+            {dialog.stone.defaultRevision && !dialog.stone.custom
+              ? "YOUR CHARACTER DEFAULT"
+              : dialog.stone.custom
+                ? "ONE OF YOUR OWN"
+                : dialog.stone.origin === "giants"
+                  ? "GIANTS OPPONENT"
+                  : "THE ORIGINAL COLLECTION"}
           </div>
           <h2>{dialog.stone.name}</h2>
           <p className="dialog-intro">
@@ -2401,6 +2500,24 @@ export default function App() {
                 ? "Remove from deck"
                 : "Add to deck"}
             </button>
+            {!dialog.stone.custom && (
+              <button
+                className="button button-outline"
+                onClick={() => openCharacterDefault(dialog.stone)}
+              >
+                <Pencil size={15} />
+                Edit character default
+              </button>
+            )}
+            {dialog.stone.defaultRevision && !dialog.stone.custom && (
+              <button
+                className="text-button"
+                onClick={() => resetCharacterDefault(dialog.stone)}
+              >
+                <RotateCcw size={15} />
+                Restore original default
+              </button>
+            )}
             {dialog.stone.custom && (
               <button
                 className="button button-outline"

@@ -332,6 +332,7 @@ test("curse bargains create a zero-pip battle hand slot which can still be stren
   page,
 }) => {
   const run = encounter("serpent", 4);
+  run.potions = ["power"];
   await open(page, run);
   await page
     .getByRole("button", {

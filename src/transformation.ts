@@ -1,3 +1,4 @@
+import { withAdditionalKeywords } from "./cardDefaults.ts";
 import { ELEMENTS } from "./game.ts";
 import type { Edges, Element, Side, Stone, StoneKeyword } from "./game.ts";
 import type { Adventure } from "./adventure.ts";
@@ -55,7 +56,7 @@ export function transformedCard(
   const elements = Object.keys(ELEMENTS) as Element[],
     candidates: StoneKeyword[] = [
       { type: "silence" },
-      { type: "dizzy" },
+      { type: "dizzy", sides: [Math.floor(rng() * 4) as Side] },
       { type: "sunder", side: "any", amount: 1 + Math.floor(rng() * 3) },
     ];
   for (const side of [0, 1, 2, 3] as Side[])
@@ -85,19 +86,22 @@ export function transformedCard(
     count =
       roll < 0.5 ? 1 : roll < 0.78 ? 2 : roll < 0.92 ? 3 : roll < 0.98 ? 4 : 5;
   }
+  const generated = candidates
+    .filter(
+      (keyword, index) =>
+        candidates.findIndex((other) => other.type === keyword.type) === index,
+    )
+    .slice(0, count);
   return {
     ...card,
     id: old.id,
     custom: true,
     edges: [...card.edges] as Edges,
-    keywords: candidates
-      .filter(
-        (keyword, index) =>
-          candidates.findIndex((other) => other.type === keyword.type) ===
-          index,
-      )
-      .slice(0, count),
-    description:
-      "A stone reshaped by an encounter. Its new form and keywords are permanent.",
+    keywords: card.defaultRevision
+      ? withAdditionalKeywords(card.keywords || [], generated)
+      : generated,
+    description: card.defaultRevision
+      ? card.description
+      : "A stone reshaped by an encounter. Its new form and keywords are permanent.",
   };
 }

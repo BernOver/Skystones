@@ -147,15 +147,12 @@ test("Sunder, Silence, Shield and Dizzy act on normal pips while the environment
     seed: 7,
     arenaElement: "fire",
   }).board[0]!;
-  assert.equal(
-    rolled.edges!.reduce((a, b) => a + b),
-    12,
+  assert.ok(rolled.edges!.every((edge) => edge >= 0 && edge <= 5));
+  assert.deepEqual(
+    cardEdges(rolled),
+    rolled.edges!.map((edge) => edge + 1),
   );
-  assert.ok(rolled.edges!.every((edge) => edge <= 5));
-  assert.equal(
-    cardEdges(rolled).reduce((a, b) => a + b),
-    16,
-  );
+  assert.equal(rolled.dizzy!.timing, "before-captures");
 });
 for (const size of [3, 4] as const) {
   test(`${size}×${size} vortex starts empty, forecasts all elements, advances on each player's placement, saves and wraps`, () => {

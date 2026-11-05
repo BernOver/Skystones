@@ -6446,7 +6446,11 @@ export function characterForBudget(
   return candidates[(seed >>> 0) % candidates.length];
 }
 export function characterIdentity(stone: Stone): string {
-  return stone.portrait || stone.name.trim().toLowerCase().replace(/\s+/g, " ");
+  return (
+    stone.characterKey ||
+    stone.portrait ||
+    stone.name.trim().toLowerCase().replace(/\s+/g, " ")
+  );
 }
 // Adventure difficulty selects stronger characters, rather than rerolling the
 // stats or abilities of a character that the player already knows.
@@ -6489,8 +6493,9 @@ export function adventureCharacter(
   budget: number,
   excluded: readonly string[] = [],
   keywords?: boolean,
+  definitions: Stone[] = ADVENTURE_CHARACTERS,
 ): Stone {
-  const available = ADVENTURE_CHARACTERS.filter(
+  const available = definitions.filter(
     (stone) => !excluded.includes(characterIdentity(stone)),
   );
   const preferred = available.filter(
@@ -6515,7 +6520,8 @@ export function skystonesPicture(stone: Stone): Stone | undefined {
 }
 export function hasSkystonesArtwork(stone: Stone): boolean {
   return (
-    !!skystonesPicture(stone) || (stone.origin === "giants" && !!stone.image)
+    (!stone.image && !!skystonesPicture(stone)) ||
+    (stone.origin === "giants" && !!stone.image && !stone.portrait)
   );
 }
 // Preserve earned pips, keywords, and card IDs while repairing old random copies.
@@ -6545,6 +6551,8 @@ export function uniqueCharacters(
       ...stone,
       name: identity.name,
       portrait: identity.portrait,
+      characterKey: undefined,
+      defaultRevision: undefined,
       image: undefined,
       baseEdges: undefined,
       baseKeywords: undefined,

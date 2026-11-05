@@ -46,7 +46,7 @@ export type TargetKeyword =
 export type BasicKeyword =
   | { type: "head-start" | "comeback"; side: Side }
   | { type: "resonance"; side: Side; element: Element }
-  | { type: "dizzy" }
+  | { type: "dizzy"; sides?: Side[] }
   | { type: "shield"; side: Side; amount?: number }
   | TargetKeyword;
 export type ComboKeyword = {
@@ -81,7 +81,7 @@ export const KEYWORD_RULES = {
   resonance: { name: "Resonance", condition: "element count" },
   sunder: { name: "Sunder", condition: "on play" },
   silence: { name: "Silence", condition: "on play" },
-  dizzy: { name: "Dizzy", condition: "after captures" },
+  dizzy: { name: "Dizzy", condition: "before captures" },
   shield: { name: "Shield", condition: "defense only" },
   combo: { name: "Combo", condition: "matching previous element" },
 } as const;
@@ -132,6 +132,8 @@ export interface Stone {
   image?: string;
   origin?: "giants" | "skylanders";
   portrait?: string;
+  characterKey?: string;
+  defaultRevision?: number;
   keywords?: StoneKeyword[];
   baseEdges?: Edges;
   baseKeywords?: StoneKeyword[];
@@ -145,7 +147,12 @@ export interface PlacedStone {
   silenced?: boolean;
   reductions?: Edges;
   effects?: TargetEffect[];
-  dizzy?: { before: Edges; after: Edges };
+  dizzy?: {
+    before: Edges;
+    after: Edges;
+    sides?: Side[];
+    timing?: "before-captures";
+  };
   shields?: Edges;
   grantedKeywords?: BasicKeyword[];
   comboActive?: boolean;
@@ -460,6 +467,23 @@ function capturesAt(
   });
 }
 
+function placementSeed(board: Board, index: number, owner: Owner): number {
+  return board.reduce(
+    (value, cell, spot) =>
+      Math.imul(
+        value ^
+          (cell
+            ? (cell.edges || cell.stone.edges).reduce(
+                (a, b) => a * 7 + b,
+                cell.owner + 1,
+              )
+            : spot),
+        16777619,
+      ),
+    Math.imul(index + 1, 2654435761) ^ (owner + 1),
+  );
+}
+
 // Greedy target selection avoids an exponential search on custom cards with many effects.
 export function chooseKeywordTargets(
   board: Board,
@@ -469,8 +493,18 @@ export function chooseKeywordTargets(
   arenaElement?: Element,
 ): KeywordTarget[] {
   const targets: KeywordTarget[] = [];
+  const resolved = evaluateKeywords(stone, board, owner).edges;
+  const sides = [
+    ...new Set(
+      effectiveKeywords(stone, board, owner).flatMap((keyword) =>
+        keyword.type === "dizzy" ? dizzySides(keyword) : [],
+      ),
+    ),
+  ];
   const edges = arenaEdges(
-    evaluateKeywords(stone, board, owner).edges,
+    sides.length
+      ? rollDizzy(resolved, placementSeed(board, index, owner), 0, sides)
+      : resolved,
     stone.element,
     arenaElement,
   );
@@ -512,7 +546,7 @@ export function chooseKeywordTargets(
 
 // Redistribute once, retaining the total up to the edge ceiling.
 // A seed keeps previews, AI searches, and saved expedition turns reproducible.
-export function rollDizzy(
+export function redistributePips(
   edges: Edges,
   seed: number,
   minimum = 0,
@@ -535,6 +569,39 @@ export function rollDizzy(
     result[available[(state >>> 0) % available.length]]++;
   }
   return result;
+}
+
+export function dizzySides(keyword: { sides?: Side[] }): Side[] {
+  return keyword.sides || [0, 1, 2, 3];
+}
+export function rollDizzy(
+  edges: Edges,
+  seed: number,
+  minimum = 0,
+  sides: readonly Side[] = [0, 1, 2, 3],
+): Edges {
+  let state = seed >>> 0 || 0x9e3779b9;
+  const result = [...edges] as Edges;
+  for (const side of sides) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const low = Math.max(0, Math.min(DIZZY_EDGE_CAP, minimum));
+    result[side] = low + ((state >>> 0) % (DIZZY_EDGE_CAP - low + 1));
+  }
+  return result;
+}
+export function stoneDizzySides(
+  stone: Stone,
+  granted: BasicKeyword[] = [],
+): Side[] {
+  return [
+    ...new Set(
+      [...(stone.keywords || []), ...granted].flatMap((keyword) =>
+        keyword.type === "dizzy" ? dizzySides(keyword) : [],
+      ),
+    ),
+  ];
 }
 
 export function placeStone(
@@ -573,37 +640,39 @@ export function placeStone(
     ...(options.arenaElement ? { arenaElement: options.arenaElement } : {}),
     ...(targeted.effects.length ? { effects: targeted.effects } : {}),
   };
-  const captured = capturesAt(next, index, owner, cardEdges(next[index]!));
-  for (const neighbor of captured)
-    next[neighbor] = { ...next[neighbor]!, owner };
   if (
     effectiveKeywords(stone, board, owner).some(
       (keyword) => keyword.type === "dizzy",
     )
   ) {
-    const seed =
-      options.seed ??
-      board.reduce(
-        (value, cell, spot) =>
-          Math.imul(
-            value ^
-              (cell
-                ? (cell.edges || cell.stone.edges).reduce(
-                    (a, b) => a * 7 + b,
-                    cell.owner + 1,
-                  )
-                : spot),
-            16777619,
-          ),
-        Math.imul(index + 1, 2654435761) ^ (owner + 1),
-      );
-    const after = rollDizzy(resolved.edges, seed, options.minimumDizzyPips);
+    const seed = options.seed ?? placementSeed(board, index, owner);
+    const sides = [
+      ...new Set(
+        effectiveKeywords(stone, board, owner).flatMap((keyword) =>
+          keyword.type === "dizzy" ? dizzySides(keyword) : [],
+        ),
+      ),
+    ];
+    const after = rollDizzy(
+      resolved.edges,
+      seed,
+      options.minimumDizzyPips,
+      sides,
+    );
     next[index] = {
       ...next[index]!,
       edges: after,
-      dizzy: { before: resolved.edges, after },
+      dizzy: {
+        before: resolved.edges,
+        after,
+        sides,
+        timing: "before-captures",
+      },
     };
   }
+  const captured = capturesAt(next, index, owner, cardEdges(next[index]!));
+  for (const neighbor of captured)
+    next[neighbor] = { ...next[neighbor]!, owner };
   return { board: next, captured, effects: targeted.effects };
 }
 
@@ -755,6 +824,13 @@ export function validateStone(value: unknown): value is Stone {
     s.edges.reduce((a, b) => a + b, 0) <= (s.origin === "giants" ? 16 : 12) &&
     (s.portrait === undefined ||
       (typeof s.portrait === "string" && PORTRAIT_IDS.has(s.portrait))) &&
+    (s.characterKey === undefined ||
+      (typeof s.characterKey === "string" &&
+        PORTRAIT_IDS.has(s.characterKey))) &&
+    (s.defaultRevision === undefined ||
+      (Number.isSafeInteger(s.defaultRevision) &&
+        (s.defaultRevision as number) > 0 &&
+        typeof s.characterKey === "string")) &&
     typeof s.description === "string" &&
     s.description.length <= 120 &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
@@ -790,6 +866,18 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
           (!Number.isInteger(keyword.side) ||
             keyword.side < 0 ||
             keyword.side > 3)
+    )
+      return false;
+    if (
+      keyword.type === "dizzy" &&
+      keyword.sides !== undefined &&
+      (!Array.isArray(keyword.sides) ||
+        keyword.sides.length < 1 ||
+        keyword.sides.length > 4 ||
+        new Set(keyword.sides).size !== keyword.sides.length ||
+        !keyword.sides.every(
+          (side: number) => Number.isInteger(side) && side >= 0 && side <= 3,
+        ))
     )
       return false;
     if (

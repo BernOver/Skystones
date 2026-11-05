@@ -167,9 +167,9 @@ test("saved duplicate Enfuego cards are replaced without losing deck slots, earn
     fixed.inventory.filter((card) => card.portrait === enfuego.portrait).length,
     1,
   );
-  assert.deepEqual(fixed.inventory[0].keywords, []);
+  assert.deepEqual(fixed.inventory[0].keywords, a.keywords);
   assert.equal(fixed.battle!.board[8]!.owner, 1);
-  assert.deepEqual(fixed.battle!.board[8]!.shields, [0, 0, 0, 0]);
+  assert.deepEqual(fixed.battle!.board[8]!.shields, [1, 0, 0, 0]);
   assert.deepEqual(
     fixed.battle!.hands[0][1].portrait,
     fixed.inventory[1].portrait,
@@ -180,33 +180,32 @@ test("saved duplicate Enfuego cards are replaced without losing deck slots, earn
   );
 });
 
-test("Skystones Adventure cards reject shop/shrine/potion keywords and fusion cannot put them back", () => {
-  let shop = enterAdventureNode(
+test("Skystones cards accept shop and event keywords that survive playing, saving, potions and fusion", () => {
+  const shop = enterAdventureNode(
     { ...newAdventure(3, 65), floor: 2, gold: 500 },
     "shop-one",
   );
   shop.inventory[0] = { ...enfuego, id: shop.inventory[0].id, keywords: [] };
   const id = shop.inventory[0].id;
-  assert.throws(
-    () => buyAdventureService(shop, { type: "keyword", cardId: id }),
-    /keyword-free/,
+  const bought = buyAdventureService(shop, { type: "keyword", cardId: id });
+  assert.equal(bought.gold, 465);
+  assert.ok(bought.inventory[0].keywords!.length);
+  assert.deepEqual(
+    restoreAdventure(JSON.parse(JSON.stringify(bought)))!.inventory[0].keywords,
+    bought.inventory[0].keywords,
   );
-  assert.equal(shop.gold, 500);
   const shrine = enterAdventureNode(
     { ...shop, phase: "map", floor: 1, node: undefined },
     "rune-shrine",
   );
-  assert.throws(
-    () => resolveAdventureEvent(shrine, "inscribe:0", id),
-    /keyword-free/,
-  );
+  const inscribed = resolveAdventureEvent(shrine, "inscribe:0", id);
+  assert.ok(inscribed.inventory[0].keywords!.length);
   const hero = ADVENTURE_CHARACTERS.find(
     (card) => !hasSkystonesArtwork(card) && card.keywords!.length,
   )!;
-  assert.deepEqual(
+  assert.ok(
     adventureFusionPreview(shop.inventory[0], { ...hero, id: "custom-donor" })
-      .keywords,
-    [],
+      .keywords!.length,
   );
   const run = enterAdventureNode(
     {
@@ -219,21 +218,15 @@ test("Skystones Adventure cards reject shop/shrine/potion keywords and fusion ca
     "moss",
   );
   assert.ok(
-    !adventurePotionTargets(run, "resonance").some(
+    adventurePotionTargets(run, "resonance").some(
       (target) => target.stone.id === id,
     ),
   );
-  assert.throws(() => useAdventurePotion(run, 0, id, { side: 0 }));
-  assert.deepEqual(run.potions, ["resonance"]);
-  const character = shrine.inventory.find(
-    (card) => !hasSkystonesArtwork(card),
-  )!;
-  const offer = adventureInscriptionOffers(shrine)[0];
-  assert.ok(
-    resolveAdventureEvent(shrine, "inscribe:0", character.id)
-      .inventory.find((card) => card.id === character.id)!
-      .keywords!.some((keyword) => keyword.type === offer.type),
-  );
+  const enchanted = useAdventurePotion(run, 0, id, { side: 0 });
+  assert.equal(enchanted.potions.length, 0);
+  assert.deepEqual(enchanted.battle!.hands[0][0].keywords, [
+    { type: "resonance", side: 0, element: enfuego.element },
+  ]);
 });
 
 test("transformations avoid owned identities and keep enhanced keyword transformations on character portraits", () => {

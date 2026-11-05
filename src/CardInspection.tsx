@@ -18,6 +18,7 @@ import {
   coordinate,
   ELEMENTS,
   DIZZY_EDGE_CAP,
+  dizzySides,
   KEYWORD_RULES,
   SIDE_NAMES,
   keywordGroups,
@@ -30,6 +31,7 @@ import type {
   BoardSize,
   BasicKeyword,
   Element,
+  Side,
 } from "./game";
 
 export interface Inspection {
@@ -46,7 +48,12 @@ export interface Inspection {
   silenced?: boolean;
   reductions?: Edges;
   effects?: TargetEffect[];
-  dizzy?: { before: Edges; after: Edges };
+  dizzy?: {
+    before: Edges;
+    after: Edges;
+    sides?: Side[];
+    timing?: "before-captures";
+  };
   size?: BoardSize;
   shields?: Edges;
   comboActive?: boolean;
@@ -72,7 +79,12 @@ export function KeywordDetails({
   played?: boolean;
   silenced?: boolean;
   effects?: TargetEffect[];
-  dizzy?: { before: Edges; after: Edges };
+  dizzy?: {
+    before: Edges;
+    after: Edges;
+    sides?: Side[];
+    timing?: "before-captures";
+  };
   size?: BoardSize;
   comboActive?: boolean;
   comboPrevious?: Element;
@@ -99,8 +111,8 @@ export function KeywordDetails({
           <VolumeX size={14} />
           <span>
             <strong>Silenced</strong> · All keywords are disabled and their pip
-            bonuses and Dizzy reshuffles are removed. Earlier captures and
-            resolved effects stay.
+            bonuses and Dizzy rolls are removed. Earlier captures and resolved
+            effects stay.
           </span>
         </p>
       )}
@@ -205,21 +217,29 @@ export function KeywordDetails({
                 <div className="keyword-rule-heading">
                   <Shuffle size={15} />
                   <strong>Dizzy</strong>
-                  <span>After captures</span>
+                  <span>Before captures</span>
                 </div>
                 <p>
-                  After this card is placed and finishes its captures, randomly
-                  redistribute its pips once. Keep the total, up to{" "}
-                  {DIZZY_EDGE_CAP * 4}, with{" "}
-                  <strong>at most {DIZZY_EDGE_CAP} pips per edge</strong>.
-                  Captures use its strengths before the shuffle.
+                  Before captures, each marked edge independently rolls a new
+                  strength from <strong>0 to {DIZZY_EDGE_CAP}</strong>. Other
+                  edges stay unchanged. The total can increase or decrease. A{" "}
+                  <strong>?</strong> beside an edge marks a pending roll;
+                  captures use the rolled strengths. Affected edges:{" "}
+                  {keywords
+                    .flatMap((keyword) =>
+                      keyword.type === "dizzy"
+                        ? dizzySides(keyword).map((side) => SIDE_NAMES[side])
+                        : [],
+                    )
+                    .join(", ")}
+                  .
                 </p>
                 <span className="keyword-status">
                   {silenced
                     ? "Disabled by Silence · printed strengths restored, minus damage"
                     : dizzy
-                      ? `Shuffled once: ${dizzy.before.join("/")} → ${dizzy.after.join("/")} (N/E/S/W)`
-                      : "The shuffled strengths stay through turns and captures."}
+                      ? `Rolled once: ${dizzy.before.join("/")} → ${dizzy.after.join("/")} (N/E/S/W)`
+                      : "Each selected edge rolls once when played. The result stays through turns and captures."}
                 </span>
               </section>
             );
@@ -401,7 +421,7 @@ export function KeywordDetails({
       {!!stone.keywords?.length && (
         <p className="keyword-timing">
           <Info size={12} />
-          Dizzy shuffles once after captures. Other keywords check before
+          Dizzy rolls marked edges before captures. Other keywords check before
           placement. Ties block Head Start and Comeback only. Bonuses remain
           through captures and score changes unless removed by Silence. Targeted
           effects resolve in listed order before captures.
@@ -565,8 +585,12 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
       )}
       {stone.baseEdges && (
         <p className="adventure-base-reference">
-          <strong>Fixed Adventure base</strong> · {stone.baseEdges.join("/")}{" "}
-          (N/E/S/W)
+          <strong>
+            {stone.defaultRevision
+              ? "Saved character default"
+              : "Fixed Adventure base"}
+          </strong>{" "}
+          · {stone.baseEdges.join("/")} (N/E/S/W)
           {stone.baseKeywords?.length
             ? ` · ${[...new Set(stone.baseKeywords.map((keyword) => KEYWORD_RULES[keyword.type].name))].join(", ")}`
             : " · No base keywords"}
@@ -664,6 +688,8 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
       <div className="inspector-card">
         <StoneCard
           stone={inspection.stone}
+          played={inspection.played}
+          grantedKeywords={inspection.grantedKeywords}
           edges={inspection.edges}
           silenced={inspection.silenced}
           shields={inspection.shields}

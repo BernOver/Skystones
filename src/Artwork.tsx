@@ -18,6 +18,9 @@ import {
   KEYWORD_RULES,
   SIDE_LETTERS,
   keywordGroups,
+  stoneDizzySides,
+  dizzySides,
+  SIDE_NAMES,
   shieldEdges,
 } from "./game";
 import {
@@ -546,6 +549,8 @@ export function StoneCard({
   edges = stone.edges,
   silenced = false,
   shields = shieldEdges(stone, silenced),
+  played = false,
+  grantedKeywords = [],
 }: {
   stone: Stone;
   owner?: 0 | 1;
@@ -555,12 +560,16 @@ export function StoneCard({
   edges?: Edges;
   silenced?: boolean;
   shields?: Edges;
+  played?: boolean;
+  grantedKeywords?: import("./game").BasicKeyword[];
 }) {
   const element = ELEMENTS[stone.element];
   const Icon = ELEMENT_ICONS[stone.element];
   const artwork =
     stone.image || portraitImage(withCharacterPortrait(stone).portrait);
   const statPicture = hasSkystonesArtwork(stone);
+  const unknownSides =
+    !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
   return (
     <div
       className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
@@ -588,6 +597,14 @@ export function StoneCard({
             key={i}
           >
             <b>{edge}</b>
+            {unknownSides.includes(i as 0 | 1 | 2 | 3) && (
+              <small
+                className="dizzy-pip"
+                aria-label={`${SIDE_NAMES[i]} rolls 0 to 5 before captures`}
+              >
+                ?
+              </small>
+            )}
             {!!shields[i] && !silenced && (
               <small
                 className="shield-pip"
@@ -641,7 +658,9 @@ export function StoneCard({
                         keyword.type === "dizzy" ||
                         keyword.type === "combo"
                           ? keyword.type === "dizzy"
-                            ? "AFTER PLAY"
+                            ? dizzySides(keyword)
+                                .map((side) => SIDE_LETTERS[side])
+                                .join("/")
                             : keyword.type === "combo"
                               ? "SAME ELEMENT"
                               : "ON PLAY"

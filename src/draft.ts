@@ -1,3 +1,5 @@
+import { characterDefault, readCharacterDefaults } from "./cardDefaults.ts";
+import type { CharacterDefaults } from "./cardDefaults.ts";
 import { CHARACTER_STONES } from "./characters.ts";
 import { handSize, validateStone } from "./game.ts";
 import type {
@@ -17,6 +19,7 @@ export interface DraftState {
   seed: number;
   size: BoardSize;
   cards: Stone[];
+  defaultSnapshots?: true;
   nominations: [string[], string[]];
   phase: "nominate" | "draft" | "ready";
   current: Owner;
@@ -50,7 +53,10 @@ export function pipDominates(a: Stone, b: Stone): boolean {
     a.edges.some((pip, side) => pip > b.edges[side])
   );
 }
-export function draftCards(seed: number): Stone[] {
+export function draftCards(
+  seed: number,
+  defaults: CharacterDefaults = readCharacterDefaults(),
+): Stone[] {
   const rng = random(seed),
     candidates: Edges[] = [];
   // Positive weights make the main pool an antichain: more on one edge costs
@@ -89,7 +95,7 @@ export function draftCards(seed: number): Stone[] {
                 : type === 4
                   ? [{ type: "silence" }]
                   : type === 5
-                    ? [{ type: "dizzy" }]
+                    ? [{ type: "dizzy", sides: [side] }]
                     : type === 6
                       ? [{ type: "shield", side }]
                       : type === 7
@@ -137,17 +143,21 @@ export function draftCards(seed: number): Stone[] {
         cards[index] = improved;
     }
   }
-  return cards;
+  return cards.map((card) => characterDefault(card, defaults));
 }
 export function newDraft(
   size: BoardSize = 3,
   seed = Date.now() >>> 0,
+  defaults: CharacterDefaults = readCharacterDefaults(),
 ): DraftState {
   return {
     version: 1,
     seed,
     size,
-    cards: draftCards(seed),
+    cards: draftCards(seed, defaults),
+    ...(Object.keys(defaults).length
+      ? { defaultSnapshots: true as const }
+      : {}),
     nominations: [[], []],
     phase: "nominate",
     current: 0,
@@ -246,7 +256,50 @@ export function restoreDraft(value: unknown): DraftState | null {
       saved.history.length > handSize(saved.size) * 2
     )
       return null;
-    let draft = newDraft(saved.size, saved.seed);
+    let draft = newDraft(saved.size, saved.seed, {});
+    // Older pools used whole-card Dizzy. Preserve their affected sides while
+    // regenerating the remaining deterministic card definitions.
+    draft.cards = draft.cards.map((card, index) => {
+      const snapshot = saved.cards?.[index];
+      if (
+        !snapshot ||
+        snapshot.id !== card.id ||
+        snapshot.portrait !== card.portrait ||
+        !validateStone(snapshot) ||
+        snapshot.edges.some((edge, side) => edge !== card.edges[side])
+      )
+        return card;
+      return {
+        ...card,
+        keywords: card.keywords?.map((keyword, index) =>
+          keyword.type === "dizzy" &&
+          snapshot.keywords?.[index]?.type === "dizzy" &&
+          !("sides" in snapshot.keywords[index])
+            ? { type: "dizzy" as const }
+            : keyword,
+        ),
+      };
+    });
+    if (saved.defaultSnapshots) {
+      if (
+        saved.defaultSnapshots !== true ||
+        !Array.isArray(saved.cards) ||
+        saved.cards.length !== draft.cards.length
+      )
+        return null;
+      const cards = draft.cards.map((card, index) => {
+        const snapshot = saved.cards[index];
+        if (!snapshot?.defaultRevision) return card;
+        if (
+          !validateStone(snapshot) ||
+          snapshot.id !== card.id ||
+          snapshot.characterKey !== card.portrait
+        )
+          throw new Error("Invalid character default snapshot.");
+        return structuredClone(snapshot);
+      });
+      draft = { ...draft, cards, defaultSnapshots: true };
+    }
     for (const ids of saved.nominations) {
       if (!ids.length) break;
       draft = nominateDraftCards(draft, ids);

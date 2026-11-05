@@ -54,7 +54,11 @@ export function PotionPicker({
       ) : (
         <div className="potion-detail-target">
           <div className="potion-selected-card">
-            <StoneCard stone={selected.stone} edges={selected.edges} />
+            <StoneCard
+              stone={selected.stone}
+              edges={selected.edges}
+              played={definition.target !== "hand"}
+            />
           </div>
           <h3>{selected.label}</h3>
           {definition.choice === "side" && (

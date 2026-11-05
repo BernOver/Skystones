@@ -210,30 +210,34 @@ test("saved duplicate Enfuego cards are repaired once while the deck keeps its s
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
   expect((await saved(page)).inventory).toEqual(fixed.inventory);
 });
-test("Adventure workshop explains why Skystones cannot gain keywords and still inscribes character cards", async ({
+test("Adventure workshop inscribes both original Skystones and character cards, keeping upgrades across reload", async ({
   page,
 }) => {
   const run = enterAdventureNode(
     { ...pack(), floor: 2, gold: 300 },
     "shop-one",
   );
+  run.shopOffer = {
+    pipSide: 0,
+    keyword: { type: "shield", side: 0, amount: 2 },
+  };
   await openRun(page, run);
   await page.getByLabel("Workshop card").selectOption(run.inventory[0].id);
   await page.getByLabel("Workshop service").selectOption("keyword");
-  await expect(
-    page.getByRole("button", { name: "Buy upgrade · 35 gold", exact: true }),
-  ).toBeDisabled();
-  await expect(page.locator(".stone-workshop")).toContainText(
-    "stay keyword-free",
-  );
+  await page
+    .getByRole("button", { name: "Buy upgrade · 35 gold", exact: true })
+    .click();
   await page.getByLabel("Workshop card").selectOption(run.inventory[1].id);
   await page
     .getByRole("button", { name: "Buy upgrade · 35 gold", exact: true })
     .click();
   const current = await saved(page);
-  expect(current.inventory[0].keywords).toEqual([]);
+  expect(current.inventory[0].keywords).toEqual([run.shopOffer.keyword]);
   expect(current.inventory[1].keywords!.length).toBeGreaterThan(0);
-  expect(current.gold).toBe(265);
+  expect(current.gold).toBe(230);
+  await page.reload();
+  await page.getByRole("button", { name: "Adventure", exact: true }).click();
+  expect((await saved(page)).inventory).toEqual(current.inventory);
 });
 test("card maker loads original Skystones pips and crops their baked markings after a manual edit", async ({
   page,

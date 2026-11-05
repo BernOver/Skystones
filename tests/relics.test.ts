@@ -271,6 +271,7 @@ test("Pilgrim's Flask fills the belt once and saved games do not replay instant 
 test("Alchemist's Mortar improves all three potions, clamps results, and consumes no turn", () => {
   const base = {
     ...newAdventure(3, 3),
+    potions: ["power", "heal"] as Adventure["potions"],
     relics: ["alchemists-mortar"] as RelicId[],
   };
   assert.equal(potionPotency(base), 2);
@@ -597,7 +598,22 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder purchases, and
     });
     const keywords = bought.inventory[0].keywords!;
     assert.equal(bought.gold, 165);
-    assert.deepEqual(keywords[0], keyword);
+    assert.deepEqual(
+      keywords[0],
+      keyword.type === "dizzy"
+        ? {
+            ...keyword,
+            sides: [
+              ...new Set([
+                ...(keyword.sides || [0, 1, 2, 3]),
+                ...(keyword.sides || [0, 1, 2, 3]).map(
+                  (side) => (side + 2) % 4,
+                ),
+              ]),
+            ],
+          }
+        : keyword,
+    );
     if ("side" in keyword && keyword.side !== "any") {
       assert.equal(keywords.length, 2);
       assert.deepEqual(keywords[1], {
@@ -715,7 +731,10 @@ test("Stout Heart raises the life cap, heals on acquisition, and every healing s
   assert.equal(maxLives(heart), 4);
   assert.ok(validateAdventure(heart));
   assert.equal(validateAdventure({ ...newAdventure(3, 9), lives: 4 }), false);
-  const healing = useAdventurePotion({ ...heart, lives: 3 }, 1);
+  const healing = useAdventurePotion(
+    { ...heart, lives: 3, potions: ["heal"] },
+    0,
+  );
   assert.equal(healing.lives, 4);
   assert.throws(() => useAdventurePotion(heart, 1));
   const well = resolveAdventureEvent(
