@@ -208,7 +208,20 @@ export function KeywordDetails({
                 {keywords.map(
                   (keyword, index) =>
                     keyword.type === "conjure" && (
-                      <p key={index}>{conjureText(keyword)}</p>
+                      <div key={index}>
+                        <p>{conjureText(keyword)}</p>
+                        {!!keyword.keywords?.length && (
+                          <div className="next-granted-rules">
+                            <strong>
+                              Keywords added to each generated card
+                            </strong>
+                            <KeywordDetails
+                              stone={{ ...stone, keywords: keyword.keywords }}
+                              size={size}
+                            />
+                          </div>
+                        )}
+                      </div>
                     ),
                 )}
                 <p>
@@ -218,7 +231,10 @@ export function KeywordDetails({
                   later turns and last for this battle. They do not join your
                   Adventure pack. Each hand holds up to {MAX_HAND_CARDS} cards;
                   excess cards are skipped. Random filters must all match. If no
-                  cards match, none are added.
+                  cards match, none are added. Configured pip buffs are added
+                  once to each copy and remain through Silence. Keyword grants
+                  keep existing unique keywords on the same edge and stop at the
+                  card’s 24-keyword limit. Silence disables those keywords.
                 </p>
                 {conjurations
                   ?.filter(

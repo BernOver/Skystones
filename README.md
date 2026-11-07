@@ -204,6 +204,14 @@ Add keywords in the card studio. For Resonance, choose the element to count. For
 
 Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures and draft selections resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
+## Conjure buffs
+
+In **Card studio → Conjure**, set **Extra pips on each generated card** and/or **Keywords for each generated card**. Buffs work with specified characters, specified tokens, and all random pools, for any receiving player. For example, conjure two random Fire Giants with **+2 per side** and **Shield 2 · North**, or add only a keyword without changing pips. Switching the card source keeps the configured buffs.
+
+Each chosen side can gain **1–5 pips** once when the copy enters the hand; choose None on unused sides. Buffed pips can exceed five and the normal base-card budget. They belong to that temporary copy and remain through captures and Silence, subject to ordinary damage and pip-changing effects. Dizzy still rerolls its marked sides; Silence restores the copy’s buffed pips minus damage. Original cards, character defaults, and token templates keep their stats.
+
+Grant up to **five configured keywords**, including Combo, Next Play, or Conjure, with the same three-level nesting limit as other grants. Keywords appear on the new card immediately and activate only when it is played. Existing unique keywords on the same edge take priority; repeated Sunder and other repeatable entries can stack, up to the 24-keyword card limit. Creating cards never triggers their keywords or spends Next Play. The card preview and inspection explain configured buffs and granted rules. Card files include buffs and any token templates referenced by nested grants. Adventures save the generated copies exactly, and those cards never join your pack or alter saved Draft picks. Existing Conjure cards without buffs keep their behavior.
+
 ## Conjure-only tokens
 
 Open **Collection → Tokens** for six starter templates: **Chompy Seedling, Arkeyan Drone, Fire Spark, Water Wisp, Shadow Decoy, and Magic Echo**. Tokens have their own fixed pips, element, portrait, tribes, and keywords. They are available only through Conjure and never appear in normal starting decks, Draft pools, Adventure packs, rewards, shops, or transformations as ordinary cards. A shop or transformation can offer a **Conjure** keyword that generates tokens.

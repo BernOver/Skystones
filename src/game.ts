@@ -327,9 +327,22 @@ export function withNextKeywords(
     return stone;
   const granted = nextKeywordGrants(board, owner, stone);
   if (!granted.length) return stone;
-  const keywords = [...(stone.keywords || [])],
-    received: StoneKeyword[] = [];
-  for (const keyword of granted) {
+  const { keywords, added: received } = mergeKeywordGrants(
+    stone.keywords || [],
+    granted,
+  );
+  return received.length
+    ? { ...stone, keywords, receivedKeywords: received }
+    : stone;
+}
+
+export function mergeKeywordGrants(
+  existing: readonly StoneKeyword[],
+  grants: readonly StoneKeyword[],
+) {
+  const keywords = [...existing],
+    added: StoneKeyword[] = [];
+  for (const keyword of grants) {
     if (keywords.length >= MAX_KEYWORDS) break;
     if (
       !repeatableKeyword(keyword.type) &&
@@ -339,11 +352,9 @@ export function withNextKeywords(
     if (!validateKeywords([...keywords, keyword])) continue;
     const copy = structuredClone(keyword);
     keywords.push(copy);
-    received.push(copy);
+    added.push(copy);
   }
-  return received.length
-    ? { ...stone, keywords, receivedKeywords: received }
-    : stone;
+  return { keywords, added };
 }
 
 // This result is computed before placement and retained on the placed stone.
@@ -1153,8 +1164,13 @@ export function validateStone(value: unknown): value is Stone {
     ].includes(String(s.creature)) &&
     Array.isArray(s.edges) &&
     s.edges.length === 4 &&
-    s.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 5) &&
-    s.edges.reduce((a, b) => a + b, 0) <= (s.origin === "giants" ? 16 : 12) &&
+    s.edges.every(
+      (n) =>
+        Number.isInteger(n) && n >= 0 && n <= (s.conjured === true ? 64 : 5),
+    ) &&
+    (s.conjured === true ||
+      s.edges.reduce((a, b) => a + b, 0) <=
+        (s.origin === "giants" ? 16 : 12)) &&
     (s.portrait === undefined ||
       (typeof s.portrait === "string" && PORTRAIT_IDS.has(s.portrait))) &&
     (s.characterKey === undefined ||
@@ -1221,7 +1237,8 @@ export function validateKeywords(
             keyword.side > 3)
     )
       return false;
-    if (keyword.type === "conjure" && !validateConjure(keyword)) return false;
+    if (keyword.type === "conjure" && !validateConjure(keyword, depth))
+      return false;
     if (
       keyword.type === "shift" &&
       (!Number.isInteger(keyword.direction) ||

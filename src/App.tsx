@@ -934,6 +934,10 @@ export default function App() {
         conjured: undefined,
         receivedKeywords: undefined,
       };
+      if (!validateStone(stone))
+        throw new Error(
+          "This battle copy exceeds the card maker’s base pip budget.",
+        );
       const importedTokens = payload.tokens === undefined ? [] : payload.tokens;
       if (!Array.isArray(importedTokens))
         throw new Error("Invalid token bundle");
@@ -2553,9 +2557,11 @@ export default function App() {
             <p>
               <strong>Conjure</strong> adds 1–5 specified or random cards to
               your hand, the opponent’s hand, or both after this play. Random
-              cards can match an element and/or tribe. Copies last for this
-              battle and do not join your Adventure pack. Each hand holds up to
-              20 cards; extra copies are skipped. Canceled plays add nothing.
+              cards can match an element and/or tribe. Each copy can also gain
+              extra pips on chosen sides, configured keywords, or both. Keywords
+              activate when that copy is played. Copies last for this battle and
+              do not join your Adventure pack. Each hand holds up to 20 cards;
+              extra copies are skipped. Canceled plays add nothing.
             </p>
           </div>
           <div className="rule-line">

@@ -39,7 +39,7 @@ import {
   nextEffectText,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
-import { conjureSource } from "./conjure";
+import { conjureSource, conjureBuffText } from "./conjure";
 
 export const ELEMENT_ICONS = {
   fire: Flame,
@@ -694,7 +694,7 @@ export const StoneCard = memo(
                       {matches
                         .map((keyword) =>
                           keyword.type === "conjure"
-                            ? `${keyword.count} ${conjureSource(keyword)}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
+                            ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
                             : keyword.type === "next-play"
                               ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}`
                               : keyword.type === "shift"

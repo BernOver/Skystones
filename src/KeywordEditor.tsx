@@ -142,11 +142,16 @@ function Fields({
             <select
               aria-label={`Card source · ${label}`}
               value={keyword.mode}
-              onChange={(event) =>
+              onChange={(event) => {
+                const buffs = {
+                  ...(keyword.pips ? { pips: keyword.pips } : {}),
+                  ...(keyword.keywords ? { keywords: keyword.keywords } : {}),
+                };
                 onChange(
                   event.target.value === "specific"
                     ? {
                         type: "conjure",
+                        ...buffs,
                         mode: "specific",
                         card: "spyro",
                         count: keyword.count,
@@ -155,6 +160,7 @@ function Fields({
                     : event.target.value === "token"
                       ? {
                           type: "conjure",
+                          ...buffs,
                           mode: "token",
                           token: readTokens()[0].id,
                           count: keyword.count,
@@ -162,12 +168,13 @@ function Fields({
                         }
                       : {
                           type: "conjure",
+                          ...buffs,
                           mode: "random",
                           count: keyword.count,
                           recipient: keyword.recipient,
                         },
-                )
-              }
+                );
+              }}
             >
               <option value="specific">Specified card</option>
               <option value="token">Specified token</option>
@@ -270,6 +277,56 @@ function Fields({
             Conjure entry for a different specified card. Token templates are in
             Collection → Tokens. They can only enter a hand through Conjure.
           </small>
+          <fieldset
+            className="conjure-pip-buffs"
+            aria-label={`Conjure pip buffs · ${label}`}
+          >
+            <legend>Extra pips on each generated card</legend>
+            <div className="combo-pip-grid">
+              {SIDE_NAMES.map((name, side) => (
+                <label key={side}>
+                  {name} pips
+                  <select
+                    aria-label={`Conjure ${name} pips · ${label}`}
+                    value={
+                      keyword.pips?.find((pip) => pip.side === side)?.amount ||
+                      0
+                    }
+                    onChange={(event) => {
+                      const amount = Number(event.target.value);
+                      const pips = (keyword.pips || []).filter(
+                        (pip) => pip.side !== side,
+                      );
+                      if (amount) pips.push({ side: side as Side, amount });
+                      pips.sort((a, b) => a.side - b.side);
+                      onChange({
+                        ...keyword,
+                        pips: pips.length ? pips : undefined,
+                      });
+                    }}
+                  >
+                    <option value="0">None</option>
+                    {[1, 2, 3, 4, 5].map((amount) => (
+                      <option key={amount} value={amount}>
+                        +{amount}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <small>
+              Added once to each copy when generated. These extra pips last for
+              this battle, can exceed five per side, and remain through Silence.
+            </small>
+          </fieldset>
+          <GrantKeywordFields
+            keyword={keyword}
+            element={element}
+            label={label}
+            depth={depth}
+            onChange={onChange}
+          />
         </div>
       )}
       {keyword.type === "next-play" && (
@@ -326,7 +383,7 @@ function Fields({
               it.
             </small>
           )}
-          <NextKeywordFields
+          <GrantKeywordFields
             keyword={keyword}
             element={element}
             label={label}
@@ -659,36 +716,46 @@ function Fields({
     </>
   );
 }
-function NextKeywordFields({
+function GrantKeywordFields({
   keyword,
   element,
   label,
   depth,
   onChange,
 }: {
-  keyword: Extract<StoneKeyword, { type: "next-play" }>;
+  keyword: Extract<StoneKeyword, { type: "next-play" | "conjure" }>;
   element: Element;
   label: string;
   depth: number;
   onChange: (value: StoneKeyword) => void;
 }) {
   const grants = keyword.keywords || [];
+  const conjure = keyword.type === "conjure";
+  const kind = conjure ? "Conjure" : "Next Play";
   const update = (keywords: StoneKeyword[]) =>
     onChange({
       ...keyword,
-      amount: keywords.length || keyword.amount ? keyword.amount : 1,
+      ...(keyword.type === "next-play"
+        ? { amount: keywords.length || keyword.amount ? keyword.amount : 1 }
+        : {}),
       keywords: keywords.length ? keywords : undefined,
     });
   return (
     <fieldset
       className="next-keyword-grants"
-      aria-label={`Next Play keywords · ${label}`}
+      aria-label={`${kind} keywords · ${label}`}
     >
-      <legend>Keywords for the next card</legend>
+      <legend>
+        {conjure
+          ? "Keywords for each generated card"
+          : "Keywords for the next card"}
+      </legend>
       <p>
-        They are added before its on-play checks and captures. Choose None for a
-        keywords-only effect. Unique keywords already on the same edge are kept;
-        extra grants stop at the card’s 24-keyword limit.
+        {conjure
+          ? "Every copy gains these keywords when generated. They activate only when that copy is played. Use keywords alone or combine them with extra pips. "
+          : "They are added before its on-play checks and captures. Choose None for a keywords-only effect. "}
+        Unique keywords already on the same edge are kept; extra grants stop at
+        the card’s 24-keyword limit.
       </p>
       {grants.map((grant, index) => {
         const grantLabel = `${label} grant ${index + 1}`;
@@ -696,7 +763,9 @@ function NextKeywordFields({
           update(grants.map((old, i) => (i === index ? value : old)));
         return (
           <div className="next-grant-entry" key={index}>
-            <div className="keyword-editor-row">
+            <div
+              className={`keyword-editor-row ${grant.type === "resonance" ? "has-element" : ""} ${grant.type === "sunder" || grant.type === "shield" ? "has-strength" : ""} ${!("side" in grant) ? "no-edge" : ""}`}
+            >
               <Fields
                 keyword={grant}
                 label={grantLabel}
@@ -728,7 +797,7 @@ function NextKeywordFields({
       <button
         type="button"
         className="button button-outline"
-        aria-label={`Add Next Play keyword · ${label}`}
+        aria-label={`Add ${kind} keyword · ${label}`}
         disabled={grants.length >= 5 || depth >= MAX_KEYWORD_DEPTH}
         onClick={() => {
           for (const type of [
@@ -755,7 +824,7 @@ function NextKeywordFields({
         }}
       >
         <Plus size={14} />
-        Add Next Play keyword <span>{grants.length}/5</span>
+        Add {kind} keyword <span>{grants.length}/5</span>
       </button>
       {depth >= MAX_KEYWORD_DEPTH && (
         <small>Maximum effect nesting reached.</small>

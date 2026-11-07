@@ -119,6 +119,18 @@ New Draft pools, shops, shrines, and transformations can offer tribe effects.
 Conjure: add it in Card studio > Add keyword. Choose a specified card from
 the 221 built-in characters/forms and Giants opponents, or choose random cards.
 Set 1-5 copies and give them to your hand, the opponent's hand, or both.
+Optional buffs: set Extra pips on each generated card and/or Keywords for each
+generated card. Add +1 to +5 on any chosen sides; None leaves that side alone.
+Set all four sides to the same amount for a per-side bonus. Grant up to five
+configured keywords. Buffs work on specified characters, tokens, and random
+cards, including gifts through Combo and Next Play. Each copy gets them once
+when generated, and keywords activate only when that copy is played.
+Pips can exceed five on a temporary copy and remain through Silence; Dizzy
+still rerolls marked sides and Sunder can damage them. Silence disables added
+keywords. Existing unique keywords take priority and extra grants stop at 24
+keywords per card. Original cards and token templates keep their stats.
+Switching Conjure's source keeps its buffs. Card files include buffs and token
+dependencies inside nested gifts. Adventure reloads keep the exact copies.
 Random cards can require an element and/or tribe; all filters must match.
 No matching cards means no additions. Repeat Conjure for different specified
 cards. Combo can grant it too. Copies use saved character defaults or the fixed

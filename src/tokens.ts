@@ -128,7 +128,9 @@ export function tokenDependencies(card: Stone, tokens = readTokens()): Stone[] {
       keywords.flatMap((keyword) =>
         keyword.type === "combo" || keyword.type === "next-play"
           ? flatten(keyword.keywords || [])
-          : [keyword],
+          : keyword.type === "conjure"
+            ? [keyword, ...flatten(keyword.keywords || [])]
+            : [keyword],
       );
     const keywords = flatten(stone.keywords || []);
     const add = (token: Stone) => {

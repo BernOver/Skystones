@@ -1,7 +1,16 @@
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
 import { hasTribe, validTribe, tribeName } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
-import type { Board, Element, Owner, Stone } from "./game.ts";
+import { mergeKeywordGrants, validateKeywords } from "./game.ts";
+import type {
+  Board,
+  Element,
+  Owner,
+  Side,
+  Stone,
+  StoneKeyword,
+} from "./game.ts";
+import { keywordNames } from "./effects.ts";
 import { readTokens, validTokenKey, tokenName } from "./tokens.ts";
 
 export const MAX_HAND_CARDS = 20;
@@ -11,6 +20,8 @@ export type ConjureKeyword = {
   type: "conjure";
   count: number;
   recipient: "self" | "opponent" | "both";
+  pips?: { side: Side; amount: number }[];
+  keywords?: StoneKeyword[];
 } & (
   | { mode: "specific"; card: string }
   | { mode: "token"; token: string }
@@ -28,7 +39,10 @@ export interface Conjuration {
   skipped: number;
   reason?: "full" | "no-match";
 }
-export function validateConjure(input: unknown): input is ConjureKeyword {
+export function validateConjure(
+  input: unknown,
+  depth = 0,
+): input is ConjureKeyword {
   if (!input || typeof input !== "object") return false;
   const value = input as Record<string, unknown>;
   return (
@@ -36,6 +50,27 @@ export function validateConjure(input: unknown): input is ConjureKeyword {
     Number.isInteger(value.count) &&
     Number(value.count) >= 1 &&
     Number(value.count) <= 5 &&
+    (value.pips === undefined ||
+      (Array.isArray(value.pips) &&
+        value.pips.length >= 1 &&
+        value.pips.length <= 4 &&
+        new Set(value.pips.map((pip) => pip?.side)).size ===
+          value.pips.length &&
+        value.pips.every(
+          (pip) =>
+            pip &&
+            Number.isInteger(pip.side) &&
+            pip.side >= 0 &&
+            pip.side <= 3 &&
+            Number.isInteger(pip.amount) &&
+            pip.amount >= 1 &&
+            pip.amount <= 5,
+        ))) &&
+    (value.keywords === undefined ||
+      (Array.isArray(value.keywords) &&
+        value.keywords.length >= 1 &&
+        value.keywords.length <= 5 &&
+        validateKeywords(value.keywords, depth + 1))) &&
     ["self", "opponent", "both"].includes(String(value.recipient)) &&
     (value.mode === "specific"
       ? typeof value.card === "string" &&
@@ -89,7 +124,23 @@ export function conjureText(keyword: ConjureKeyword): string {
       : keyword.recipient === "opponent"
         ? "the opponent’s hand"
         : "each player’s hand";
-  return `Add ${keyword.count} ${conjureSource(keyword)} card${keyword.count === 1 ? "" : "s"} to ${recipient} after this play.`;
+  return `Add ${keyword.count} ${conjureSource(keyword)} card${keyword.count === 1 ? "" : "s"} to ${recipient} after this play.${conjureBuffText(keyword) ? ` Each copy: ${conjureBuffText(keyword)}. Extra pips last for this battle; added keywords activate when the copy is played.` : ""}`;
+}
+export function conjureBuffText(keyword: ConjureKeyword): string {
+  const pips = keyword.pips || [];
+  return [
+    pips.length === 4 && pips.every((pip) => pip.amount === pips[0].amount)
+      ? `+${pips[0].amount} per side`
+      : pips
+          .map(
+            (pip) =>
+              `+${pip.amount} ${["North", "East", "South", "West"][pip.side]}`,
+          )
+          .join(", "),
+    keyword.keywords?.length ? `Gain ${keywordNames(keyword.keywords)}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 export function conjurationSummary(
   records: Conjuration[],
@@ -193,6 +244,18 @@ export function applyConjure(
           custom: true,
           conjured: true,
         };
+        if (keyword.pips?.length) {
+          for (const pip of keyword.pips)
+            card.edges[pip.side] = Math.min(
+              64,
+              card.edges[pip.side] + pip.amount,
+            );
+        }
+        if (keyword.keywords?.length)
+          card.keywords = mergeKeywordGrants(
+            card.keywords || [],
+            keyword.keywords,
+          ).keywords;
         nextHands[recipient].push(card);
         record.cards.push({ id, name: card.name });
       }

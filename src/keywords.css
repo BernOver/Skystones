@@ -47,6 +47,18 @@
   padding: 12px;
   background: #f0f1f6;
 }
+.conjure-pip-buffs {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border: 1px solid #d4d9e1;
+  border-radius: 8px;
+  padding: 12px;
+}
+.conjure-pip-buffs legend {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d6485;
+}
 .next-keyword-grants legend {
   font-size: 12px;
   font-weight: 600;
@@ -907,10 +919,10 @@
 .dizzy-side-options input {
   accent-color: #856aa0;
 }
-.keyword-editor-row:has(.dizzy-side-options) {
+.keyword-editor-row:has(> .dizzy-side-options) {
   grid-template-columns: minmax(0, 1fr) 36px;
 }
-.keyword-editor-row:has(.dizzy-side-options) > .icon-button {
+.keyword-editor-row:has(> .dizzy-side-options) > .icon-button {
   grid-column: 2;
   grid-row: 1;
 }
@@ -937,14 +949,19 @@
   left: -9px;
 }
 
-.keyword-editor-row:has(.effect-editor-options) {
+.keyword-editor-row:has(> .effect-editor-options) {
   grid-template-columns: minmax(0, 1fr) 36px;
 }
-.keyword-editor-row:has(.effect-editor-options) > .icon-button {
+.keyword-editor-row:has(> .effect-editor-options) > div:first-child,
+.keyword-editor-row:has(> .dizzy-side-options) > div:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+.keyword-editor-row:has(> .effect-editor-options) > .icon-button {
   grid-column: 2;
   grid-row: 1;
 }
-.keyword-editor-row:has(.effect-editor-options)
+.keyword-editor-row:has(> .effect-editor-options)
   > div:not(:first-child):not(.effect-editor-options) {
   grid-column: 1;
   grid-row: 3;
