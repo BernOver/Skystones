@@ -1445,7 +1445,15 @@ function rollWorkshopOffer(
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
     type === "conjure"
-      ? { type, mode: "random", count: 1, recipient: "self" }
+      ? {
+          type,
+          mode: "random",
+          count: 1,
+          recipient: "self",
+          ...((run.seed + run.floor + reroll) % 2 === 0
+            ? { pool: "tokens" as const }
+            : {}),
+        }
       : type === "environment"
         ? {
             type,
@@ -1728,6 +1736,8 @@ function validBattleCard(value: unknown): value is Stone {
     stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 64) &&
     (stone.tribes === undefined || validateTribes(stone.tribes)) &&
     (stone.conjured === undefined || stone.conjured === true) &&
+    (stone.token === undefined ||
+      (stone.token === true && stone.conjured === true)) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1893,7 +1903,8 @@ export function validateAdventure(value: unknown): value is Adventure {
     return false;
   if (run.healingLocked !== undefined && typeof run.healingLocked !== "boolean")
     return false;
-  if (run.note !== undefined && !validateStone(run.note)) return false;
+  if (run.note !== undefined && (!validateStone(run.note) || run.note.token))
+    return false;
   if (
     run.shopRerolls !== undefined &&
     (!Number.isSafeInteger(run.shopRerolls) || run.shopRerolls < 0)
@@ -1982,7 +1993,7 @@ export function validateAdventure(value: unknown): value is Adventure {
     !Array.isArray(run.inventory) ||
     run.inventory.length < handSize(run.size) ||
     run.inventory.length > 100 ||
-    !run.inventory.every(validateStone) ||
+    !run.inventory.every((card) => validateStone(card) && !card.token) ||
     new Set(run.inventory.map((s) => s.id)).size !== run.inventory.length ||
     !Array.isArray(run.deck) ||
     run.deck.length > handSize(run.size) ||
@@ -1996,10 +2007,10 @@ export function validateAdventure(value: unknown): value is Adventure {
     !run.potions.every((p) => Object.hasOwn(POTIONS, p)) ||
     !Array.isArray(run.rewards) ||
     run.rewards.length > 5 ||
-    !run.rewards.every(validateStone) ||
+    !run.rewards.every((card) => validateStone(card) && !card.token) ||
     !Array.isArray(run.shopCards) ||
     run.shopCards.length > 4 ||
-    !run.shopCards.every(validateStone) ||
+    !run.shopCards.every((card) => validateStone(card) && !card.token) ||
     !Array.isArray(run.shopPotions) ||
     run.shopPotions.length > 3 ||
     !run.shopPotions.every(

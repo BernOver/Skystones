@@ -41,6 +41,27 @@
   font-size: 11px;
   text-align: center;
 }
+.tokens-note,
+.token-type-field p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #78618e;
+}
+.token-type-field label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.token-type-field input {
+  accent-color: #78618e;
+}
+.collection-tabs {
+  flex-wrap: wrap;
+}
+.deck-slots {
+  min-width: 0;
+  max-width: 100%;
+}
 .hand-cards.expanded-hand {
   flex-wrap: wrap;
   row-gap: 18px;

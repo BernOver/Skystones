@@ -90,6 +90,15 @@ import {
 } from "./CardInspection";
 import type { Inspection } from "./CardInspection";
 import { KeywordEditor } from "./KeywordEditor";
+import {
+  tokenCatalogue,
+  tokenDefinition,
+  deckEligible,
+  TOKEN_ID_PREFIX,
+  DEFAULT_TOKENS,
+  tokenDependencies,
+  mergeTokenDefinitions,
+} from "./tokens";
 import { applyConjure, CONJURE_CARDS, conjurationSummary } from "./conjure";
 import { TargetPicker } from "./TargetPicker";
 import { Draft } from "./Draft";
@@ -158,9 +167,12 @@ function readLibrary(): Library {
     if (value && Array.isArray(value.custom) && Array.isArray(value.deck)) {
       const custom: Stone[] = value.custom
         .filter(validateStone)
+        .filter((card: Stone) => !card.token || tokenDefinition(card))
         .map((s: Stone) => ({ ...s, custom: true }));
       const ids = new Set(
-        [...CHARACTER_STONES, ...GIANTS_STONES, ...custom].map((s) => s.id),
+        [...CHARACTER_STONES, ...GIANTS_STONES, ...custom]
+          .filter(deckEligible)
+          .map((s) => s.id),
       );
       const size: BoardSize = value.boardSize === 4 ? 4 : 3;
       const deck = [
@@ -200,11 +212,12 @@ function createMatch(
 ): Match {
   const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
     .map((card) => characterDefault(card))
-    .concat(library.custom);
+    .concat(library.custom.filter(deckEligible));
   // A half-edited saved deck must not strand the initial practice match.
   const count = handSize(library.boardSize);
   const deck =
-    library.deck.length === count
+    library.deck.length === count &&
+    library.deck.every((id) => collection.some((card) => card.id === id))
       ? library.deck
       : STARTER_STONES.slice(0, count).map((s) => s.id);
   const human = deck
@@ -399,6 +412,7 @@ export default function App() {
   const [tribeFilter, setTribeFilter] = useState<Tribe | "">("");
   const [onlyCustom, setOnlyCustom] = useState(false);
   const [onlyGiants, setOnlyGiants] = useState(false);
+  const [onlyTokens, setOnlyTokens] = useState(false);
   const [draft, setDraft] = useState<Stone>(freshDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -411,9 +425,10 @@ export default function App() {
   const detailRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const lastSound = useRef("");
+  const tokens = tokenCatalogue(library.custom);
   const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
     .map((card) => characterDefault(card, characterDefaults))
-    .concat(library.custom);
+    .concat(library.custom.filter(deckEligible), tokens);
   const scores = score(match.board);
   const tileEnvironments = boardEnvironments(match.board);
   const size = boardSize(match.board);
@@ -431,6 +446,7 @@ export default function App() {
   const shownHand = match.hands[handOwner];
   const visible = collection.filter(
     (s) =>
+      (onlyTokens ? !!s.token : !s.token) &&
       (!onlyCustom || s.custom) &&
       (!onlyGiants || onlyCustom || s.origin === "giants") &&
       (elementFilter === "all" || s.element === elementFilter) &&
@@ -521,6 +537,12 @@ export default function App() {
 
   function saveLibrary(next: Library): boolean {
     try {
+      const allowed = new Set(
+        [...CHARACTER_STONES, ...GIANTS_STONES, ...next.custom]
+          .filter(deckEligible)
+          .map((card) => card.id),
+      );
+      next = { ...next, deck: next.deck.filter((id) => allowed.has(id)) };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setLibrary(next);
       return true;
@@ -621,6 +643,10 @@ export default function App() {
     setDialog(null);
     navigate("studio");
   }
+  function openTokenStudio() {
+    openStudio();
+    setDraft({ ...freshDraft(), token: true });
+  }
   function openCharacterDefault(stone: Stone) {
     const key = stone.characterKey || stone.portrait;
     if (!key || !originalCharacter(key)) return;
@@ -715,6 +741,10 @@ export default function App() {
     }
   }
   function toggleDeck(stone: Stone) {
+    if (!deckEligible(stone)) {
+      setToast("Tokens are available only through Conjure.");
+      return;
+    }
     const included = library.deck.includes(stone.id);
     if (!included && library.deck.length >= capacity) {
       setToast(
@@ -734,7 +764,10 @@ export default function App() {
     let deck = library.deck.slice(0, count);
     if (library.deck.length === capacity)
       deck = [
-        ...new Set([...deck, ...collection.map((stone) => stone.id)]),
+        ...new Set([
+          ...deck,
+          ...collection.filter(deckEligible).map((stone) => stone.id),
+        ]),
       ].slice(0, count);
     saveLibrary({ ...library, boardSize: next, deck });
   }
@@ -767,7 +800,11 @@ export default function App() {
     const stone: Stone = {
       ...draft,
       name: draft.name.trim(),
-      id: editingId || `custom-${createId()}`,
+      id: draft.token
+        ? editingId?.startsWith(TOKEN_ID_PREFIX)
+          ? editingId
+          : `${TOKEN_ID_PREFIX}${createId()}`
+        : editingId || `custom-${createId()}`,
       custom: true,
     };
     if (!validateStone(stone)) {
@@ -776,14 +813,19 @@ export default function App() {
       );
       return;
     }
-    const custom = editingId
-      ? library.custom.map((s) => (s.id === editingId ? stone : s))
-      : [...library.custom, stone];
+    const custom = [
+      ...library.custom.filter(
+        (card) => card.id !== editingId && card.id !== stone.id,
+      ),
+      stone,
+    ];
     if (saveLibrary({ ...library, custom })) {
       setEditingId(stone.id);
       setDraft(stone);
       setToast(
-        `${stone.name} is saved to your collection. A little legend is born!`,
+        stone.token
+          ? `${stone.name} is saved as a Conjure-only token. Choose it in a Conjure keyword.`
+          : `${stone.name} is saved to your collection. A little legend is born!`,
       );
     }
   }
@@ -821,11 +863,23 @@ export default function App() {
       id: stone.custom ? stone.id : `custom-${stone.id}`,
       custom: true,
     };
+    let dependencies: Stone[];
+    try {
+      dependencies = tokenDependencies(card, tokens);
+    } catch (error) {
+      setToast((error as Error).message);
+      return;
+    }
     const url = URL.createObjectURL(
       new Blob(
         [
           JSON.stringify(
-            { format: "skystones-card", version: 1, card },
+            {
+              format: "skystones-card",
+              version: 1,
+              card,
+              ...(dependencies.length ? { tokens: dependencies } : {}),
+            },
             null,
             2,
           ),
@@ -846,8 +900,10 @@ export default function App() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (file.size > 3_000_000) {
-      setToast("That card file is too large. The limit is 3 MB.");
+    if (file.size > 16_000_000) {
+      setToast(
+        "That card file is too large. The limit is 16 MB, including token templates.",
+      );
       return;
     }
     try {
@@ -860,12 +916,32 @@ export default function App() {
         throw new Error("Invalid card");
       const stone: Stone = {
         ...payload.card,
-        id: `custom-${createId()}`,
+        id: payload.card.token
+          ? tokenDefinition(payload.card)
+            ? payload.card.id
+            : `${TOKEN_ID_PREFIX}${createId()}`
+          : `custom-${createId()}`,
         custom: true,
+        conjured: undefined,
       };
-      if (saveLibrary({ ...library, custom: [...library.custom, stone] })) {
+      const importedTokens = payload.tokens === undefined ? [] : payload.tokens;
+      if (!Array.isArray(importedTokens))
+        throw new Error("Invalid token bundle");
+      const custom = mergeTokenDefinitions(library.custom, [
+        ...importedTokens,
+        ...(stone.token ? [stone] : []),
+      ]);
+      tokenDependencies(stone, tokenCatalogue(custom));
+      if (
+        saveLibrary({
+          ...library,
+          custom: stone.token ? custom : [...custom, stone],
+        })
+      ) {
         setToast(`${stone.name} has joined your collection.`);
-        setOnlyCustom(true);
+        setOnlyCustom(!stone.token);
+        setOnlyTokens(!!stone.token);
+        setOnlyGiants(false);
         setQuery("");
         setElementFilter("all");
         setTribeFilter("");
@@ -924,7 +1000,9 @@ export default function App() {
             >
               <Layers size={18} />
               <span>Collection</span>
-              <span className="nav-count">{collection.length}</span>
+              <span className="nav-count">
+                {collection.filter(deckEligible).length}
+              </span>
             </button>
             <button
               className={page === "studio" ? "active" : ""}
@@ -1568,10 +1646,12 @@ export default function App() {
                 </button>
                 <button
                   className="button button-dark"
-                  onClick={() => openStudio()}
+                  onClick={() =>
+                    onlyTokens ? openTokenStudio() : openStudio()
+                  }
                 >
                   <Plus size={17} />
-                  Create a stone
+                  {onlyTokens ? "Create a token" : "Create a stone"}
                 </button>
               </div>
             </div>
@@ -1643,28 +1723,49 @@ export default function App() {
             <div className="collection-toolbar">
               <div className="collection-tabs">
                 <button
-                  className={!onlyCustom && !onlyGiants ? "active" : ""}
+                  className={
+                    !onlyCustom && !onlyGiants && !onlyTokens ? "active" : ""
+                  }
                   onClick={() => {
                     setOnlyCustom(false);
                     setOnlyGiants(false);
+                    setOnlyTokens(false);
                   }}
                 >
-                  All stones<span>{collection.length}</span>
+                  All stones
+                  <span>{collection.filter(deckEligible).length}</span>
                 </button>
                 <button
-                  className={onlyGiants && !onlyCustom ? "active" : ""}
+                  className={
+                    onlyGiants && !onlyCustom && !onlyTokens ? "active" : ""
+                  }
                   onClick={() => {
                     setOnlyGiants(true);
                     setOnlyCustom(false);
+                    setOnlyTokens(false);
                   }}
                 >
                   Giants<span>{GIANTS_STONES.length}</span>
                 </button>
                 <button
                   className={onlyCustom ? "active" : ""}
-                  onClick={() => setOnlyCustom(true)}
+                  onClick={() => {
+                    setOnlyCustom(true);
+                    setOnlyTokens(false);
+                  }}
                 >
-                  My creations<span>{library.custom.length}</span>
+                  My creations
+                  <span>{library.custom.filter(deckEligible).length}</span>
+                </button>
+                <button
+                  className={onlyTokens ? "active" : ""}
+                  onClick={() => {
+                    setOnlyTokens(true);
+                    setOnlyCustom(false);
+                    setOnlyGiants(false);
+                  }}
+                >
+                  Tokens<span>{tokens.length}</span>
                 </button>
               </div>
               <div className="collection-filters">
@@ -1703,7 +1804,14 @@ export default function App() {
               </div>
             </div>
 
-            {onlyGiants && !onlyCustom && (
+            {onlyTokens && (
+              <p className="tokens-note">
+                Tokens are available only through Conjure. Create or edit
+                templates here; they cannot enter normal decks, Draft pools, or
+                Adventure packs, rewards, and shops.
+              </p>
+            )}
+            {onlyGiants && !onlyCustom && !onlyTokens && (
               <p className="giants-reference-note">
                 {GIANTS_STONES.length} unique Giants opponents. Numbered ranks
                 have been consolidated into one card per character.{" "}
@@ -1721,7 +1829,9 @@ export default function App() {
                     <article className="collection-item" key={stone.id}>
                       <div className="collection-card-stage">
                         <span className="collection-badge">
-                          {stone.custom ? (
+                          {stone.token ? (
+                            "TOKEN · CONJURE ONLY"
+                          ) : stone.custom ? (
                             <>
                               <Sparkles size={11} />
                               MADE BY YOU
@@ -1752,13 +1862,19 @@ export default function App() {
                             {ELEMENTS[stone.element].name} stone
                           </span>
                         </div>
-                        <button
-                          className={`deck-toggle ${included ? "in-deck" : ""}`}
-                          aria-label={`${included ? "Remove" : "Add"} ${stone.name} ${included ? "from" : "to"} deck`}
-                          onClick={() => toggleDeck(stone)}
-                        >
-                          {included ? <Check size={17} /> : <Plus size={17} />}
-                        </button>
+                        {deckEligible(stone) && (
+                          <button
+                            className={`deck-toggle ${included ? "in-deck" : ""}`}
+                            aria-label={`${included ? "Remove" : "Add"} ${stone.name} ${included ? "from" : "to"} deck`}
+                            onClick={() => toggleDeck(stone)}
+                          >
+                            {included ? (
+                              <Check size={17} />
+                            ) : (
+                              <Plus size={17} />
+                            )}
+                          </button>
+                        )}
                       </div>
                       <p>
                         {stone.description ||
@@ -1853,6 +1969,31 @@ export default function App() {
                       <p>Every great character starts with a name.</p>
                     </div>
                   </div>
+                  {!editingDefaultKey && (
+                    <div className="field-group token-type-field">
+                      <label>
+                        <input
+                          type="checkbox"
+                          aria-label="Token only · available through Conjure"
+                          checked={!!draft.token}
+                          disabled={!!editingId?.startsWith(TOKEN_ID_PREFIX)}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              token: event.target.checked ? true : undefined,
+                            })
+                          }
+                        />{" "}
+                        Token only · available through Conjure
+                      </label>
+                      <p>
+                        A token is a reusable template for Conjure. Its pips,
+                        element, tribes, portrait, and keywords work normally
+                        once generated. It cannot be put in a starting deck.
+                        Saved token templates keep this card type.
+                      </p>
+                    </div>
+                  )}
                   <div className="field-group">
                     <label htmlFor="stone-name">
                       Stone name
@@ -2083,7 +2224,9 @@ export default function App() {
                       ? "Save character default"
                       : editingId
                         ? "Save changes"
-                        : "Save to collection"}
+                        : draft.token
+                          ? "Save token template"
+                          : "Save to collection"}
                   </button>
                 </div>
               </form>
@@ -2132,9 +2275,9 @@ export default function App() {
                     Download card image
                   </button>
                   <p className="preview-note">
-                    Save your stone, then add it to your battle
-                    <br />
-                    deck in the collection to bring it into play.
+                    {draft.token
+                      ? "Save your token, then choose Conjure → Specified token on another card to generate it during a battle."
+                      : "Save your stone, then add it to your battle deck in the collection to bring it into play."}
                   </p>
                 </div>
               </aside>
@@ -2597,19 +2740,26 @@ export default function App() {
           </div>
           <KeywordDetails stone={dialog.stone} />
           <div className="detail-actions">
-            <button
-              className={`button ${library.deck.includes(dialog.stone.id) ? "button-outline" : "button-dark"}`}
-              onClick={() => toggleDeck(dialog.stone)}
-            >
-              {library.deck.includes(dialog.stone.id) ? (
-                <Check size={16} />
-              ) : (
-                <Plus size={16} />
-              )}{" "}
-              {library.deck.includes(dialog.stone.id)
-                ? "Remove from deck"
-                : "Add to deck"}
-            </button>
+            {deckEligible(dialog.stone) && (
+              <button
+                className={`button ${library.deck.includes(dialog.stone.id) ? "button-outline" : "button-dark"}`}
+                onClick={() => toggleDeck(dialog.stone)}
+              >
+                {library.deck.includes(dialog.stone.id) ? (
+                  <Check size={16} />
+                ) : (
+                  <Plus size={16} />
+                )}{" "}
+                {library.deck.includes(dialog.stone.id)
+                  ? "Remove from deck"
+                  : "Add to deck"}
+              </button>
+            )}
+            {dialog.stone.token && (
+              <p className="tokens-note">
+                Token template · available only through Conjure.
+              </p>
+            )}
             {!dialog.stone.custom && (
               <button
                 className="button button-outline"
@@ -2637,6 +2787,29 @@ export default function App() {
                 Edit stone
               </button>
             )}
+            {dialog.stone.token &&
+              DEFAULT_TOKENS.some((token) => token.id === dialog.stone.id) &&
+              library.custom.some((card) => card.id === dialog.stone.id) && (
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    const original = DEFAULT_TOKENS.find(
+                      (token) => token.id === dialog.stone.id,
+                    )!;
+                    if (
+                      saveLibrary({
+                        ...library,
+                        custom: library.custom.filter(
+                          (card) => card.id !== original.id,
+                        ),
+                      })
+                    )
+                      setDialog({ kind: "card", stone: original });
+                  }}
+                >
+                  Restore token default
+                </button>
+              )}
           </div>
           <div className="detail-utilities">
             <button
@@ -2656,17 +2829,18 @@ export default function App() {
               <ImagePlus size={14} />
               {downloadBusy ? "Preparing…" : "Save image"}
             </button>
-            {dialog.stone.custom && (
-              <button
-                className="icon-button delete-card-button"
-                aria-label={`Delete ${dialog.stone.name}`}
-                onClick={() =>
-                  setDialog({ kind: "delete", stone: dialog.stone })
-                }
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
+            {dialog.stone.custom &&
+              !DEFAULT_TOKENS.some((token) => token.id === dialog.stone.id) && (
+                <button
+                  className="icon-button delete-card-button"
+                  aria-label={`Delete ${dialog.stone.name}`}
+                  onClick={() =>
+                    setDialog({ kind: "delete", stone: dialog.stone })
+                  }
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
           </div>
         </Dialog>
       )}

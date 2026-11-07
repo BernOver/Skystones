@@ -207,6 +207,7 @@ export interface Stone {
   baseKeywords?: StoneKeyword[];
   tribes?: Tribe[];
   conjured?: true;
+  token?: true;
 }
 export interface PlacedStone {
   stone: Stone;
@@ -786,6 +787,8 @@ export function placeStone(
     arenaElement?: Element;
   } = {},
 ): Move {
+  if (stone.token && !stone.conjured)
+    throw new Error("Generate this token through Conjure before playing it.");
   if (
     (board.length !== 9 && board.length !== 16) ||
     !Number.isInteger(index) ||
@@ -1046,6 +1049,7 @@ export function validateStone(value: unknown): value is Stone {
     s.description.length <= 120 &&
     (s.tribes === undefined || validateTribes(s.tribes)) &&
     (s.conjured === undefined || s.conjured === true) &&
+    (s.token === undefined || s.token === true) &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
     (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
     (s.baseEdges === undefined ||

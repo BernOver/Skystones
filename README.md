@@ -34,6 +34,7 @@ Browser tests use system Chromium when available. Otherwise install the browser 
 
 After `npm run package:download`, run `SKYSTONES_STANDALONE=1 npm run test:e2e -- tests/browser/tribes.spec.ts` to check the packaged HTML's tribe controls, card-file sharing, Combo labels, and saved battles on both board sizes with all external requests blocked.
 Use `SKYSTONES_STANDALONE=1 npm run test:e2e -- tests/browser/conjure.spec.ts` to check Conjure in the packaged game, including larger hands, canceled placements, card files, saved copies, and normal, Draft, and Adventure play.
+Use `SKYSTONES_STANDALONE=1 npm run test:e2e -- tests/browser/tokens.spec.ts` for token creation, bundled exports/imports, deck exclusion, template edits, and generated token play on both board sizes.
 
 ## Play
 
@@ -202,6 +203,18 @@ Add keywords in the card studio. For Resonance, choose the element to count. For
 
 Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures and draft selections resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
+## Conjure-only tokens
+
+Open **Collection → Tokens** for six starter templates: **Chompy Seedling, Arkeyan Drone, Fire Spark, Water Wisp, Shadow Decoy, and Magic Echo**. Tokens have their own fixed pips, element, portrait, tribes, and keywords. They are available only through Conjure and never appear in normal starting decks, Draft pools, Adventure packs, rewards, shops, or transformations as ordinary cards. A shop or transformation can offer a **Conjure** keyword that generates tokens.
+
+1. Choose **Create a token**, or check **Token only · available through Conjure** in the card studio. Set its stats and keywords, then **Save token template**. Saved tokens stay token-only. Editing an existing ordinary custom card into a token removes it from your next deck; a match already in progress keeps its saved copy.
+2. On another card, add **Conjure → Card source → Specified token**, then select the template, count, and receiving player. Combo can grant token Conjure, and tokens can themselves have Conjure; their keywords activate only when played.
+3. For random generation, choose **Random cards → Random pool → Tokens only** or **Cards and tokens**. Element and tribe filters apply together. The default random pool remains **Normal cards**, so existing Conjure effects keep their behavior.
+
+Generated tokens are marked **Token · Conjured**, have unique IDs, and use the saved template rather than a character default. They follow normal capture, keyword, potion, and terrain rules and last for that battle. Editing or deleting a template never rewrites copies already generated, including copies in a saved Adventure. Future generation uses the edited template; a deleted custom template produces no cards until restored or replaced. Starter templates can be reset with **Restore token default**.
+
+Exporting a token or a card that uses tokens includes its required token templates, including references inside Combo and other tokens. Importing the file installs those definitions too; a matching token ID updates its template. Card files may be up to 16 MB including bundled templates. Custom tokens save with your browser collection and can be backed up through card files.
+
 ## Tile environments
 
 Add **Environment** in the card studio and choose a terrain type. Elemental Spring and Blight support a chosen edge or every edge; their amount can be 1–5. Bastion and War Banner also support amounts of 1–5.
@@ -244,6 +257,7 @@ New Draft pools, merchant inscriptions, shrines, and transformations can offer t
 - `src/CardInspection.tsx` and `src/KeywordEditor.tsx`: enlarged card rules and directional keyword editing.
 - `src/effects.ts` and `src/BoardEffects.tsx`: queued next-card changes, seven tile environments, visible markers, and pending-effect summaries.
 - `src/conjure.ts`: specified/random card generation, recipients, hand limits, unique temporary copies, and resolved histories.
+- `src/tokens.ts`: six starter token templates, custom token storage, deck eligibility, and card-file dependencies.
 - `src/tribes.ts` and `src/TribeEditor.tsx`: portrait tribe tags, card-maker editing, collection filters, and shared effect conditions.
 - `src/cardDefaults.ts`: validated browser storage and shared character definitions for new normal, Draft, and Adventure cards.
 - `src/adventure.ts` and `src/Expedition.tsx`: saved adventure state, rewards, encounters, potions, merchants, boss conditions, and adventure interface.

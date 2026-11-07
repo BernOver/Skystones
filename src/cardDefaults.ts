@@ -33,6 +33,8 @@ export function parseCharacterDefaults(value: unknown): CharacterDefaults {
       entry.card?.id === original.id &&
       entry.card.characterKey === key &&
       entry.card.defaultRevision === undefined &&
+      !entry.card.token &&
+      !entry.card.conjured &&
       validateStone({ ...entry.card, id: "custom-default-validation" })
     )
       result[key] = structuredClone(entry);

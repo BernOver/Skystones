@@ -26,6 +26,7 @@ import { KeywordDetails } from "./CardInspection";
 import { TribeSelect } from "./TribeEditor";
 import type { ComboCondition } from "./tribes";
 import { CONJURE_CARDS, MAX_HAND_CARDS } from "./conjure";
+import { readTokens } from "./tokens";
 
 export function defaultKeyword(
   type: KeywordType,
@@ -139,16 +140,25 @@ function Fields({
                         count: keyword.count,
                         recipient: keyword.recipient,
                       }
-                    : {
-                        type: "conjure",
-                        mode: "random",
-                        count: keyword.count,
-                        recipient: keyword.recipient,
-                      },
+                    : event.target.value === "token"
+                      ? {
+                          type: "conjure",
+                          mode: "token",
+                          token: readTokens()[0].id,
+                          count: keyword.count,
+                          recipient: keyword.recipient,
+                        }
+                      : {
+                          type: "conjure",
+                          mode: "random",
+                          count: keyword.count,
+                          recipient: keyword.recipient,
+                        },
                 )
               }
             >
               <option value="specific">Specified card</option>
+              <option value="token">Specified token</option>
               <option value="random">Random cards</option>
             </select>
           </label>
@@ -171,8 +181,47 @@ function Fields({
                   ))}
               </select>
             </label>
+          ) : keyword.mode === "token" ? (
+            <label>
+              Specified token
+              <select
+                aria-label={`Specified token · ${label}`}
+                value={keyword.token}
+                onChange={(event) =>
+                  onChange({ ...keyword, token: event.target.value })
+                }
+              >
+                {!readTokens().some((token) => token.id === keyword.token) && (
+                  <option value={keyword.token}>
+                    Missing token · choose another
+                  </option>
+                )}
+                {readTokens().map((token) => (
+                  <option key={token.id} value={token.id}>
+                    {token.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           ) : (
             <>
+              <label>
+                Random pool
+                <select
+                  aria-label={`Random pool · ${label}`}
+                  value={keyword.pool || "cards"}
+                  onChange={(event) =>
+                    onChange({
+                      ...keyword,
+                      pool: event.target.value as "cards" | "tokens" | "all",
+                    })
+                  }
+                >
+                  <option value="cards">Normal cards</option>
+                  <option value="tokens">Tokens only</option>
+                  <option value="all">Cards and tokens</option>
+                </select>
+              </label>
               <label>
                 Random element
                 <select
@@ -206,7 +255,8 @@ function Fields({
           <small>
             Cards arrive after this play and last for this battle. Saved
             character defaults apply. Hand limit: {MAX_HAND_CARDS}. Add another
-            Conjure entry for a different specified card.
+            Conjure entry for a different specified card. Token templates are in
+            Collection → Tokens. They can only enter a hand through Conjure.
           </small>
         </div>
       )}

@@ -112,6 +112,21 @@ battle only. Adventure saves them without repairing intentional duplicates;
 they never join your pack or change saved Draft picks. New Draft pools, shops,
 shrines, and transformations can offer Conjure.
 
+Token cards are available ONLY through Conjure. Collection > Tokens includes
+Chompy Seedling, Arkeyan Drone, Fire Spark, Water Wisp, Shadow Decoy, and Magic
+Echo. Choose Create a token, or check Token only in Card studio. Set its pips,
+element, tribes, portrait, and keywords, then Save token template.
+On another card choose Conjure > Card source > Specified token. Random Conjure
+can use Normal cards, Tokens only, or Cards and tokens; filters still apply.
+The normal random pool stays unchanged unless you select a token pool.
+Tokens never enter starting decks, Draft pools, Adventure packs, rewards, or
+shops as ordinary cards. They keep their own template stats rather than using
+character defaults. Token keywords activate when played, never on creation.
+Generated copies last for the battle and save with Adventure progress. Template
+edits affect future copies only. Starter templates have Restore token default.
+Exporting a token or Conjure card includes its needed token templates; importing
+installs them too. Matching token IDs update the template. File limit: 16 MB.
+
 Cards are saved in your browser. Keep this file in the same folder and use the
 same browser to retain your collection. Export card files from Collection to
 back them up or move them to another computer.

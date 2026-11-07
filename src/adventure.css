@@ -40,7 +40,11 @@
   margin: 0 auto;
 }
 .deck-shelf:has(.deck-slot:nth-child(8)) .deck-slots {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.deck-shelf:has(.deck-slot:nth-child(8)) .deck-slot {
+  width: 100%;
 }
 .board-size-label {
   display: block;

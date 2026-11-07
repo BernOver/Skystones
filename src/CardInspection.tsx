@@ -160,12 +160,13 @@ export function KeywordDetails({
                     ),
                 )}
                 <p>
-                  Copies use the character’s saved default, or its fixed base
-                  for this mode. They are playable on later turns and last for
-                  this battle. They do not join your Adventure pack. Each hand
-                  holds up to {MAX_HAND_CARDS} cards; excess cards are skipped.
-                  Random filters must all match. If no cards match, none are
-                  added.
+                  Normal cards use the character’s saved default, or its fixed
+                  base for this mode. Tokens use their saved token template and
+                  can only be generated through Conjure. Copies are playable on
+                  later turns and last for this battle. They do not join your
+                  Adventure pack. Each hand holds up to {MAX_HAND_CARDS} cards;
+                  excess cards are skipped. Random filters must all match. If no
+                  cards match, none are added.
                 </p>
                 {conjurations
                   ?.filter(
@@ -729,6 +730,11 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         )}
       </div>
       <TribeBadges stone={stone} />
+      {stone.token && (
+        <p className="conjured-notice">
+          Token · available only through Conjure.
+        </p>
+      )}
       {stone.conjured && (
         <p className="conjured-notice">
           Conjured card · lasts for this battle only.
