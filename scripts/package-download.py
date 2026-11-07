@@ -27,6 +27,11 @@ Captured cards flip to show their new owner, then stay fully visible.
 Arkeyan Bomber has 3 pips on its right edge and 0 on its left.
 Sunder can repeat on the same edge. Choose a target for each entry; all
 entries resolve in order, before captures. Repeated Any-edge Sunder is allowed.
+Head Start and Comeback support Bonus pips from 1-99 in Card studio. Head Start
+activates while winning before placement, Comeback while losing. A tie triggers
+neither. Older cards default to +1. Configured amounts also work through Combo,
+Next Play, and Conjure. Check once on play; bonuses stay after score changes or
+captures unless Silence removes them. Ordinary pip strengths cap at 99.
 Adventure characters have fixed starting pips and keywords across runs.
 Random packs and offers avoid duplicate characters; old saves repair them.
 Original Skystones bases match their pictures and start without keywords.
@@ -42,6 +47,16 @@ default in the character details to reset it. Defaults save in this browser.
 Use Card studio to make a stone. Selecting a portrait updates its name to
 that character; you can edit the name afterward. Save it, then add it to your
 deck in Collection.
+Multiple saved decks: in Collection, use New deck, Duplicate deck, Rename deck,
+and Delete deck. Give each deck a name and choose 3x3 (5 cards) or 4x4 (8 cards).
+Edits save automatically in this browser, even before the deck is complete.
+Your existing selection becomes My deck. Switch with Saved deck in Collection
+or Match deck when starting a new match. A complete selected deck supplies your
+exact hand. Board sizes remember their last selected deck; the first switch to
+a new size creates a separate resized copy and keeps the original.
+Deleting a deck keeps the cards. Deleting a custom card or turning it into a
+token removes it from every saved deck. Incomplete decks need replacements
+before starting a new match. The current match keeps its hand and board.
 Use Adventure for the roguelike expedition. Both normal matches and adventures
 offer 3x3 (5-card hands) and 4x4 (8-card hands) boards.
 Use Draft for a two-player shared-pool draft, then play with your drafted hands.

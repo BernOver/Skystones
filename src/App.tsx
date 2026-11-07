@@ -60,7 +60,6 @@ import {
   boardSize,
   cardEdges,
   handSize,
-  DEFAULT_DECK,
   ELEMENTS,
   EMPTY_BOARD,
   STARTER_STONES,
@@ -105,13 +104,26 @@ import { TargetPicker } from "./TargetPicker";
 import { Draft } from "./Draft";
 import { Expedition } from "./Expedition";
 import { GIANTS_STONES, GIANTS_REFERENCE } from "./giants";
-import { CHARACTER_STONES, ENEMY_STONES, migrateDeckId } from "./characters";
+import { CHARACTER_STONES, ENEMY_STONES } from "./characters";
 import { PortraitPicker } from "./PortraitPicker";
+import { DeckManager, DeckSelect, DeckForm } from "./DeckManager";
+import type { DeckAction } from "./DeckManager";
+import {
+  restoreDecks,
+  synchronizeDecks,
+  selectSavedDeck,
+  createSavedDeck,
+  renameSavedDeck,
+  deleteSavedDeck,
+  deckForBoardSize,
+} from "./decks";
+import type { DeckState } from "./decks";
 
 type Page = "table" | "collection" | "studio" | "run" | "draft";
 type Mode = "computer" | "local";
 type DialogState =
   | { kind: "rules" | "new" | "skins" }
+  | { kind: "deck"; action: DeckAction }
   | { kind: "card" | "delete"; stone: Stone }
   | { kind: "inspect"; inspection: Inspection }
   | {
@@ -121,11 +133,9 @@ type DialogState =
       targets: KeywordTarget[];
     }
   | null;
-interface Library {
+interface Library extends DeckState {
   custom: Stone[];
-  deck: string[];
   sound: boolean;
-  boardSize: BoardSize;
   boardSkin: BoardSkinId;
   opponent: OpponentId;
 }
@@ -165,7 +175,11 @@ const freshDraft = (): Stone => ({
 function readLibrary(): Library {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (value && Array.isArray(value.custom) && Array.isArray(value.deck)) {
+    if (
+      value &&
+      Array.isArray(value.custom) &&
+      (Array.isArray(value.deck) || Array.isArray(value.decks))
+    ) {
       const custom: Stone[] = value.custom
         .filter(validateStone)
         .filter((card: Stone) => !card.token || tokenDefinition(card))
@@ -175,20 +189,10 @@ function readLibrary(): Library {
           .filter(deckEligible)
           .map((s) => s.id),
       );
-      const size: BoardSize = value.boardSize === 4 ? 4 : 3;
-      const deck = [
-        ...new Set<string>(
-          value.deck
-            .filter((id: unknown): id is string => typeof id === "string")
-            .map(migrateDeckId)
-            .filter((id: string) => ids.has(id)),
-        ),
-      ].slice(0, handSize(size));
       return {
         custom,
-        deck,
+        ...restoreDecks(value, ids),
         sound: value.sound === true,
-        boardSize: size,
         boardSkin: boardSkin(value.boardSkin),
         opponent: opponent(value.opponent).id,
       };
@@ -198,9 +202,11 @@ function readLibrary(): Library {
   }
   return {
     custom: [],
-    deck: DEFAULT_DECK,
+    ...restoreDecks(
+      null,
+      new Set([...CHARACTER_STONES, ...GIANTS_STONES].map((card) => card.id)),
+    ),
     sound: false,
-    boardSize: 3,
     boardSkin: "giants",
     opponent: OPPONENTS[0].id,
   };
@@ -544,7 +550,7 @@ export default function App() {
           .filter(deckEligible)
           .map((card) => card.id),
       );
-      next = { ...next, deck: next.deck.filter((id) => allowed.has(id)) };
+      next = { ...next, ...synchronizeDecks(next, allowed) };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setLibrary(next);
       return true;
@@ -769,16 +775,44 @@ export default function App() {
     });
   }
   function changeBoardSize(next: BoardSize) {
-    const count = handSize(next);
-    let deck = library.deck.slice(0, count);
-    if (library.deck.length === capacity)
-      deck = [
-        ...new Set([
-          ...deck,
-          ...collection.filter(deckEligible).map((stone) => stone.id),
-        ]),
-      ].slice(0, count);
-    saveLibrary({ ...library, boardSize: next, deck });
+    saveLibrary({
+      ...library,
+      ...deckForBoardSize(
+        library,
+        next,
+        collection.filter(deckEligible).map((stone) => stone.id),
+        `deck-${createId()}`,
+      ),
+    });
+  }
+  function switchDeck(id: string) {
+    saveLibrary({ ...library, ...selectSavedDeck(library, id) });
+  }
+  function manageDeck(
+    action: DeckAction,
+    name: string,
+    size: BoardSize,
+  ): boolean {
+    const next =
+      action === "delete"
+        ? deleteSavedDeck(library)
+        : action === "rename"
+          ? renameSavedDeck(library, name)
+          : createSavedDeck(
+              library,
+              `deck-${createId()}`,
+              name,
+              action === "duplicate",
+              size,
+            );
+    if (!saveLibrary({ ...library, ...next })) return false;
+    setDialog(null);
+    setToast(
+      action === "delete"
+        ? "Deck deleted. Your cards are still in the collection."
+        : `“${name.trim()}” saved.`,
+    );
+    return true;
   }
   function saveDraft(event: React.FormEvent) {
     event.preventDefault();
@@ -1674,6 +1708,11 @@ export default function App() {
               </div>
             </div>
 
+            <DeckManager
+              state={library}
+              onSelect={switchDeck}
+              onAction={(action) => setDialog({ kind: "deck", action })}
+            />
             <section className="deck-shelf">
               <div className="deck-intro">
                 <span className="eyebrow">YOUR NEXT ADVENTURE</span>
@@ -2477,14 +2516,15 @@ export default function App() {
           <div className="rules-note keyword-rules-note">
             <Info size={19} />
             <p>
-              <strong>Head Start</strong> adds +1 to its specified edge if its
-              player is winning before placement. <strong>Comeback</strong> does
-              the same while losing. Neither of those activates on a tie.{" "}
-              <strong>Resonance</strong> adds one pip per card of a chosen
-              element already on the board, from either player, regardless of
-              score. Check once before placement, excluding the card being
-              played: activated pips stay even if the score changes or the stone
-              is captured, unless removed by Silence.
+              <strong>Head Start</strong> adds its stated pips to its specified
+              edge if its player is winning before placement.{" "}
+              <strong>Comeback</strong> does the same while losing. Set Bonus
+              pips from 1–99 in the card studio; older cards default to +1.
+              Neither activates on a tie. <strong>Resonance</strong> adds one
+              pip per card of a chosen element already on the board, from either
+              player, regardless of score. Check once before placement,
+              excluding the card being played: activated pips stay even if the
+              score changes or the stone is captured, unless removed by Silence.
             </p>
           </div>
           <div className="rules-note keyword-rules-note">
@@ -2627,6 +2667,13 @@ export default function App() {
             Your {capacity} stones. A {library.boardSize}×{library.boardSize}{" "}
             board of possibilities.
           </p>
+          <div className="saved-deck-match">
+            <DeckSelect
+              state={library}
+              onSelect={switchDeck}
+              label="Match deck"
+            />
+          </div>
           <div className="mode-options">
             <button
               className={newMode === "computer" ? "active" : ""}
@@ -2877,6 +2924,28 @@ export default function App() {
         </Dialog>
       )}
 
+      {dialog?.kind === "deck" && (
+        <Dialog
+          title={
+            {
+              new: "Create a deck",
+              duplicate: "Duplicate deck",
+              rename: "Rename deck",
+              delete: "Delete deck",
+            }[dialog.action]
+          }
+          onClose={() => setDialog(null)}
+          className="deck-edit-dialog"
+        >
+          <DeckForm
+            key={`${dialog.action}-${library.activeDeckId}`}
+            state={library}
+            action={dialog.action}
+            onConfirm={(name, size) => manageDeck(dialog.action, name, size)}
+            onCancel={() => setDialog(null)}
+          />
+        </Dialog>
+      )}
       {dialog?.kind === "delete" && (
         <Dialog
           title="Delete custom stone"
@@ -2888,9 +2957,9 @@ export default function App() {
           </span>
           <h2>Say a little goodbye?</h2>
           <p className="dialog-intro">
-            {dialog.stone.name} will be removed from your collection and deck.
-            Your current match will keep its stones. Export a card file first if
-            you’d like a backup.
+            {dialog.stone.name} will be removed from your collection and all
+            saved decks. Your current match will keep its stones. Export a card
+            file first if you’d like a backup.
           </p>
           <div className="detail-actions">
             <button

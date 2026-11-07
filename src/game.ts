@@ -80,7 +80,7 @@ export type ShiftKeyword = {
 export type TargetKeyword =
   { type: "sunder"; side: Side | "any"; amount?: number } | { type: "silence" };
 export type BasicKeyword =
-  | { type: "head-start" | "comeback"; side: Side }
+  | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | { type: "resonance"; side: Side; element: Element; tribe?: Tribe }
   | { type: "dizzy"; sides?: Side[] }
   | { type: "shield"; side: Side; amount?: number }
@@ -105,7 +105,7 @@ export type ComboKeyword = {
 };
 export type StoneKeyword = BasicKeyword | ComboKeyword;
 export type ActiveKeyword =
-  | { type: "head-start" | "comeback"; side: Side }
+  | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | {
       type: "resonance";
       side: Side;
@@ -504,17 +504,15 @@ export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
         : scores[player] < scores[rival])
     ) {
       activeKeywords.push(keyword);
-      edges[keyword.side] += 1;
+      edges[keyword.side] += keyword.amount ?? 1;
     }
   }
   const inheritedPips = nextPipModifiers(board, player, stone);
   const hasInherited = inheritedPips.some(Boolean);
   return {
-    edges: hasInherited
-      ? (edges.map((edge, side) =>
-          Math.max(0, Math.min(99, edge + inheritedPips[side])),
-        ) as Edges)
-      : edges,
+    edges: edges.map((edge, side) =>
+      Math.max(0, Math.min(99, edge + inheritedPips[side])),
+    ) as Edges,
     ...(hasInherited ? { inheritedPips } : {}),
     activeKeywords,
     shields: shieldEdges(stone, false, combo.granted),
@@ -1294,7 +1292,9 @@ export function validateKeywords(
     )
       return false;
     if (
-      keyword.type === "shield" &&
+      (keyword.type === "shield" ||
+        keyword.type === "head-start" ||
+        keyword.type === "comeback") &&
       keyword.amount !== undefined &&
       (!Number.isInteger(keyword.amount) ||
         keyword.amount < 1 ||

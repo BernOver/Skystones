@@ -647,9 +647,20 @@ export function KeywordDetails({
               </div>
               <p>
                 If its player is{" "}
-                <strong>{rule.condition} before placement</strong>,{" "}
-                {keywords.length === 1 ? "this edge gains" : "these edges gain"}{" "}
-                <strong>+1 pip</strong> for the rest of the match.
+                <strong>{rule.condition} before placement</strong>, gain{" "}
+                <strong>
+                  {keywords
+                    .flatMap((keyword) =>
+                      keyword.type === "head-start" ||
+                      keyword.type === "comeback"
+                        ? [
+                            `${SIDE_NAMES[keyword.side]} +${keyword.amount ?? 1} pip${(keyword.amount ?? 1) === 1 ? "" : "s"}`,
+                          ]
+                        : [],
+                    )
+                    .join(" · ")}
+                </strong>{" "}
+                for the rest of the match.
               </p>
               {activeKeywords !== undefined && (
                 <span className={`keyword-status ${active ? "is-active" : ""}`}>

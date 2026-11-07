@@ -713,7 +713,7 @@ export const StoneCard = memo(
                                         : "ON PLAY"
                                     : keyword.side === "any"
                                       ? "ANY EDGE"
-                                      : SIDE_LETTERS[keyword.side],
+                                      : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
                         )
                         .join("/")}
                     </b>

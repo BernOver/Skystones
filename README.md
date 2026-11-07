@@ -42,12 +42,18 @@ Select a stone from your hand, then an empty square. A higher facing edge captur
 
 - Choose one of **ten Skylanders villains** in **New match → Opponent**, including Chompy Mage, Wolfgang, Kaos, and Golden Queen. Their character portraits and names appear beside the board. The computer weighs captures and possible counterattacks. Your opponent preference is saved in this browser.
 - Choose **New match → Bring a friend** for local two-player play. Player one uses your selected deck; player two receives a shuffled original deck.
-- Choose **3×3** for five-card hands and nine squares, or **4×4** for eight-card hands and sixteen squares. Both computer and local play support either board. Choose the board size in New match or Collection; a complete deck automatically expands or trims when switching size.
+- Choose **3×3** for five-card hands and nine squares, or **4×4** for eight-card hands and sixteen squares. Both computer and local play support either board. Changing board size recalls your last selected deck for that size. The first switch to a size makes a separate resized copy of your current deck; a complete deck expands or trims, while an incomplete deck stays incomplete.
 - In **Collection**, choose exactly five or eight distinct stones for your next game, depending on the board size. Deck changes do not modify a match in progress.
 - In **Card studio**, name your stone, select a creature and element, or upload a PNG, JPEG, or WebP image up to 2 MB. Set each edge from 0–5, with a total budget of 12 points.
 - Save your creation, then add it to your deck in Collection. Elements determine Resonance counts; captures still compare facing pips.
 - Cards show their artwork and pips without hovering, including after a capture flip. Hover over a card in your hand or on the board for an enlarged card, edge strengths, keyword explanations, and backstory. Keyboard focus also opens the larger view. On touch screens, tap a board card, or select a hand card and choose **Inspect selected**.
 - Download card images as PNG files. Export and import `.skystone.json` card files to back up or share playable cards.
+
+## Saved decks
+
+Open **Collection → Saved deck** to keep multiple named decks. **New deck** starts an empty deck for either board size. **Duplicate deck** copies your current cards into a separate slot; **Rename deck** changes its name. Edits save automatically in this browser, including incomplete decks, and survive reloads. Your old selection carries over as **My deck**. Each slot holds five distinct cards for 3×3 or eight for 4×4.
+
+Switch decks in Collection or **New match → Match deck**. Selecting a deck also selects its board size, and each size remembers the last deck you used. A new match uses exactly the selected deck once it is complete. Saved decks reference your cards, so character-default edits apply to new games normally. Deleting a custom card or turning it into a Conjure-only token removes it from every deck; affected slots remain incomplete until you choose replacements. Deleting a deck keeps its cards in your collection. A match already in progress keeps its hand and board.
 
 ## Board skins and enemy portraits
 
@@ -184,8 +190,8 @@ Player one nominates first, then player two selects from the remaining cards. Af
 
 Add keywords in the card studio. For Resonance, choose the element to count. For Sunder, choose a fixed edge or choose the edge when played, and set the number of pips to remove. Silence needs no edge; Dizzy lets you select one or more edges. Built-in Skylanders demonstrate the keyword effects.
 
-- **Head Start:** the specified edge gains **+1 pip** if the player is winning immediately before playing that card.
-- **Comeback:** the specified edge gains **+1 pip** if the player is losing immediately before playing that card.
+- **Head Start:** the specified edge gains its **stated number of pips** if the player is winning immediately before playing that card. Set **Bonus pips** from **1–99** in the studio; older cards default to +1. For example, Head Start 3 adds +3 on its printed edge. Ordinary strengths cap at 99.
+- **Comeback:** the specified edge gains its **stated number of pips** if the player is losing immediately before playing that card. It uses the same **Bonus pips** setting and +1 legacy default as Head Start. Amounts also work when granted through Combo, Next Play, or Conjure. Eligibility is checked once before placement; a tie activates neither. Activated bonuses stay until Silence removes them.
 - **Resonance:** the specified edge gains **+1 pip for every card of the chosen element already on the board**, counting both players' cards. For example, **Resonance · Fire · East** adds **+3 East pips** if there are three Fire cards on the board. The card being played does not count, even if it is also Fire.
 - **Sunder:** choose a card already on the board. Remove **up to its stated number of pips from the target edge**, to a minimum of zero. Set **Pips removed** from 1–99 in Card studio; older cards default to 1. For example, Sunder 3 reduces a five-pip edge to two, or a two-pip edge to zero. Set **Target edge → Any · choose when played** for a flexible version: when played, select any card anywhere on the board, then choose North, East, South, or West. Only edges with at least one pip can be chosen. Fixed-edge Sunder remains available, and both versions can appear on the same card. The actual reduction is recorded in the hover preview and move log, and remains through captures and Silence.
 - **Silence:** choose a card already on the board. **Disable all its keywords and remove their pip bonuses** for the rest of the match. It restores printed stats minus recorded damage, including undoing a Dizzy roll. Its element remains. Earlier captures and resolved Sunder/Silence effects stay; Silence does not reverse past actions.

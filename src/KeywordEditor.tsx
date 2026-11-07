@@ -693,13 +693,20 @@ function Fields({
           )}
         </div>
       )}
-      {(keyword.type === "sunder" || keyword.type === "shield") && (
+      {(keyword.type === "sunder" ||
+        keyword.type === "shield" ||
+        keyword.type === "head-start" ||
+        keyword.type === "comeback") && (
         <div className="sunder-strength-field">
           <label>
-            {keyword.type === "sunder" ? "Pips removed" : "Shield pips"}{" "}
+            {keyword.type === "sunder"
+              ? "Pips removed"
+              : keyword.type === "shield"
+                ? "Shield pips"
+                : "Bonus pips"}{" "}
             {suffix}
             <input
-              aria-label={`${keyword.type === "sunder" ? "Pips removed" : "Shield pips"} ${label.replace("Keyword ", "")}`}
+              aria-label={`${keyword.type === "sunder" ? "Pips removed" : keyword.type === "shield" ? "Shield pips" : "Bonus pips"} ${label.replace("Keyword ", "")}`}
               type="number"
               min={1}
               max={99}
@@ -764,7 +771,7 @@ function GrantKeywordFields({
         return (
           <div className="next-grant-entry" key={index}>
             <div
-              className={`keyword-editor-row ${grant.type === "resonance" ? "has-element" : ""} ${grant.type === "sunder" || grant.type === "shield" ? "has-strength" : ""} ${!("side" in grant) ? "no-edge" : ""}`}
+              className={`keyword-editor-row ${grant.type === "resonance" ? "has-element" : ""} ${grant.type === "sunder" || grant.type === "shield" || grant.type === "head-start" || grant.type === "comeback" ? "has-strength" : ""} ${!("side" in grant) ? "no-edge" : ""}`}
             >
               <Fields
                 keyword={grant}
@@ -1032,7 +1039,7 @@ export function KeywordEditor({
         {keywords.map((keyword, index) => (
           <div className="keyword-editor-entry" key={index}>
             <div
-              className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" || keyword.type === "shield" ? "has-strength" : ""} ${!("side" in keyword) ? "no-edge" : ""}`}
+              className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" || keyword.type === "shield" || keyword.type === "head-start" || keyword.type === "comeback" ? "has-strength" : ""} ${!("side" in keyword) ? "no-edge" : ""}`}
             >
               <Fields
                 keyword={keyword}
@@ -1098,8 +1105,9 @@ export function KeywordEditor({
       ) : (
         <div className="keyword-editor-intro">
           <p>
-            <strong>Head Start</strong> gives +1 while winning before placement.{" "}
-            <strong>Comeback</strong> gives +1 while losing.
+            <strong>Head Start</strong> gives its stated pips while winning
+            before placement. <strong>Comeback</strong> does so while losing.
+            Set Bonus pips from 1–99; older cards default to 1.
           </p>
           <p>
             <strong>Resonance</strong> counts matching elements on both sides

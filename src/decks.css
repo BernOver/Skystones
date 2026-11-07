@@ -1,0 +1,98 @@
+.saved-deck-manager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  background: #f6f4ec;
+  border: 1px solid #e0e2d1;
+  border-radius: 13px;
+}
+.saved-deck-choice {
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 440px;
+}
+.saved-deck-choice p {
+  margin: 7px 0 0;
+  font-size: 11px;
+  color: #7b8575;
+}
+.saved-deck-select,
+.saved-deck-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #647665;
+}
+.saved-deck-select select,
+.saved-deck-form input,
+.saved-deck-form select {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d8ddcd;
+  border-radius: 7px;
+  background: #fffdf7;
+  color: #344a43;
+  font: inherit;
+  text-overflow: ellipsis;
+}
+.saved-deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.saved-deck-actions .button {
+  padding: 10px 12px;
+  font-size: 11px;
+  gap: 6px;
+  min-height: 40px;
+}
+.saved-deck-actions .button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.saved-deck-match {
+  margin: 22px 0;
+  text-align: left;
+}
+.saved-deck-form > label {
+  margin: 20px 0;
+  text-align: left;
+}
+.saved-deck-form > p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #738174;
+  overflow-wrap: anywhere;
+}
+.saved-deck-form .detail-actions {
+  margin-top: 24px;
+}
+@media (max-width: 600px) {
+  .saved-deck-manager {
+    padding: 16px;
+    gap: 14px;
+  }
+  .saved-deck-choice {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .saved-deck-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .saved-deck-actions .button {
+    padding: 10px 7px;
+    font-size: 10px;
+  }
+}
