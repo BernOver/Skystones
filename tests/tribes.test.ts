@@ -498,6 +498,7 @@ test("new merchants can offer tribe-qualified conditions without changing saved 
   }
   assert.deepEqual([...kinds].sort(), [
     "combo",
+    "conjure",
     "environment",
     "next-play",
     "resonance",

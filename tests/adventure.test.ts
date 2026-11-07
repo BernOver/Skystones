@@ -293,12 +293,18 @@ test("shop purchases charge exactly once, upgrades persist, and failed purchases
   });
   assert.equal(inscribed.gold, 120);
   assert.deepEqual(inscribed.inventory[0].keywords, [offer.keyword]);
-  assert.throws(() =>
+  const inscribeAgain = () =>
     buyAdventureService(inscribed, {
       type: "keyword",
       cardId: stone.id,
-    }),
-  );
+    });
+  if (
+    ["sunder", "next-play", "environment", "conjure"].includes(
+      offer.keyword.type,
+    )
+  )
+    assert.equal(inscribeAgain().gold, 85);
+  else assert.throws(inscribeAgain);
   const bought = buyAdventureCard(inscribed, shop.shopCards[0].id);
   assert.equal(bought.gold, 120 - cardPrice(shop.shopCards[0]));
   assert.equal(bought.inventory.length, shop.inventory.length + 1);

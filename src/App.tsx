@@ -90,6 +90,7 @@ import {
 } from "./CardInspection";
 import type { Inspection } from "./CardInspection";
 import { KeywordEditor } from "./KeywordEditor";
+import { applyConjure, CONJURE_CARDS, conjurationSummary } from "./conjure";
 import { TargetPicker } from "./TargetPicker";
 import { Draft } from "./Draft";
 import { Expedition } from "./Expedition";
@@ -239,15 +240,23 @@ function applyMove(
   targets: KeywordTarget[] = [],
 ): Match {
   const stone = match.hands[match.current][cardIndex];
+  const seed = Math.floor(Math.random() * 0x100000000);
   const move = placeStone(match.board, index, stone, match.current, targets, {
-    seed: Math.floor(Math.random() * 0x100000000),
+    seed,
   });
   const hands: [Stone[], Stone[]] = [[...match.hands[0]], [...match.hands[1]]];
   hands[match.current].splice(cardIndex, 1);
+  const conjured = applyConjure(
+    move.board,
+    index,
+    hands,
+    () => CONJURE_CARDS.map((card) => characterDefault(card)),
+    seed ^ 0x27d4eb2d,
+  );
   return {
     ...match,
-    board: move.board,
-    hands,
+    board: conjured.board,
+    hands: conjured.hands,
     current: match.current === 0 ? 1 : 0,
     moves: match.moves + 1,
     lastCaptured: move.captured,
@@ -258,11 +267,21 @@ function applyMove(
         owner: match.current,
         text: `${stone.name} → ${coordinate(index, boardSize(match.board))}`,
         captured: move.captured.length,
-        effects: move.effects
-          .map(
-            (effect) =>
-              `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, boardSize(match.board))}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
-          )
+        effects: [
+          move.effects
+            .map(
+              (effect) =>
+                `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, boardSize(match.board))}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
+            )
+            .join(" · "),
+          conjurationSummary(
+            conjured.conjurations,
+            match.mode === "local"
+              ? ["Player one", "Player two"]
+              : ["You", "Rival"],
+          ),
+        ]
+          .filter(Boolean)
           .join(" · "),
       },
       ...match.entries,
@@ -551,6 +570,8 @@ export default function App() {
       silenced: cell?.silenced,
       reductions: cell?.reductions,
       effects: cell?.effects,
+      conjurations: cell?.conjurations,
+      playerNames: names,
       dizzy: cell?.dizzy,
       environment: cell?.environment,
       size,
@@ -1300,7 +1321,9 @@ export default function App() {
                       <ArrowUpRight size={14} />
                     </button>
                   </div>
-                  <div className={`hand-cards hand-size-${handSize(size)}`}>
+                  <div
+                    className={`hand-cards hand-size-${handSize(size)} ${shownHand.length > handSize(size) ? "expanded-hand" : ""}`}
+                  >
                     {shownHand.map((stone, index) => (
                       <button
                         id={`hand-${stone.id}`}
@@ -2354,6 +2377,16 @@ export default function App() {
               not affect the caster, and canceled plays spend none. A chosen
               recipient tribe waits for the next matching card; other cards do
               not spend it.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Sparkles size={19} />
+            <p>
+              <strong>Conjure</strong> adds 1–5 specified or random cards to
+              your hand, the opponent’s hand, or both after this play. Random
+              cards can match an element and/or tribe. Copies last for this
+              battle and do not join your Adventure pack. Each hand holds up to
+              20 cards; extra copies are skipped. Canceled plays add nothing.
             </p>
           </div>
           <div className="rule-line">

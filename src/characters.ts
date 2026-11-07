@@ -6533,6 +6533,7 @@ export function uniqueCharacters(
 ): Stone[] {
   const used = [...excluded];
   return cards.map((stone) => {
+    if (stone.conjured) return stone;
     if (
       !used.includes(characterIdentity(stone)) ||
       stone.id.startsWith("custom-duplicate-")

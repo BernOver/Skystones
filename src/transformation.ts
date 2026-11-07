@@ -58,6 +58,7 @@ export function transformedCard(
     );
   const elements = Object.keys(ELEMENTS) as Element[],
     candidates: StoneKeyword[] = [
+      { type: "conjure", mode: "random", count: 1, recipient: "self" },
       { type: "silence" },
       { type: "dizzy", sides: [Math.floor(rng() * 4) as Side] },
       {

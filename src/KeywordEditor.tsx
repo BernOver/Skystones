@@ -25,6 +25,7 @@ import type {
 import { KeywordDetails } from "./CardInspection";
 import { TribeSelect } from "./TribeEditor";
 import type { ComboCondition } from "./tribes";
+import { CONJURE_CARDS, MAX_HAND_CARDS } from "./conjure";
 
 export function defaultKeyword(
   type: KeywordType,
@@ -37,6 +38,14 @@ export function defaultKeyword(
   if (type === "next-play") return { type, side, amount: 1, recipient: "self" };
   if (type === "environment")
     return { type, environment: defaultEnvironment("elemental", element) };
+  if (type === "conjure")
+    return {
+      type,
+      mode: "specific",
+      card: "spyro",
+      count: 1,
+      recipient: "self",
+    };
   if (type === "resonance") return { type, side, element };
   return { type, side };
 }
@@ -80,6 +89,127 @@ function Fields({
           </select>
         </label>
       </div>
+      {keyword.type === "conjure" && (
+        <div className="effect-editor-options conjure-editor-options">
+          <label>
+            Receiving player
+            <select
+              aria-label={`Receiving player · ${label}`}
+              value={keyword.recipient}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  recipient: event.target.value as "self" | "opponent" | "both",
+                })
+              }
+            >
+              <option value="self">Your hand</option>
+              <option value="opponent">Opponent’s hand</option>
+              <option value="both">Both players’ hands</option>
+            </select>
+          </label>
+          <label>
+            Cards added
+            <select
+              aria-label={`Cards added · ${label}`}
+              value={keyword.count}
+              onChange={(event) =>
+                onChange({ ...keyword, count: Number(event.target.value) })
+              }
+            >
+              {[1, 2, 3, 4, 5].map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Card source
+            <select
+              aria-label={`Card source · ${label}`}
+              value={keyword.mode}
+              onChange={(event) =>
+                onChange(
+                  event.target.value === "specific"
+                    ? {
+                        type: "conjure",
+                        mode: "specific",
+                        card: "spyro",
+                        count: keyword.count,
+                        recipient: keyword.recipient,
+                      }
+                    : {
+                        type: "conjure",
+                        mode: "random",
+                        count: keyword.count,
+                        recipient: keyword.recipient,
+                      },
+                )
+              }
+            >
+              <option value="specific">Specified card</option>
+              <option value="random">Random cards</option>
+            </select>
+          </label>
+          {keyword.mode === "specific" ? (
+            <label>
+              Specified card
+              <select
+                aria-label={`Specified card · ${label}`}
+                value={keyword.card}
+                onChange={(event) =>
+                  onChange({ ...keyword, card: event.target.value })
+                }
+              >
+                {[...CONJURE_CARDS]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((card) => (
+                    <option key={card.portrait} value={card.portrait}>
+                      {card.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : (
+            <>
+              <label>
+                Random element
+                <select
+                  aria-label={`Random element · ${label}`}
+                  value={keyword.element || ""}
+                  onChange={(event) =>
+                    onChange({
+                      ...keyword,
+                      element: (event.target.value || undefined) as
+                        Element | undefined,
+                    })
+                  }
+                >
+                  <option value="">Any element</option>
+                  {Object.entries(ELEMENTS).map(([id, info]) => (
+                    <option key={id} value={id}>
+                      {info.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <TribeSelect
+                label={`Random tribe · ${label}`}
+                value={keyword.tribe || ""}
+                onChange={(tribe) =>
+                  onChange({ ...keyword, tribe: tribe || undefined })
+                }
+              />
+            </>
+          )}
+          <small>
+            Cards arrive after this play and last for this battle. Saved
+            character defaults apply. Hand limit: {MAX_HAND_CARDS}. Add another
+            Conjure entry for a different specified card.
+          </small>
+        </div>
+      )}
       {keyword.type === "next-play" && (
         <div className="effect-editor-options">
           <label>
@@ -573,7 +703,7 @@ export function KeywordEditor({
     }
     if (!validateKeywords(next)) {
       setError(
-        "Choose valid effect settings and at least one Dizzy side. Sunder, Next Play, and Environment can repeat. Combo needs a pip bonus or granted keyword.",
+        "Choose valid effect settings and at least one Dizzy side. Sunder, Next Play, Environment, and Conjure can repeat. Combo needs a pip bonus or granted keyword.",
       );
       return;
     }

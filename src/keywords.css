@@ -33,6 +33,21 @@
 .keyword-silence {
   color: #8b7198;
 }
+.keyword-conjure {
+  color: #78618e;
+}
+.conjured-notice {
+  color: #78618e;
+  font-size: 11px;
+  text-align: center;
+}
+.hand-cards.expanded-hand {
+  flex-wrap: wrap;
+  row-gap: 18px;
+}
+.hand-cards.expanded-hand .hand-card-button {
+  flex-shrink: 0;
+}
 .stone-silenced .stone-keyword {
   text-decoration: line-through;
   opacity: 0.55;

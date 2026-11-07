@@ -31,7 +31,7 @@ test("shops roll all keyword types and four directions, with complete valid offe
       if (!("side" in offer.keyword))
         assert.equal("side" in offer.keyword, false);
     }
-  assert.equal(types.size, 10);
+  assert.equal(types.size, 11);
   assert.equal(directions.size, 4);
   assert.equal(pipDirections.size, 4);
   assert.ok(
@@ -76,7 +76,11 @@ test("offers survive old-format saves, card selection, and purchases without rer
   assert.deepEqual(adventureWorkshopOffer(second), offer);
   assert.equal(second.gold, bought.gold - 70);
   assert.deepEqual(shop.inventory[0].keywords, []);
-  if (!["sunder", "next-play", "environment"].includes(offer.keyword.type))
+  if (
+    !["sunder", "next-play", "environment", "conjure"].includes(
+      offer.keyword.type,
+    )
+  )
     assert.throws(() =>
       buyAdventureService(second, {
         type: "keyword",
@@ -122,9 +126,18 @@ test("purchases use the displayed random offers and reject incompatible stones w
       ...shop.inventory.slice(1),
     ],
   };
-  assert.throws(() =>
-    buyAdventureService(duplicated, { type: "keyword", cardId: stone.id }),
-  );
+  const inscribeAgain = () =>
+    buyAdventureService(duplicated, { type: "keyword", cardId: stone.id });
+  if (
+    ["sunder", "next-play", "environment", "conjure"].includes(
+      offer.keyword.type,
+    )
+  )
+    assert.deepEqual(inscribeAgain().inventory[0].keywords, [
+      offer.keyword,
+      offer.keyword,
+    ]);
+  else assert.throws(inscribeAgain);
   assert.equal(duplicated.gold, 200);
   assert.deepEqual(adventureWorkshopOffer(duplicated), offer);
   assert.throws(() =>

@@ -15,6 +15,7 @@ import {
   VolumeX,
   Shield,
   Link,
+  Sparkles,
 } from "lucide-react";
 import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
@@ -45,6 +46,8 @@ import {
   environmentAffects,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
+import { conjureText, conjurationSummary, MAX_HAND_CARDS } from "./conjure";
+import type { Conjuration } from "./conjure";
 
 export interface Inspection {
   stone: Stone;
@@ -75,6 +78,8 @@ export interface Inspection {
   arenaElement?: Element;
   environment?: TileEnvironment;
   inheritedPips?: Edges;
+  conjurations?: Conjuration[];
+  playerNames?: string[];
 }
 
 export function KeywordDetails({
@@ -83,6 +88,8 @@ export function KeywordDetails({
   played = false,
   silenced = false,
   effects,
+  conjurations,
+  playerNames = ["Player one", "Player two"],
   dizzy,
   size = 3,
   comboActive,
@@ -95,6 +102,8 @@ export function KeywordDetails({
   played?: boolean;
   silenced?: boolean;
   effects?: TargetEffect[];
+  conjurations?: Conjuration[];
+  playerNames?: string[];
   dizzy?: {
     before: Edges;
     after: Edges;
@@ -136,6 +145,45 @@ export function KeywordDetails({
       {keywordGroups(stone.keywords || []).map(
         ({ type, keywords, keywordIndex }, groupIndex) => {
           if (!keywords.length) return null;
+          if (type === "conjure")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Sparkles size={15} />
+                  <strong>Conjure</strong>
+                  <span>After this play</span>
+                </div>
+                {keywords.map(
+                  (keyword, index) =>
+                    keyword.type === "conjure" && (
+                      <p key={index}>{conjureText(keyword)}</p>
+                    ),
+                )}
+                <p>
+                  Copies use the character’s saved default, or its fixed base
+                  for this mode. They are playable on later turns and last for
+                  this battle. They do not join your Adventure pack. Each hand
+                  holds up to {MAX_HAND_CARDS} cards; excess cards are skipped.
+                  Random filters must all match. If no cards match, none are
+                  added.
+                </p>
+                {conjurations
+                  ?.filter(
+                    (record) =>
+                      record.keywordIndex === effectIndexFor(keywordIndex),
+                  )
+                  .map((record, index) => (
+                    <p className="keyword-status" key={index}>
+                      {conjurationSummary([record], playerNames)}
+                    </p>
+                  ))}
+                <span className="keyword-status">
+                  {played
+                    ? "Resolved once when played. Capture and Silence do not remove cards already added."
+                    : "Canceled plays add no cards. Repeat Conjure to add different specified cards."}
+                </span>
+              </section>
+            );
           if (type === "next-play")
             return (
               <section className="keyword-rule" key={groupIndex}>
@@ -323,6 +371,8 @@ export function KeywordDetails({
                       activeKeywords={comboActive ? activeKeywords : undefined}
                       silenced={silenced}
                       effects={comboActive ? effects : undefined}
+                      conjurations={comboActive ? conjurations : undefined}
+                      playerNames={playerNames}
                       dizzy={dizzy}
                       size={size}
                     />
@@ -679,6 +729,11 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         )}
       </div>
       <TribeBadges stone={stone} />
+      {stone.conjured && (
+        <p className="conjured-notice">
+          Conjured card · lasts for this battle only.
+        </p>
+      )}
       <div className="inspection-stats">
         {SIDE_NAMES.map((side, index) => (
           <div
@@ -799,6 +854,8 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         played={played}
         silenced={silenced}
         effects={effects}
+        conjurations={inspection.conjurations}
+        playerNames={inspection.playerNames}
         dizzy={dizzy}
         size={inspection.size}
         comboActive={inspection.comboActive}

@@ -47,6 +47,12 @@ import {
   withTileEnvironments,
 } from "./effects.ts";
 import type { EnvironmentKind } from "./effects.ts";
+import {
+  applyConjure,
+  conjurationSummary,
+  MAX_HAND_CARDS,
+  validateConjurations,
+} from "./conjure.ts";
 import type {
   Board,
   BoardSize,
@@ -1073,6 +1079,24 @@ export function playAdventureCard(
     }),
     hands: [Stone[], Stone[]] = [[...battle.hands[0]], [...battle.hands[1]]];
   hands[battle.current].splice(cardIndex, 1);
+  const conjured = applyConjure(
+    move.board,
+    index,
+    hands,
+    () =>
+      ADVENTURE_CHARACTERS.map((card) => {
+        const base = characterDefault(card);
+        return {
+          ...base,
+          baseEdges: [...base.edges] as Edges,
+          baseKeywords: structuredClone(base.keywords || []),
+        };
+      }),
+    run.seed ^
+      Math.imul(run.floor + 1, 0x27d4eb2d) ^
+      Math.imul(battle.turns + 1, 0x85ebca6b) ^
+      index,
+  );
   const bracer =
     battle.current === 0 &&
     move.captured.length > 0 &&
@@ -1083,8 +1107,10 @@ export function playAdventureCard(
     lives: bracer ? Math.min(maxLives(run), run.lives + 1) : run.lives,
     battle: {
       ...battle,
-      board: arena ? withArenaElement(move.board, arena.next) : move.board,
-      hands,
+      board: arena
+        ? withArenaElement(conjured.board, arena.next)
+        : conjured.board,
+      hands: conjured.hands,
       current: (battle.current === 0 ? 1 : 0) as Owner,
       turns: battle.turns + 1,
       captures:
@@ -1096,7 +1122,7 @@ export function playAdventureCard(
         (battle.current === 0 && hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
-        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured`,
+        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}`,
         ...battle.log,
       ].slice(0, 20),
     },
@@ -1418,42 +1444,44 @@ function rollWorkshopOffer(
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
-    type === "environment"
-      ? {
-          type,
-          environment: defaultEnvironment(
-            (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
-              Math.floor(rng() * 7)
-            ],
-            elements[Math.floor(rng() * elements.length)],
-          ),
-        }
-      : type === "next-play"
+    type === "conjure"
+      ? { type, mode: "random", count: 1, recipient: "self" }
+      : type === "environment"
         ? {
             type,
-            side: rng() < 0.5 ? "all" : side,
-            amount: rng() < 0.35 ? -1 : 1,
-            recipient: rng() < 0.35 ? "opponent" : "self",
+            environment: defaultEnvironment(
+              (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
+                Math.floor(rng() * 7)
+              ],
+              elements[Math.floor(rng() * elements.length)],
+            ),
           }
-        : type === "combo"
+        : type === "next-play"
           ? {
               type,
-              pips: [{ side, amount: 1 }],
-              keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
+              side: rng() < 0.5 ? "all" : side,
+              amount: rng() < 0.35 ? -1 : 1,
+              recipient: rng() < 0.35 ? "opponent" : "self",
             }
-          : type === "dizzy"
-            ? { type, sides: [side] }
-            : type === "silence"
-              ? { type }
-              : type === "resonance"
-                ? {
-                    type,
-                    side,
-                    element: elements[Math.floor(rng() * elements.length)],
-                  }
-                : type === "sunder"
-                  ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
-                  : { type, side };
+          : type === "combo"
+            ? {
+                type,
+                pips: [{ side, amount: 1 }],
+                keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
+              }
+            : type === "dizzy"
+              ? { type, sides: [side] }
+              : type === "silence"
+                ? { type }
+                : type === "resonance"
+                  ? {
+                      type,
+                      side,
+                      element: elements[Math.floor(rng() * elements.length)],
+                    }
+                  : type === "sunder"
+                    ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
+                    : { type, side };
   const tribeRoll =
     (run.seed ^
       Math.imul(run.floor + 1, 0x79b1) ^
@@ -1699,6 +1727,7 @@ function validBattleCard(value: unknown): value is Stone {
     stone.edges.length === 4 &&
     stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 64) &&
     (stone.tribes === undefined || validateTribes(stone.tribes)) &&
+    (stone.conjured === undefined || stone.conjured === true) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1715,6 +1744,8 @@ function validPlaced(value: unknown, length: number): boolean {
     validBattleCard(cell.stone) &&
     (cell.edges === undefined || edges(cell.edges)) &&
     (cell.environment === undefined || validateEnvironment(cell.environment)) &&
+    (cell.conjurations === undefined ||
+      validateConjurations(cell.conjurations)) &&
     (cell.inheritedPips === undefined ||
       (Array.isArray(cell.inheritedPips) &&
         cell.inheritedPips.length === 4 &&
@@ -1995,7 +2026,7 @@ export function validateAdventure(value: unknown): value is Adventure {
       !battle.hands.every(
         (hand) =>
           Array.isArray(hand) &&
-          hand.length <= handSize(run.size) &&
+          hand.length <= MAX_HAND_CARDS &&
           hand.every(validBattleCard),
       ) ||
       ![0, 1].includes(battle.current) ||
@@ -2265,7 +2296,9 @@ function repairAdventureCards(run: Adventure): Adventure {
   });
   const enemyUsed = [
     ...(board || []).flatMap((cell) =>
-      cell?.playedBy === 1 ? [characterIdentity(cell.stone)] : [],
+      cell?.playedBy === 1 && !cell.stone.conjured
+        ? [characterIdentity(cell.stone)]
+        : [],
     ),
   ];
   return {

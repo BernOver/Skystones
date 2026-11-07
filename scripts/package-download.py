@@ -97,6 +97,21 @@ Fusion combines both cards' tribes. Card-file exports include edited tags.
   Elemental Spring can match a tribe instead of an element.
 New Draft pools, shops, shrines, and transformations can offer tribe effects.
 
+Conjure: add it in Card studio > Add keyword. Choose a specified card from
+the 221 built-in characters/forms and Giants opponents, or choose random cards.
+Set 1-5 copies and give them to your hand, the opponent's hand, or both.
+Random cards can require an element and/or tribe; all filters must match.
+No matching cards means no additions. Repeat Conjure for different specified
+cards. Combo can grant it too. Copies use saved character defaults or the fixed
+base for that mode. They arrive after captures and can be played on later turns.
+Creating cards does not activate their keywords or spend Next Play bonuses.
+Hands hold up to 20 cards; excess copies are skipped and reported. Larger hands
+wrap onto additional rows. Canceled plays add nothing. Capture and Silence do
+not remove cards already added. Copies are marked Conjured and last for this
+battle only. Adventure saves them without repairing intentional duplicates;
+they never join your pack or change saved Draft picks. New Draft pools, shops,
+shrines, and transformations can offer Conjure.
+
 Cards are saved in your browser. Keep this file in the same folder and use the
 same browser to retain your collection. Export card files from Collection to
 back them up or move them to another computer.

@@ -626,7 +626,9 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder purchases, and
         type: "keyword",
         cardId: shop.inventory[0].id,
       });
-    if (["sunder", "next-play", "environment"].includes(keyword.type)) {
+    if (
+      ["sunder", "next-play", "environment", "conjure"].includes(keyword.type)
+    ) {
       const second = buyAgain();
       assert.equal(second.gold, 130);
       assert.deepEqual(second.inventory[0].keywords, [
@@ -636,7 +638,7 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder purchases, and
     } else assert.throws(buyAgain);
     seen.add(keyword.type);
   }
-  assert.equal(seen.size, 10);
+  assert.equal(seen.size, 11);
 });
 test("Market Map stocks four distinct merchant cards without applying card reward relics", () => {
   const base: Adventure = {

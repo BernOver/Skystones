@@ -102,7 +102,11 @@ export function tribalKeyword(
   keyword: StoneKeyword,
   tribe: Tribe,
 ): StoneKeyword {
-  if (keyword.type === "resonance" || keyword.type === "next-play")
+  if (
+    keyword.type === "resonance" ||
+    keyword.type === "next-play" ||
+    (keyword.type === "conjure" && keyword.mode === "random")
+  )
     return { ...keyword, tribe };
   if (keyword.type === "combo")
     return { ...keyword, condition: "tribe", tribe };

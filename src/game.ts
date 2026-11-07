@@ -20,6 +20,8 @@ import {
   validateTribes,
 } from "./tribes.ts";
 import type { Tribe, ComboCondition } from "./tribes.ts";
+import { validateConjure, MAX_HAND_CARDS } from "./conjure.ts";
+import type { ConjureKeyword, Conjuration } from "./conjure.ts";
 export type Element =
   | "fire"
   | "life"
@@ -63,7 +65,8 @@ export type KeywordType =
   | "shield"
   | "combo"
   | "next-play"
-  | "environment";
+  | "environment"
+  | "conjure";
 export type TargetKeyword =
   { type: "sunder"; side: Side | "any"; amount?: number } | { type: "silence" };
 export type BasicKeyword =
@@ -79,6 +82,7 @@ export type BasicKeyword =
       tribe?: Tribe;
     }
   | { type: "environment"; environment: TileEnvironment }
+  | ConjureKeyword
   | TargetKeyword;
 export type ComboKeyword = {
   type: "combo";
@@ -131,6 +135,7 @@ export const KEYWORD_RULES = {
   combo: { name: "Combo", condition: "previous card match" },
   "next-play": { name: "Next Play", condition: "queue a pip effect" },
   environment: { name: "Environment", condition: "choose any tile" },
+  conjure: { name: "Conjure", condition: "add cards to a hand" },
 } as const;
 export const MAX_KEYWORDS = 24;
 export const DIZZY_EDGE_CAP = 5;
@@ -138,12 +143,18 @@ export function keywordKey(keyword: StoneKeyword): string {
   return keyword.type === "silence" ||
     keyword.type === "dizzy" ||
     keyword.type === "combo" ||
-    keyword.type === "environment"
+    keyword.type === "environment" ||
+    keyword.type === "conjure"
     ? keyword.type
     : `${keyword.type}:${keyword.side}`;
 }
 export function repeatableKeyword(type: KeywordType): boolean {
-  return type === "sunder" || type === "next-play" || type === "environment";
+  return (
+    type === "sunder" ||
+    type === "next-play" ||
+    type === "environment" ||
+    type === "conjure"
+  );
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
 export function keywordGroups(keywords: StoneKeyword[]) {
@@ -152,7 +163,8 @@ export function keywordGroups(keywords: StoneKeyword[]) {
       keyword.type === "sunder" ||
       keyword.type === "silence" ||
       keyword.type === "next-play" ||
-      keyword.type === "environment"
+      keyword.type === "environment" ||
+      keyword.type === "conjure"
     )
       return [
         {
@@ -194,6 +206,7 @@ export interface Stone {
   baseEdges?: Edges;
   baseKeywords?: StoneKeyword[];
   tribes?: Tribe[];
+  conjured?: true;
 }
 export interface PlacedStone {
   stone: Stone;
@@ -220,6 +233,7 @@ export interface PlacedStone {
   queuedPips?: QueuedPips[];
   inheritedPips?: Edges;
   environment?: TileEnvironment;
+  conjurations?: Conjuration[];
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -935,7 +949,28 @@ export function chooseMove(
         move.captured.length * 10 -
         worstReply * 7 +
         exposed * 0.15 +
-        (index === 4 ? 0.2 : 0);
+        (index === 4 ? 0.2 : 0) +
+        (board.filter((cell) => !cell).length > 2
+          ? effectiveKeywords(stone, board, owner).reduce(
+              (value, keyword) =>
+                keyword.type === "conjure"
+                  ? value +
+                    (keyword.recipient === "self"
+                      ? Math.min(
+                          keyword.count,
+                          MAX_HAND_CARDS - hand.length + 1,
+                        )
+                      : keyword.recipient === "opponent"
+                        ? -Math.min(
+                            keyword.count,
+                            MAX_HAND_CARDS - rivalHand.length,
+                          )
+                        : 0) *
+                      0.3
+                  : value,
+              0,
+            )
+          : 0);
       const weakening = [
         ...new Set(move.effects.map((effect) => effect.target)),
       ].reduce((sum, target) => {
@@ -1010,6 +1045,7 @@ export function validateStone(value: unknown): value is Stone {
     typeof s.description === "string" &&
     s.description.length <= 120 &&
     (s.tribes === undefined || validateTribes(s.tribes)) &&
+    (s.conjured === undefined || s.conjured === true) &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
     (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
     (s.baseEdges === undefined ||
@@ -1038,7 +1074,8 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
       keyword.type === "silence" ||
       keyword.type === "dizzy" ||
       keyword.type === "combo" ||
-      keyword.type === "environment"
+      keyword.type === "environment" ||
+      keyword.type === "conjure"
         ? keyword.side !== undefined
         : !(
             (keyword.type === "sunder" && keyword.side === "any") ||
@@ -1049,6 +1086,7 @@ export function validateKeywords(value: unknown): value is StoneKeyword[] {
             keyword.side > 3)
     )
       return false;
+    if (keyword.type === "conjure" && !validateConjure(keyword)) return false;
     if (
       keyword.type === "next-play" &&
       (!validEffectSide(keyword.side) ||

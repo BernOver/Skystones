@@ -413,6 +413,8 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
       silenced: cell?.silenced,
       reductions: cell?.reductions,
       effects: cell?.effects,
+      conjurations: cell?.conjurations,
+      playerNames: ["You", "Keeper"],
       dizzy: cell?.dizzy,
       environment: cell?.environment,
       size: run!.size,

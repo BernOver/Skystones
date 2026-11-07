@@ -25,6 +25,7 @@ export interface DraftState {
   defaultSnapshots?: true;
   effectsVersion?: 1;
   tribesVersion?: 1;
+  conjureVersion?: 1;
   nominations: [string[], string[]];
   phase: "nominate" | "draft" | "ready";
   current: Owner;
@@ -63,6 +64,7 @@ export function draftCards(
   defaults: CharacterDefaults = readCharacterDefaults(),
   includeEffects = true,
   includeTribes = includeEffects,
+  includeConjure = includeTribes,
 ): Stone[] {
   const rng = random(seed),
     candidates: Edges[] = [];
@@ -189,6 +191,20 @@ export function draftCards(
           tribalKeyword(keyword, tribe),
         );
     }
+  if (includeConjure) {
+    cards[10].keywords = [
+      {
+        type: "conjure",
+        mode: "specific",
+        card: cards[0].portrait!,
+        count: 1,
+        recipient: "self",
+      },
+    ];
+    cards[20].keywords = [
+      { type: "conjure", mode: "random", count: 1, recipient: "self" },
+    ];
+  }
   return cards.map((card) => characterDefault(card, defaults));
 }
 export function newDraft(
@@ -197,12 +213,20 @@ export function newDraft(
   defaults: CharacterDefaults = readCharacterDefaults(),
   includeEffects = true,
   includeTribes = includeEffects,
+  includeConjure = includeTribes,
 ): DraftState {
   return {
     version: 1,
     seed,
     size,
-    cards: draftCards(seed, defaults, includeEffects, includeTribes),
+    cards: draftCards(
+      seed,
+      defaults,
+      includeEffects,
+      includeTribes,
+      includeConjure,
+    ),
+    ...(includeConjure ? { conjureVersion: 1 as const } : {}),
     ...(includeTribes ? { tribesVersion: 1 as const } : {}),
     ...(includeEffects ? { effectsVersion: 1 as const } : {}),
     ...(Object.keys(defaults).length
@@ -308,6 +332,8 @@ export function restoreDraft(value: unknown): DraftState | null {
       return null;
     if (saved.tribesVersion !== undefined && saved.tribesVersion !== 1)
       return null;
+    if (saved.conjureVersion !== undefined && saved.conjureVersion !== 1)
+      return null;
     if (saved.effectsVersion !== undefined && saved.effectsVersion !== 1)
       return null;
     let draft = newDraft(
@@ -316,6 +342,7 @@ export function restoreDraft(value: unknown): DraftState | null {
       {},
       saved.effectsVersion === 1,
       saved.tribesVersion === 1,
+      saved.conjureVersion === 1,
     );
     // Older pools used whole-card Dizzy. Preserve their affected sides while
     // regenerating the remaining deterministic card definitions.
