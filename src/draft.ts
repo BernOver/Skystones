@@ -1,5 +1,8 @@
 import { characterDefault, readCharacterDefaults } from "./cardDefaults.ts";
 import type { CharacterDefaults } from "./cardDefaults.ts";
+import { defaultEnvironment } from "./effects.ts";
+import type { EnvironmentKind } from "./effects.ts";
+import { stoneTribes, tribalKeyword } from "./tribes.ts";
 import { CHARACTER_STONES } from "./characters.ts";
 import { handSize, validateStone } from "./game.ts";
 import type {
@@ -20,6 +23,8 @@ export interface DraftState {
   size: BoardSize;
   cards: Stone[];
   defaultSnapshots?: true;
+  effectsVersion?: 1;
+  tribesVersion?: 1;
   nominations: [string[], string[]];
   phase: "nominate" | "draft" | "ready";
   current: Owner;
@@ -56,6 +61,8 @@ export function pipDominates(a: Stone, b: Stone): boolean {
 export function draftCards(
   seed: number,
   defaults: CharacterDefaults = readCharacterDefaults(),
+  includeEffects = true,
+  includeTribes = includeEffects,
 ): Stone[] {
   const rng = random(seed),
     candidates: Edges[] = [];
@@ -143,18 +150,61 @@ export function draftCards(
         cards[index] = improved;
     }
   }
+  if (includeEffects) {
+    for (const index of [8, 18])
+      cards[index].keywords = [
+        {
+          type: "next-play",
+          side: index === 8 ? "all" : ((seed % 4) as Side),
+          amount: index === 8 ? 1 : -1,
+          recipient: index === 8 ? "self" : "opponent",
+        },
+      ];
+    for (const index of [9, 19])
+      cards[index].keywords = [
+        {
+          type: "environment",
+          environment: defaultEnvironment(
+            (
+              [
+                "elemental",
+                "blight",
+                "bastion",
+                "war-banner",
+                "crosswind",
+                "mirror-pool",
+                "equalizer",
+              ] as EnvironmentKind[]
+            )[(seed + index) % 7],
+            cards[index].element,
+          ),
+        },
+      ];
+  }
+  if (includeTribes)
+    for (const index of [2, 7, 8, 9, 18, 19]) {
+      const tribe = stoneTribes(cards[index])[0];
+      if (tribe)
+        cards[index].keywords = cards[index].keywords?.map((keyword) =>
+          tribalKeyword(keyword, tribe),
+        );
+    }
   return cards.map((card) => characterDefault(card, defaults));
 }
 export function newDraft(
   size: BoardSize = 3,
   seed = Date.now() >>> 0,
   defaults: CharacterDefaults = readCharacterDefaults(),
+  includeEffects = true,
+  includeTribes = includeEffects,
 ): DraftState {
   return {
     version: 1,
     seed,
     size,
-    cards: draftCards(seed, defaults),
+    cards: draftCards(seed, defaults, includeEffects, includeTribes),
+    ...(includeTribes ? { tribesVersion: 1 as const } : {}),
+    ...(includeEffects ? { effectsVersion: 1 as const } : {}),
     ...(Object.keys(defaults).length
       ? { defaultSnapshots: true as const }
       : {}),
@@ -256,7 +306,17 @@ export function restoreDraft(value: unknown): DraftState | null {
       saved.history.length > handSize(saved.size) * 2
     )
       return null;
-    let draft = newDraft(saved.size, saved.seed, {});
+    if (saved.tribesVersion !== undefined && saved.tribesVersion !== 1)
+      return null;
+    if (saved.effectsVersion !== undefined && saved.effectsVersion !== 1)
+      return null;
+    let draft = newDraft(
+      saved.size,
+      saved.seed,
+      {},
+      saved.effectsVersion === 1,
+      saved.tribesVersion === 1,
+    );
     // Older pools used whole-card Dizzy. Preserve their affected sides while
     // regenerating the remaining deterministic card definitions.
     draft.cards = draft.cards.map((card, index) => {

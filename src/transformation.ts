@@ -1,4 +1,7 @@
 import { withAdditionalKeywords } from "./cardDefaults.ts";
+import { defaultEnvironment, ENVIRONMENTS } from "./effects.ts";
+import type { EnvironmentKind } from "./effects.ts";
+import { stoneTribes, TRIBE_IDS, tribalKeyword } from "./tribes.ts";
 import { ELEMENTS } from "./game.ts";
 import type { Edges, Element, Side, Stone, StoneKeyword } from "./game.ts";
 import type { Adventure } from "./adventure.ts";
@@ -57,6 +60,21 @@ export function transformedCard(
     candidates: StoneKeyword[] = [
       { type: "silence" },
       { type: "dizzy", sides: [Math.floor(rng() * 4) as Side] },
+      {
+        type: "next-play",
+        side: rng() < 0.5 ? "all" : (Math.floor(rng() * 4) as Side),
+        amount: rng() < 0.5 ? 1 : -1,
+        recipient: "self",
+      },
+      {
+        type: "environment",
+        environment: defaultEnvironment(
+          (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
+            Math.floor(rng() * 7)
+          ],
+          card.element,
+        ),
+      },
       { type: "sunder", side: "any", amount: 1 + Math.floor(rng() * 3) },
     ];
   for (const side of [0, 1, 2, 3] as Side[])
@@ -91,7 +109,18 @@ export function transformedCard(
       (keyword, index) =>
         candidates.findIndex((other) => other.type === keyword.type) === index,
     )
-    .slice(0, count);
+    .slice(0, count)
+    .map((keyword, index) => {
+      const tribes = stoneTribes(card);
+      return (seed + index) % 3 === 0 &&
+        (keyword.type !== "combo" || tribes.length)
+        ? tribalKeyword(
+            keyword,
+            tribes[(seed + index) % tribes.length] ||
+              TRIBE_IDS[(seed + index) % TRIBE_IDS.length],
+          )
+        : keyword;
+    });
   return {
     ...card,
     id: old.id,

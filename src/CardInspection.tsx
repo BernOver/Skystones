@@ -1,3 +1,6 @@
+import { TribeBadges } from "./TribeEditor";
+import { stoneTribes, tribeName } from "./tribes";
+import type { Tribe } from "./tribes";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -33,6 +36,15 @@ import type {
   Element,
   Side,
 } from "./game";
+import {
+  ENVIRONMENTS,
+  environmentText,
+  pipEffectText,
+  environmentAttack,
+  environmentDefense,
+  environmentAffects,
+} from "./effects";
+import type { TileEnvironment } from "./effects";
 
 export interface Inspection {
   stone: Stone;
@@ -58,8 +70,11 @@ export interface Inspection {
   shields?: Edges;
   comboActive?: boolean;
   comboPrevious?: Element;
+  comboPreviousTribes?: Tribe[];
   grantedKeywords?: BasicKeyword[];
   arenaElement?: Element;
+  environment?: TileEnvironment;
+  inheritedPips?: Edges;
 }
 
 export function KeywordDetails({
@@ -72,6 +87,7 @@ export function KeywordDetails({
   size = 3,
   comboActive,
   comboPrevious,
+  comboPreviousTribes,
   keywordOffset = 0,
 }: {
   stone: Stone;
@@ -88,6 +104,7 @@ export function KeywordDetails({
   size?: BoardSize;
   comboActive?: boolean;
   comboPrevious?: Element;
+  comboPreviousTribes?: Tribe[];
   keywordOffset?: number;
 }) {
   const effectIndexFor = (index: number) =>
@@ -119,6 +136,79 @@ export function KeywordDetails({
       {keywordGroups(stone.keywords || []).map(
         ({ type, keywords, keywordIndex }, groupIndex) => {
           if (!keywords.length) return null;
+          if (type === "next-play")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Flag size={15} />
+                  <strong>Next Play</strong>
+                  <span>After this play</span>
+                </div>
+                {keywords.map(
+                  (keyword, index) =>
+                    keyword.type === "next-play" && (
+                      <p key={index}>
+                        {keyword.recipient === "self"
+                          ? `Your next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`
+                          : `The opponent’s next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`}{" "}
+                        receives <strong>{pipEffectText(keyword)}</strong> once,
+                        before Dizzy and captures. Changes stack, cannot reduce
+                        pips below zero, and stay on that card after play.{" "}
+                        {keyword.tribe
+                          ? "Other tribes do not spend this queued effect."
+                          : ""}
+                      </p>
+                    ),
+                )}
+                <span className="keyword-status">
+                  {played
+                    ? "Queued when this card was played; completed effects survive capture and Silence."
+                    : "Does not affect this card. Canceled plays spend no pending effects."}
+                </span>
+              </section>
+            );
+          if (type === "environment")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Waves size={15} />
+                  <strong>Environment</strong>
+                  <span>Choose any tile</span>
+                </div>
+                {keywords.map(
+                  (keyword, index) =>
+                    keyword.type === "environment" && (
+                      <p key={index}>
+                        <strong>
+                          {ENVIRONMENTS[keyword.environment.kind].name}
+                        </strong>{" "}
+                        · {environmentText(keyword.environment)}
+                      </p>
+                    ),
+                )}
+                <p>
+                  Choose any empty or occupied tile, including where you play
+                  this card. Applies immediately before captures and lasts for
+                  this battle. The newest environment replaces the previous one
+                  on that tile. It affects either player and stays on the tile
+                  when cards swap positions.
+                </p>
+                <span className="keyword-status">
+                  {effects
+                    ?.filter(
+                      (effect) =>
+                        effect.type === "environment" &&
+                        effect.keywordIndex === effectIndexFor(keywordIndex),
+                    )
+                    .map(
+                      (effect) =>
+                        `Placed at ${coordinate(effect.target, size)}`,
+                    )
+                    .join(" · ") ||
+                    "Completed terrain casts cannot be removed by Silence or capturing the caster."}
+                </span>
+              </section>
+            );
           if (type === "shield")
             return (
               <section className="keyword-rule" key={groupIndex}>
@@ -157,15 +247,32 @@ export function KeywordDetails({
                 <div className="keyword-rule-heading">
                   <Link size={15} />
                   <strong>Combo</strong>
-                  <span>Same element</span>
+                  <span>
+                    {combo.condition === "tribe"
+                      ? "Shared tribe"
+                      : combo.condition === "either"
+                        ? "Element or tribe"
+                        : combo.condition === "both"
+                          ? "Element and tribe"
+                          : "Same element"}
+                  </span>
                 </div>
                 <p>
                   Before placement, check{" "}
-                  <strong>the last card you played</strong>. If it has the same
-                  element as this card, gain the following pips and keywords
-                  once, before captures. Your first card cannot activate Combo.
-                  Opponent plays and changes of ownership do not change your
-                  previous play.
+                  <strong>the last card you played</strong>.{" "}
+                  {!combo.condition || combo.condition === "element"
+                    ? "Match its element"
+                    : combo.condition === "tribe"
+                      ? "Share a tribe with it"
+                      : combo.condition === "either"
+                        ? "Match its element or share a tribe"
+                        : "Match its element and share a tribe"}
+                  {combo.tribe
+                    ? ` (both cards must belong to ${tribeName(combo.tribe)} for the tribe check)`
+                    : ""}{" "}
+                  to gain these pips and keywords once, before captures. Your
+                  first card cannot activate Combo. Opponent plays and captures
+                  do not rewrite your play history.
                 </p>
                 {!!combo.pips?.length && (
                   <p>
@@ -188,6 +295,24 @@ export function KeywordDetails({
                       ? "Matching your previous card activates these effects."
                       : `${comboActive ? (played ? "Activated when played · bonuses locked in" : "Will activate if played now") : played ? "Did not activate when played" : "Will not activate if played now"}${comboPrevious ? ` · previous element: ${ELEMENTS[comboPrevious].name}` : " · no previous card"}`}
                 </span>
+                {combo.condition &&
+                  combo.condition !== "element" &&
+                  comboPreviousTribes !== undefined && (
+                    <p className="combo-tribe-history">
+                      Previous card tribes:{" "}
+                      {comboPreviousTribes.map(tribeName).join(", ") || "none"}.
+                      Shared tribes:{" "}
+                      {stoneTribes(stone)
+                        .filter(
+                          (tribe) =>
+                            comboPreviousTribes.includes(tribe) &&
+                            (!combo.tribe || combo.tribe === tribe),
+                        )
+                        .map(tribeName)
+                        .join(", ") || "none"}
+                      .
+                    </p>
+                  )}
                 {!!combo.keywords?.length && (
                   <div className="combo-granted-rules">
                     <strong>Granted keywords</strong>
@@ -455,13 +580,17 @@ function ResonanceDetails({
       <div className="keyword-rule-heading">
         <Waves size={15} />
         <strong>Resonance</strong>
-        <span>Element count</span>
+        <span>
+          {keywords.some((keyword) => keyword.tribe)
+            ? "Element / tribe count"
+            : "Element count"}
+        </span>
       </div>
       <p>
         Each listed edge gains{" "}
-        <strong>+1 pip per card of its chosen element</strong> already on the
-        board. Count both players’ cards <strong>before placement</strong>; this
-        card does not count.
+        <strong>+1 pip per card of its chosen element or tribe</strong> already
+        on the board. Count both players’ cards{" "}
+        <strong>before placement</strong>; this card does not count.
       </p>
       <div className="resonance-rule-list">
         {keywords.map((keyword) => {
@@ -469,10 +598,11 @@ function ResonanceDetails({
             (candidate) =>
               candidate.type === "resonance" &&
               candidate.side === keyword.side &&
-              candidate.element === keyword.element,
+              candidate.element === keyword.element &&
+              candidate.tribe === keyword.tribe,
           );
           const bonus = active?.type === "resonance" ? active.bonus : 0;
-          const Icon = ELEMENT_ICONS[keyword.element];
+          const Icon = keyword.tribe ? Flag : ELEMENT_ICONS[keyword.element];
           return (
             <div className="resonance-rule-row" key={keyword.side}>
               <Icon
@@ -480,7 +610,11 @@ function ResonanceDetails({
                 style={{ color: ELEMENTS[keyword.element].color }}
               />
               <div>
-                <strong>{ELEMENTS[keyword.element].name}</strong>
+                <strong>
+                  {keyword.tribe
+                    ? tribeName(keyword.tribe)
+                    : ELEMENTS[keyword.element].name}
+                </strong>
                 <span>{SIDE_NAMES[keyword.side]} edge</span>
               </div>
               <div
@@ -544,6 +678,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           <span> · Controlled by {controllerName}</span>
         )}
       </div>
+      <TribeBadges stone={stone} />
       <div className="inspection-stats">
         {SIDE_NAMES.map((side, index) => (
           <div
@@ -558,10 +693,26 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           >
             <small>{side}</small>
             <strong>{edges[index]}</strong>
-            {!!inspection.shields?.[index] && !silenced && (
+            {!!(
+              (silenced ? 0 : inspection.shields?.[index] || 0) +
+              environmentDefense(inspection.environment, stone)
+            ) && (
               <span className="defense-stat">
-                Shield +{inspection.shields[index]} · defends{" "}
-                {edges[index] + inspection.shields[index]}
+                Defense +
+                {(silenced ? 0 : inspection.shields?.[index] || 0) +
+                  environmentDefense(inspection.environment, stone)}{" "}
+                · defends{" "}
+                {edges[index] +
+                  (silenced ? 0 : inspection.shields?.[index] || 0) +
+                  environmentDefense(inspection.environment, stone)}
+              </span>
+            )}
+            {!!environmentAttack(inspection.environment, stone) && (
+              <span className="attack-stat">
+                Attack +{environmentAttack(inspection.environment, stone)} ·
+                attacks{" "}
+                {edges[index] +
+                  environmentAttack(inspection.environment, stone)}
               </span>
             )}
             {edges[index] !== stone.edges[index] && (
@@ -574,6 +725,30 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           </div>
         ))}
       </div>
+      {inspection.environment && (
+        <p className="terrain-inspection-note">
+          <strong>{ENVIRONMENTS[inspection.environment.kind].name}</strong> ·{" "}
+          {environmentText(inspection.environment)}{" "}
+          {!environmentAffects(inspection.environment, stone)
+            ? "This card does not match the tribe condition, so it is unaffected."
+            : ""}{" "}
+          Terrain stays on the tile and is separate from this card’s keywords.
+        </p>
+      )}
+      {inspection.inheritedPips?.some(Boolean) && (
+        <p className="next-play-inspection-note">
+          <strong>Next Play {played ? "received" : "pending"}</strong> ·{" "}
+          {inspection.inheritedPips
+            .flatMap((amount, side) =>
+              amount ? [pipEffectText({ amount, side: side as Side })] : [],
+            )
+            .join(" · ")}
+          .{" "}
+          {played
+            ? "Included in this card’s pips; capture and Silence do not spend it again."
+            : "Included in the preview. Spent only when you place this card."}
+        </p>
+      )}
       {inspection.arenaElement && inspection.arenaElement === stone.element && (
         <p className="arena-bonus-notice">
           <strong>
@@ -607,7 +782,11 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           Sunder applied:{" "}
           {reductions
             .flatMap((amount, side) =>
-              amount ? [`${SIDE_NAMES[side]} −${amount}`] : [],
+              amount
+                ? [
+                    `${SIDE_NAMES[inspection.environment?.kind === "crosswind" && environmentAffects(inspection.environment, stone) ? (side + 1) % 4 : side]} −${amount}`,
+                  ]
+                : [],
             )
             .join(", ")}
           . Reductions persist through capture and Silence; edges cannot fall
@@ -624,6 +803,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         size={inspection.size}
         comboActive={inspection.comboActive}
         comboPrevious={inspection.comboPrevious}
+        comboPreviousTribes={inspection.comboPreviousTribes}
       />
       {stone.description && (
         <div className="inspection-story">
@@ -693,6 +873,7 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
           edges={inspection.edges}
           silenced={inspection.silenced}
           shields={inspection.shields}
+          environment={inspection.environment}
         />
       </div>
       <h2>{inspection.stone.name}</h2>

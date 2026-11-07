@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { stoneTribes, tribeName } from "./tribes";
+import { memo, useId } from "react";
 import {
   Droplets,
   Flame,
@@ -12,6 +13,7 @@ import {
   Sun,
   Moon,
   Shield,
+  Swords,
 } from "lucide-react";
 import {
   ELEMENTS,
@@ -29,7 +31,14 @@ import {
   hasSkystonesArtwork,
 } from "./characters";
 import { portraitImage } from "./portraits";
-import type { Creature, Edges, Element, Stone } from "./game";
+import type { ComboKeyword, Creature, Edges, Element, Stone } from "./game";
+import {
+  ENVIRONMENTS,
+  environmentAttack,
+  environmentDefense,
+  pipEffectText,
+} from "./effects";
+import type { TileEnvironment } from "./effects";
 
 export const ELEMENT_ICONS = {
   fire: Flame,
@@ -44,6 +53,15 @@ export const ELEMENT_ICONS = {
   light: Sun,
   dark: Moon,
 };
+
+function comboRequirement(stone: Stone, keyword: ComboKeyword): string {
+  const element = ELEMENTS[stone.element].name;
+  const tribe = keyword.tribe ? tribeName(keyword.tribe) : "Shared tribe";
+  if (keyword.condition === "tribe") return tribe;
+  if (keyword.condition === "either") return `${element} / ${tribe}`;
+  if (keyword.condition === "both") return `${element} + ${tribe}`;
+  return element;
+}
 
 export function CreatureArt({
   creature,
@@ -540,146 +558,202 @@ export function CreatureArt({
   );
 }
 
-export function StoneCard({
-  stone,
-  owner,
-  selected = false,
-  compact = false,
-  faded = false,
-  edges = stone.edges,
-  silenced = false,
-  shields = shieldEdges(stone, silenced),
-  played = false,
-  grantedKeywords = [],
-}: {
-  stone: Stone;
-  owner?: 0 | 1;
-  selected?: boolean;
-  compact?: boolean;
-  faded?: boolean;
-  edges?: Edges;
-  silenced?: boolean;
-  shields?: Edges;
-  played?: boolean;
-  grantedKeywords?: import("./game").BasicKeyword[];
-}) {
-  const element = ELEMENTS[stone.element];
-  const Icon = ELEMENT_ICONS[stone.element];
-  const artwork =
-    stone.image || portraitImage(withCharacterPortrait(stone).portrait);
-  const statPicture = hasSkystonesArtwork(stone);
-  const unknownSides =
-    !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
-  return (
-    <div
-      className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
-      style={
-        {
-          "--element-color": element.color,
-          "--element-pale": element.pale,
-          "--element-ink": element.ink,
-        } as React.CSSProperties
-      }
-    >
-      <div className="stone-art">
-        {artwork ? (
-          <img
-            src={artwork}
-            alt=""
-            className={`uploaded-art ${statPicture ? (pictureMatchesStats(stone, edges) && !stone.image ? "skystones-original-art" : "skystones-portrait-art") : "character-art"}`}
-          />
-        ) : (
-          <CreatureArt creature={stone.creature} element={stone.element} />
-        )}
-        {edges.map((edge, i) => (
-          <span
-            className={`edge edge-${i} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
-            key={i}
-          >
-            <b>{edge}</b>
-            {unknownSides.includes(i as 0 | 1 | 2 | 3) && (
-              <small
-                className="dizzy-pip"
-                aria-label={`${SIDE_NAMES[i]} rolls 0 to 5 before captures`}
-              >
-                ?
-              </small>
-            )}
-            {!!shields[i] && !silenced && (
-              <small
-                className="shield-pip"
-                aria-label={`${shields[i]} defense-only shield pips`}
-              >
-                <Shield size={12} fill="currentColor" />
-                <strong>+{shields[i]}</strong>
-              </small>
-            )}
-            <span className="edge-spikes">
-              {Array.from({ length: edge }, (_, n) => (
-                <i key={n} />
-              ))}
-            </span>
-          </span>
-        ))}
-      </div>
-      {!!stone.keywords?.length && (
-        <div className="stone-keywords">
-          {silenced && <strong className="silenced-label">Silenced</strong>}
-          {keywordGroups(stone.keywords!).map(
-            ({ type, keywords: matches }, groupIndex) => {
-              return matches.length ? (
-                <span
-                  key={groupIndex}
-                  className={`stone-keyword keyword-${type}`}
-                >
-                  {KEYWORD_RULES[type].name}
-                  {type === "sunder" &&
-                  matches[0]?.type === "sunder" &&
-                  (matches[0].amount ?? 1) > 1
-                    ? ` ${matches[0].amount}`
-                    : ""}
-                  {type === "resonance" &&
-                    (() => {
-                      const elements = [
-                        ...new Set(
-                          matches.flatMap((keyword) =>
-                            keyword.type === "resonance"
-                              ? [ELEMENTS[keyword.element].name]
-                              : [],
-                          ),
-                        ),
-                      ];
-                      return ` ${elements.length === 1 ? elements[0] : `×${elements.length}`}`;
-                    })()}
-                  <b>
-                    {matches
-                      .map((keyword) =>
-                        keyword.type === "silence" ||
-                        keyword.type === "dizzy" ||
-                        keyword.type === "combo"
-                          ? keyword.type === "dizzy"
-                            ? dizzySides(keyword)
-                                .map((side) => SIDE_LETTERS[side])
-                                .join("/")
-                            : keyword.type === "combo"
-                              ? "SAME ELEMENT"
-                              : "ON PLAY"
-                          : keyword.side === "any"
-                            ? "ANY EDGE"
-                            : SIDE_LETTERS[keyword.side],
-                      )
-                      .join("/")}
-                  </b>
-                </span>
-              ) : null;
-            },
+export const StoneCard = memo(
+  function StoneCard({
+    stone,
+    owner,
+    selected = false,
+    compact = false,
+    faded = false,
+    edges = stone.edges,
+    silenced = false,
+    shields = shieldEdges(stone, silenced),
+    played = false,
+    grantedKeywords = [],
+    environment,
+  }: {
+    stone: Stone;
+    owner?: 0 | 1;
+    selected?: boolean;
+    compact?: boolean;
+    faded?: boolean;
+    edges?: Edges;
+    silenced?: boolean;
+    shields?: Edges;
+    played?: boolean;
+    grantedKeywords?: import("./game").BasicKeyword[];
+    environment?: TileEnvironment;
+  }) {
+    const element = ELEMENTS[stone.element];
+    const Icon = ELEMENT_ICONS[stone.element];
+    const artwork =
+      stone.image || portraitImage(withCharacterPortrait(stone).portrait);
+    const statPicture = hasSkystonesArtwork(stone);
+    const unknownSides =
+      !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
+    const visibleShields = shields.map(
+      (pips) => (silenced ? 0 : pips) + environmentDefense(environment, stone),
+    );
+    const attackBonus = environmentAttack(environment, stone);
+    return (
+      <div
+        className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
+        style={
+          {
+            "--element-color": element.color,
+            "--element-pale": element.pale,
+            "--element-ink": element.ink,
+          } as React.CSSProperties
+        }
+      >
+        <div className="stone-art">
+          {artwork ? (
+            <img
+              src={artwork}
+              alt=""
+              className={`uploaded-art ${statPicture ? (pictureMatchesStats(stone, edges) && !stone.image ? "skystones-original-art" : "skystones-portrait-art") : "character-art"}`}
+            />
+          ) : (
+            <CreatureArt creature={stone.creature} element={stone.element} />
           )}
+          {edges.map((edge, i) => (
+            <span
+              className={`edge edge-${i} ${visibleShields[i] && attackBonus ? "has-both-pips" : ""} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
+              key={i}
+            >
+              <b>{edge}</b>
+              {unknownSides.includes(i as 0 | 1 | 2 | 3) && (
+                <small
+                  className="dizzy-pip"
+                  aria-label={`${SIDE_NAMES[i]} rolls 0 to 5 before captures`}
+                >
+                  ?
+                </small>
+              )}
+              {!!visibleShields[i] && (
+                <small
+                  className="shield-pip"
+                  aria-label={`${visibleShields[i]} defense-only shield pips`}
+                >
+                  <Shield size={12} fill="currentColor" />
+                  <strong>+{visibleShields[i]}</strong>
+                </small>
+              )}
+              {!!attackBonus && (
+                <small
+                  className="attack-pip"
+                  aria-label={`${attackBonus} attack-only pips`}
+                >
+                  <Swords size={11} />
+                  <strong>+{attackBonus}</strong>
+                </small>
+              )}
+              <span className="edge-spikes">
+                {Array.from({ length: edge }, (_, n) => (
+                  <i key={n} />
+                ))}
+              </span>
+            </span>
+          ))}
         </div>
-      )}
-      <div className="stone-caption">
-        <span>{stone.name}</span>
-        <Icon size={13} strokeWidth={1.8} />
+        {!!stone.keywords?.length && (
+          <div className="stone-keywords">
+            {silenced && <strong className="silenced-label">Silenced</strong>}
+            {keywordGroups(stone.keywords!).map(
+              ({ type, keywords: matches }, groupIndex) => {
+                return matches.length ? (
+                  <span
+                    key={groupIndex}
+                    className={`stone-keyword keyword-${type}`}
+                  >
+                    {KEYWORD_RULES[type].name}
+                    {type === "sunder" &&
+                    matches[0]?.type === "sunder" &&
+                    (matches[0].amount ?? 1) > 1
+                      ? ` ${matches[0].amount}`
+                      : ""}
+                    {type === "resonance" &&
+                      (() => {
+                        const elements = [
+                          ...new Set(
+                            matches.flatMap((keyword) =>
+                              keyword.type === "resonance"
+                                ? [
+                                    keyword.tribe
+                                      ? tribeName(keyword.tribe)
+                                      : ELEMENTS[keyword.element].name,
+                                  ]
+                                : [],
+                            ),
+                          ),
+                        ];
+                        return ` ${elements.length === 1 ? elements[0] : `×${elements.length}`}`;
+                      })()}{" "}
+                    <b>
+                      {matches
+                        .map((keyword) =>
+                          keyword.type === "next-play"
+                            ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${pipEffectText(keyword)}`
+                            : keyword.type === "environment"
+                              ? ENVIRONMENTS[keyword.environment.kind].name
+                              : keyword.type === "silence" ||
+                                  keyword.type === "dizzy" ||
+                                  keyword.type === "combo"
+                                ? keyword.type === "dizzy"
+                                  ? dizzySides(keyword)
+                                      .map((side) => SIDE_LETTERS[side])
+                                      .join("/")
+                                  : keyword.type === "combo"
+                                    ? comboRequirement(stone, keyword)
+                                    : "ON PLAY"
+                                : keyword.side === "any"
+                                  ? "ANY EDGE"
+                                  : SIDE_LETTERS[keyword.side],
+                        )
+                        .join("/")}
+                    </b>
+                  </span>
+                ) : null;
+              },
+            )}
+          </div>
+        )}
+        <div
+          className="stone-tribes"
+          title={stoneTribes(stone).map(tribeName).join(" · ")}
+        >
+          {stoneTribes(stone).map(tribeName).join(" · ") || "No tribes"}
+        </div>
+        <div className="stone-caption">
+          <span>{stone.name}</span>
+          <Icon size={13} strokeWidth={1.8} />
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  },
+  (before, after) => {
+    const sameEdges = (a?: readonly number[], b?: readonly number[]) =>
+      a === b ||
+      (!!a &&
+        !!b &&
+        a.length === b.length &&
+        a.every((value, index) => value === b[index]));
+    return (
+      before.stone === after.stone &&
+      before.owner === after.owner &&
+      before.selected === after.selected &&
+      before.compact === after.compact &&
+      before.faded === after.faded &&
+      before.silenced === after.silenced &&
+      before.played === after.played &&
+      sameEdges(before.edges, after.edges) &&
+      sameEdges(before.shields, after.shields) &&
+      (before.environment === after.environment ||
+        JSON.stringify(before.environment) ===
+          JSON.stringify(after.environment)) &&
+      (before.grantedKeywords === after.grantedKeywords ||
+        JSON.stringify(before.grantedKeywords || []) ===
+          JSON.stringify(after.grantedKeywords || []))
+    );
+  },
+);

@@ -9,7 +9,26 @@ import {
   SIDE_NAMES,
   prepareTargeting,
 } from "./game";
-import type { Board, KeywordTarget, Side, Stone } from "./game";
+import type {
+  Board,
+  Edges,
+  KeywordTarget,
+  PlacedStone,
+  Side,
+  Stone,
+} from "./game";
+import { ENVIRONMENTS, environmentText, underlyingSide } from "./effects";
+import { TileMark } from "./BoardEffects";
+function strengthAfterSunder(
+  cell: PlacedStone,
+  side: Side,
+  amount: number,
+): number {
+  const edges = [...(cell.edges || cell.stone.edges)] as Edges;
+  const rawSide = underlyingSide(cell.environment, side, cell.stone);
+  edges[rawSide] = Math.max(0, edges[rawSide] - amount);
+  return cardEdges({ ...cell, edges })[side];
+}
 
 export function TargetPicker({
   board,
@@ -49,6 +68,7 @@ export function TargetPicker({
   if (!state.pending) return null;
   const { keyword, candidates } = state.pending;
   const flexible = keyword.type === "sunder" && keyword.side === "any";
+  const terrain = keyword.type === "environment";
   const amount = keyword.type === "sunder" ? (keyword.amount ?? 1) : 1;
   const selectedCard =
     selectedTarget !== null ? state.board[selectedTarget] : null;
@@ -66,10 +86,17 @@ export function TargetPicker({
       </div>
       <h2 aria-live="polite">
         {KEYWORD_RULES[keyword.type].name}: choose{" "}
-        {selectedCard ? "an edge" : "a card"}
+        {terrain ? "a tile" : selectedCard ? "an edge" : "a card"}
       </h2>
       <p className="dialog-intro">
-        {keyword.type === "sunder" ? (
+        {keyword.type === "environment" ? (
+          <>
+            <strong>{ENVIRONMENTS[keyword.environment.kind].name}</strong>:{" "}
+            {environmentText(keyword.environment)} Choose any empty or occupied
+            tile, including your placement tile. This replaces its previous
+            environment.
+          </>
+        ) : keyword.type === "sunder" ? (
           <>
             {flexible ? (
               <>
@@ -98,7 +125,10 @@ export function TargetPicker({
             <strong>keywords and their pip bonuses</strong>.
           </>
         )}{" "}
-        Choose either player’s card. This resolves before captures.
+        {terrain
+          ? "Terrain applies to either player."
+          : "Choose either player’s card."}{" "}
+        This resolves before captures.
       </p>
       {!!state.effects.length && (
         <p className="target-progress">
@@ -125,6 +155,7 @@ export function TargetPicker({
               edges={cardEdges(selectedCard)}
               silenced={selectedCard.silenced}
               shields={selectedCard.shields}
+              environment={selectedCard.environment}
               owner={selectedCard.owner}
             />
           </div>
@@ -135,10 +166,18 @@ export function TargetPicker({
           >
             {SIDE_NAMES.map((name, side) => {
               const pips = (selectedCard.edges || selectedCard.stone.edges)[
-                side
+                underlyingSide(
+                  selectedCard.environment,
+                  side as Side,
+                  selectedCard.stone,
+                )
               ];
               const visible = cardEdges(selectedCard)[side];
-              const after = visible - Math.min(pips, amount);
+              const after = strengthAfterSunder(
+                selectedCard,
+                side as Side,
+                amount,
+              );
               return (
                 <button
                   key={side}
@@ -203,15 +242,18 @@ export function TargetPicker({
                       edges={cardEdges(cell)}
                       silenced={cell.silenced}
                       shields={cell.shields}
+                      environment={cell.environment}
                       compact
                     />
                     <span className="target-change">
                       {available
-                        ? keyword.type === "sunder"
-                          ? keyword.side === "any"
-                            ? "Choose an edge"
-                            : `${SIDE_NAMES[keyword.side]} ${cardEdges(cell)[keyword.side]} → ${cardEdges(cell)[keyword.side] - Math.min((cell.edges || cell.stone.edges)[keyword.side], amount)}`
-                          : "Disable keywords"
+                        ? terrain
+                          ? "Place environment"
+                          : keyword.type === "sunder"
+                            ? keyword.side === "any"
+                              ? "Choose an edge"
+                              : `${SIDE_NAMES[keyword.side]} ${cardEdges(cell)[keyword.side]} → ${strengthAfterSunder(cell, keyword.side, amount)}`
+                            : "Disable keywords"
                         : "No valid effect"}
                     </span>
                   </>
@@ -220,15 +262,22 @@ export function TargetPicker({
                     {index === placement ? "Your new card" : "Empty"}
                   </span>
                 )}
+                <TileMark
+                  environment={
+                    terrain ? keyword.environment : cell?.environment
+                  }
+                />
               </button>
             );
           })}
         </div>
       )}
       <p className="field-note">
-        {keyword.type === "sunder"
-          ? "Pips cannot fall below zero. The reduction stays after captures or Silence."
-          : "Silence lasts for the rest of the match. Earlier captures and resolved effects stay."}{" "}
+        {terrain
+          ? "Environments stay on their tile through captures, Silence, and position swaps. Only the newest environment on a tile applies."
+          : keyword.type === "sunder"
+            ? "Pips cannot fall below zero. The reduction stays after captures or Silence."
+            : "Silence lasts for the rest of the match. Earlier captures and resolved effects stay."}{" "}
         If no valid targets remain, the next effect is skipped.
       </p>
       <button className="button button-outline full-width" onClick={onCancel}>

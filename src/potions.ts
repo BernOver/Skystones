@@ -4,7 +4,7 @@ import {
   coordinate,
   cardEdges,
   arenaEdges,
-  keywordKey,
+  evaluateKeywords,
   prepareTargeting,
   redistributePips,
   validateKeywords,
@@ -19,6 +19,7 @@ import type {
 } from "./game.ts";
 import { earnedGold, hasRelic, maxLives, potionPotency } from "./relics.ts";
 import type { Adventure } from "./adventure.ts";
+import { withTileEnvironments, underlyingSide } from "./effects.ts";
 
 export type Potion =
   | "power"
@@ -256,16 +257,30 @@ export function rotatedPotionStone(stone: Stone): Stone {
               rotate(grant) as Exclude<StoneKeyword, { type: "combo" }>,
           ),
         }
-      : keyword.type === "dizzy"
+      : keyword.type === "environment" &&
+          "side" in keyword.environment &&
+          typeof keyword.environment.side === "number"
         ? {
             ...keyword,
-            ...(keyword.sides
-              ? { sides: keyword.sides.map((side) => ((side + 1) % 4) as Side) }
-              : {}),
+            environment: {
+              ...keyword.environment,
+              side: ((keyword.environment.side + 1) % 4) as Side,
+            },
           }
-        : "side" in keyword && keyword.side !== "any"
-          ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
-          : { ...keyword };
+        : keyword.type === "dizzy"
+          ? {
+              ...keyword,
+              ...(keyword.sides
+                ? {
+                    sides: keyword.sides.map(
+                      (side) => ((side + 1) % 4) as Side,
+                    ),
+                  }
+                : {}),
+            }
+          : "side" in keyword && typeof keyword.side === "number"
+            ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
+            : { ...keyword };
   return {
     ...stone,
     edges: [stone.edges[3], stone.edges[0], stone.edges[1], stone.edges[2]],
@@ -277,12 +292,7 @@ function rotationChanges(stone: Stone) {
   const signature = (card: Stone) =>
     JSON.stringify([
       card.edges,
-      (card.keywords || [])
-        .map(
-          (keyword) =>
-            `${keywordKey(keyword)}:${keyword.type === "resonance" ? keyword.element : keyword.type === "sunder" ? (keyword.amount ?? 1) : keyword.type === "dizzy" ? keyword.sides?.join() || "all" : ""}`,
-        )
-        .sort(),
+      (card.keywords || []).map((keyword) => JSON.stringify(keyword)).sort(),
     ]);
   return signature(stone) !== signature(rotated);
 }
@@ -292,8 +302,12 @@ function damageCell(
   onlySide?: Side,
 ): PlacedStone {
   const before = cell.edges || cell.stone.edges;
+  const rawSide =
+    onlySide === undefined
+      ? undefined
+      : underlyingSide(cell.environment, onlySide, cell.stone);
   const edges = before.map((edge, side) =>
-    onlySide === undefined || side === onlySide
+    rawSide === undefined || side === rawSide
       ? Math.max(0, edge - amount)
       : edge,
   ) as Edges;
@@ -308,7 +322,13 @@ function repairedCell(cell: PlacedStone, amount: number): PlacedStone {
   ) as Edges;
   const edges = (cell.edges || cell.stone.edges).map((edge, side) =>
     cell.silenced
-      ? Math.max(0, cell.stone.edges[side] - reductions[side])
+      ? Math.max(
+          0,
+          Math.min(
+            99,
+            cell.stone.edges[side] + (cell.inheritedPips?.[side] || 0),
+          ) - reductions[side],
+        )
       : edge + (cell.reductions?.[side] || 0) - reductions[side],
   ) as Edges;
   return { ...cell, edges, reductions };
@@ -324,7 +344,10 @@ export function potionSideOptions(
     type === "sharpen"
       ? !!stone && stone.edges[side] < HAND_EDGE_LIMIT
       : type === "shatter"
-        ? !!cell && (cell.edges || cell.stone.edges)[side] > 0
+        ? !!cell &&
+          (cell.edges || cell.stone.edges)[
+            underlyingSide(cell.environment, side, cell.stone)
+          ] > 0
         : type === "resonance"
           ? !!stone &&
             validateKeywords([
@@ -359,7 +382,7 @@ export function adventurePotionTargets(
         target: stone.id,
         stone,
         edges: arenaEdges(
-          stone.edges,
+          evaluateKeywords(stone, battle.board, 0).edges,
           stone.element,
           battle.elementCycle?.[battle.turns % battle.elementCycle.length],
         ),
@@ -631,6 +654,7 @@ export function useAdventurePotion(
       ? {
           battle: {
             ...next.battle,
+            board: withTileEnvironments(next.battle.board),
             potionsUsed: (run.battle?.potionsUsed || 0) + 1,
             ...(saved ? { potionSaved: true } : {}),
           },

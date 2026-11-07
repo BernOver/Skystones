@@ -6551,6 +6551,7 @@ export function uniqueCharacters(
       ...stone,
       name: identity.name,
       portrait: identity.portrait,
+      ...(stone.tribes !== undefined ? { tribes: undefined } : {}),
       characterKey: undefined,
       defaultRevision: undefined,
       image: undefined,

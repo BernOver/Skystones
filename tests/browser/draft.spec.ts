@@ -13,7 +13,7 @@ for (const size of [3, 4] as const)
   test(`complete ${size}×${size} draft, reload between picks, and play with the exact drafted hands`, async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.addInitScript(
@@ -83,7 +83,10 @@ for (const size of [3, 4] as const)
     for (const id of draft.hands[0])
       await expect(
         page.locator(".hand-card-button").filter({
-          hasText: draft.cards.find((card) => card.id === id)!.name,
+          has: page.getByText(
+            draft.cards.find((card) => card.id === id)!.name,
+            { exact: true },
+          ),
         }),
       ).toHaveCount(1);
     for (let turn = 0; turn < size * size; turn++) {

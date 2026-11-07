@@ -1,3 +1,5 @@
+import { EnvironmentLegend, NextPlayStatus, TileMark } from "./BoardEffects";
+import { boardEnvironments, ENVIRONMENTS } from "./effects";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { adventureOpponent, adventureEncounter } from "./presentation";
 import type { BoardSkinId } from "./presentation";
@@ -356,16 +358,21 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     run.rewardPicksRemaining ?? (run.rewards.length ? cardRewardPicks(run) : 0);
   const shopOffer = adventureWorkshopOffer(run);
   const offeredKeyword = shopOffer.keyword;
+  const tileEnvironments = boardEnvironments(battle?.board || []);
   const keywordDirection =
-    offeredKeyword.type === "dizzy"
-      ? (offeredKeyword.sides || [0, 1, 2, 3])
-          .map((side) => SIDE_NAMES[side])
-          .join("/")
-      : !("side" in offeredKeyword)
-        ? "Whole card"
-        : offeredKeyword.side === "any"
-          ? "Any edge"
-          : SIDE_NAMES[offeredKeyword.side];
+    offeredKeyword.type === "environment"
+      ? ENVIRONMENTS[offeredKeyword.environment.kind].name
+      : offeredKeyword.type === "dizzy"
+        ? (offeredKeyword.sides || [0, 1, 2, 3])
+            .map((side) => SIDE_NAMES[side])
+            .join("/")
+        : !("side" in offeredKeyword)
+          ? "Whole card"
+          : offeredKeyword.side === "all"
+            ? "Every side"
+            : offeredKeyword.side === "any"
+              ? "Any edge"
+              : SIDE_NAMES[offeredKeyword.side];
   const canInscribe = validateKeywords([
     ...(selectedService.keywords || []),
     offeredKeyword,
@@ -384,10 +391,12 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     const resolved = cell
       ? {
           edges: cardEdges(cell),
+          inheritedPips: cell.inheritedPips,
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
           comboActive: cell.comboActive,
           comboPrevious: cell.comboPrevious,
+          comboPreviousTribes: cell.comboPreviousTribes,
           grantedKeywords: cell.grantedKeywords,
         }
       : adventureCardStrengths(run!, stone, owner);
@@ -405,6 +414,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
       reductions: cell?.reductions,
       effects: cell?.effects,
       dizzy: cell?.dizzy,
+      environment: cell?.environment,
       size: run!.size,
       arenaElement: cell?.arenaElement || adventureArena(run!)?.current,
     };
@@ -842,7 +852,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               <button
                 id={`adventure-board-${index}`}
                 key={index}
-                className={`adventure-square ${cell ? "occupied" : "vacant"} ${battle.objective === index ? "objective-square" : ""} ${battle.lastCaptured.includes(index) ? "run-captured" : ""}`}
+                className={`adventure-square ${tileEnvironments[index] ? "has-environment" : ""} ${cell ? "occupied" : "vacant"} ${battle.objective === index ? "objective-square" : ""} ${battle.lastCaptured.includes(index) ? "run-captured" : ""}`}
                 disabled={!cell && (ai || selected === null)}
                 aria-label={
                   cell
@@ -880,6 +890,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                       edges={cardEdges(cell)}
                       shields={cell.shields}
                       silenced={cell.silenced}
+                      environment={cell.environment}
                     />
                   </CaptureFlip>
                 ) : (
@@ -893,9 +904,12 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                     {battle.objectiveKind === "chest" ? "CHEST" : "THRONE"}
                   </span>
                 )}
+                <TileMark environment={tileEnvironments[index]} />
               </button>
             ))}
           </div>
+          <EnvironmentLegend board={battle.board} />
+          <NextPlayStatus board={battle.board} names={["You", "Keeper"]} />
           {hasRelic(run, "oracles-eye") && (
             <section className="oracle-hand">
               <h3>Oracle’s Eye · keeper’s hand</h3>
@@ -1612,6 +1626,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               edges={inspected.edges}
               shields={inspected.shields}
               silenced={inspected.silenced}
+              environment={inspected.environment}
               played={inspected.played}
               grantedKeywords={inspected.grantedKeywords}
             />

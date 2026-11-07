@@ -79,6 +79,9 @@ test("studio configures defense-only Shield and Combo pip/keyword grants, then e
   await page.getByLabel("Pips removed Combo keyword 1").fill("3");
   await expect(page.locator(".preview-card")).toContainText("Shield");
   await expect(page.locator(".preview-card")).toContainText("Combo");
+  await expect(page.locator(".preview-card .keyword-combo")).toHaveText(
+    "Combo Magic",
+  );
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(

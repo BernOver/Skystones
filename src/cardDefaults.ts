@@ -4,6 +4,7 @@ import {
   validateKeywords,
   keywordKey,
   MAX_KEYWORDS,
+  repeatableKeyword,
 } from "./game.ts";
 import type { Stone, StoneKeyword } from "./game.ts";
 
@@ -120,7 +121,7 @@ export function withAdditionalKeywords(
     const duplicate = result.findIndex(
       (old) => keywordKey(old) === keywordKey(keyword),
     );
-    if (keyword.type !== "sunder" && duplicate !== -1) continue;
+    if (!repeatableKeyword(keyword.type) && duplicate !== -1) continue;
     if (result.length < MAX_KEYWORDS && validateKeywords([...result, keyword]))
       result.push(structuredClone(keyword));
   }

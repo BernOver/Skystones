@@ -22,7 +22,7 @@ test("shops roll all keyword types and four directions, with complete valid offe
       assert.ok(validateKeywords([offer.keyword]));
       types.add(offer.keyword.type);
       pipDirections.add(offer.pipSide);
-      if ("side" in offer.keyword) {
+      if ("side" in offer.keyword && typeof offer.keyword.side === "number") {
         assert.notEqual(offer.keyword.side, "any");
         directions.add(offer.keyword.side);
       }
@@ -31,7 +31,7 @@ test("shops roll all keyword types and four directions, with complete valid offe
       if (!("side" in offer.keyword))
         assert.equal("side" in offer.keyword, false);
     }
-  assert.equal(types.size, 8);
+  assert.equal(types.size, 10);
   assert.equal(directions.size, 4);
   assert.equal(pipDirections.size, 4);
   assert.ok(
@@ -76,12 +76,13 @@ test("offers survive old-format saves, card selection, and purchases without rer
   assert.deepEqual(adventureWorkshopOffer(second), offer);
   assert.equal(second.gold, bought.gold - 70);
   assert.deepEqual(shop.inventory[0].keywords, []);
-  assert.throws(() =>
-    buyAdventureService(second, {
-      type: "keyword",
-      cardId: eligible[0].id,
-    }),
-  );
+  if (!["sunder", "next-play", "environment"].includes(offer.keyword.type))
+    assert.throws(() =>
+      buyAdventureService(second, {
+        type: "keyword",
+        cardId: eligible[0].id,
+      }),
+    );
   assert.equal(second.gold, bought.gold - 70);
 });
 

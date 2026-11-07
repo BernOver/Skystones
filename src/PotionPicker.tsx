@@ -58,6 +58,21 @@ export function PotionPicker({
               stone={selected.stone}
               edges={selected.edges}
               played={definition.target !== "hand"}
+              environment={
+                typeof selected.target === "number"
+                  ? run.battle?.board[selected.target]?.environment
+                  : undefined
+              }
+              shields={
+                typeof selected.target === "number"
+                  ? run.battle?.board[selected.target]?.shields
+                  : undefined
+              }
+              silenced={
+                typeof selected.target === "number"
+                  ? run.battle?.board[selected.target]?.silenced
+                  : undefined
+              }
             />
           </div>
           <h3>{selected.label}</h3>

@@ -1,4 +1,11 @@
 import {
+  stoneTribes,
+  validTribe,
+  validateTribes,
+  TRIBE_IDS,
+  tribalKeyword,
+} from "./tribes.ts";
+import {
   characterDefault,
   withAdditionalKeywords,
   readCharacterDefaults,
@@ -22,6 +29,7 @@ import {
   MAX_KEYWORDS,
   DIZZY_EDGE_CAP,
   dizzySides,
+  repeatableKeyword,
   placeStone,
   score,
   validateKeywords,
@@ -30,6 +38,15 @@ import {
   arenaEdges,
   withArenaElement,
 } from "./game.ts";
+import {
+  defaultEnvironment,
+  ENVIRONMENTS,
+  validateEnvironment,
+  validEffectSide,
+  validPipAmount,
+  withTileEnvironments,
+} from "./effects.ts";
+import type { EnvironmentKind } from "./effects.ts";
 import type {
   Board,
   BoardSize,
@@ -1213,7 +1230,7 @@ export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
   for (const keyword of donor.keywords || []) {
     const existing = keywords.findIndex(
       (candidate) =>
-        keyword.type !== "sunder" &&
+        !repeatableKeyword(keyword.type) &&
         keywordKey(candidate) === keywordKey(keyword),
     );
     if (existing === -1) {
@@ -1241,6 +1258,7 @@ export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
     name: `Fused ${base.name.replace(/^Fused /, "")}`.slice(0, 24),
     edges,
     keywords,
+    tribes: [...new Set([...stoneTribes(base), ...stoneTribes(donor)])],
     description: `Forged from ${base.name} and ${donor.name}.`.slice(0, 120),
   };
 }
@@ -1400,26 +1418,57 @@ function rollWorkshopOffer(
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
-    type === "combo"
+    type === "environment"
       ? {
           type,
-          pips: [{ side, amount: 1 }],
-          keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
+          environment: defaultEnvironment(
+            (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
+              Math.floor(rng() * 7)
+            ],
+            elements[Math.floor(rng() * elements.length)],
+          ),
         }
-      : type === "dizzy"
-        ? { type, sides: [side] }
-        : type === "silence"
-          ? { type }
-          : type === "resonance"
-            ? {
-                type,
-                side,
-                element: elements[Math.floor(rng() * elements.length)],
-              }
-            : type === "sunder"
-              ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
-              : { type, side };
-  return { pipSide, keyword };
+      : type === "next-play"
+        ? {
+            type,
+            side: rng() < 0.5 ? "all" : side,
+            amount: rng() < 0.35 ? -1 : 1,
+            recipient: rng() < 0.35 ? "opponent" : "self",
+          }
+        : type === "combo"
+          ? {
+              type,
+              pips: [{ side, amount: 1 }],
+              keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
+            }
+          : type === "dizzy"
+            ? { type, sides: [side] }
+            : type === "silence"
+              ? { type }
+              : type === "resonance"
+                ? {
+                    type,
+                    side,
+                    element: elements[Math.floor(rng() * elements.length)],
+                  }
+                : type === "sunder"
+                  ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
+                  : { type, side };
+  const tribeRoll =
+    (run.seed ^
+      Math.imul(run.floor + 1, 0x79b1) ^
+      Math.imul(reroll + 1, 0x85eb)) >>>
+    0;
+  return {
+    pipSide,
+    keyword:
+      tribeRoll % 3 === 0
+        ? tribalKeyword(
+            keyword,
+            TRIBE_IDS[(tribeRoll >>> 4) % TRIBE_IDS.length],
+          )
+        : keyword,
+  };
 }
 export function adventureWorkshopOffer(
   run: Pick<Adventure, "seed" | "floor"> &
@@ -1559,7 +1608,7 @@ export function buyAdventureService(
     if (
       hasRelic(run, "rune-echo") &&
       "side" in offer.keyword &&
-      offer.keyword.side !== "any"
+      typeof offer.keyword.side === "number"
     ) {
       const echo = {
         ...offer.keyword,
@@ -1649,6 +1698,7 @@ function validBattleCard(value: unknown): value is Stone {
     Array.isArray(stone.edges) &&
     stone.edges.length === 4 &&
     stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 64) &&
+    (stone.tribes === undefined || validateTribes(stone.tribes)) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1664,6 +1714,24 @@ function validPlaced(value: unknown, length: number): boolean {
     [0, 1].includes(cell.owner) &&
     validBattleCard(cell.stone) &&
     (cell.edges === undefined || edges(cell.edges)) &&
+    (cell.environment === undefined || validateEnvironment(cell.environment)) &&
+    (cell.inheritedPips === undefined ||
+      (Array.isArray(cell.inheritedPips) &&
+        cell.inheritedPips.length === 4 &&
+        cell.inheritedPips.every(
+          (n) => Number.isInteger(n) && n >= -99 && n <= 99,
+        ))) &&
+    (cell.queuedPips === undefined ||
+      (Array.isArray(cell.queuedPips) &&
+        cell.queuedPips.length <= MAX_KEYWORDS + 5 &&
+        cell.queuedPips.every(
+          (effect) =>
+            effect &&
+            [0, 1].includes(effect.recipient) &&
+            validEffectSide(effect.side) &&
+            validPipAmount(effect.amount, true) &&
+            (effect.tribe === undefined || validTribe(effect.tribe)),
+        ))) &&
     (cell.arenaElement === undefined ||
       Object.hasOwn(ELEMENTS, cell.arenaElement)) &&
     (cell.shields === undefined ||
@@ -1677,6 +1745,8 @@ function validPlaced(value: unknown, length: number): boolean {
         cell.playedOrder >= 1 &&
         cell.playedOrder <= length)) &&
     (cell.comboActive === undefined || typeof cell.comboActive === "boolean") &&
+    (cell.comboPreviousTribes === undefined ||
+      validateTribes(cell.comboPreviousTribes)) &&
     (cell.comboPrevious === undefined ||
       Object.hasOwn(ELEMENTS, cell.comboPrevious)) &&
     (cell.grantedKeywords === undefined ||
@@ -1742,7 +1812,9 @@ function validPlaced(value: unknown, length: number): boolean {
         cell.effects.every(
           (effect) =>
             effect &&
-            ["sunder", "silence"].includes(effect.type) &&
+            ["sunder", "silence", "environment"].includes(effect.type) &&
+            (effect.type !== "environment" ||
+              validateEnvironment(effect.environment)) &&
             (effect.keywordIndex === undefined ||
               (Number.isInteger(effect.keywordIndex) &&
                 effect.keywordIndex >= 0 &&
@@ -2213,7 +2285,7 @@ function repairAdventureCards(run: Adventure): Adventure {
       ? {
           battle: {
             ...run.battle,
-            board: board!,
+            board: withTileEnvironments(board!),
             hands: [
               run.battle.hands[0].map(appearance),
               uniqueCharacters(

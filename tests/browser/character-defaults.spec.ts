@@ -11,8 +11,7 @@ test("edit a character default in the studio, use it in new normal and Draft gam
   const original = CHARACTER_STONES[0];
   await page.goto("/");
   const oldPips = await page
-    .locator(".hand-card-button")
-    .filter({ hasText: original.name })
+    .getByRole("button", { name: new RegExp(`^Select ${original.name},`) })
     .locator(".edge > b")
     .allTextContents();
   await page.getByRole("button", { name: /^Collection/ }).click();
@@ -30,6 +29,7 @@ test("edit a character default in the studio, use it in new normal and Draft gam
     .getByRole("button", { name: "Use Dark Spyro portrait", exact: true })
     .click();
   await expect(page.getByLabel("Stone name")).toHaveValue("Dark Spyro");
+  await page.getByLabel("Tribe Villains", { exact: true }).check();
   await page.getByLabel("Stone name").fill("My Shared Dragon");
   await page
     .getByRole("button", { name: "Save character default", exact: true })
@@ -39,15 +39,17 @@ test("edit a character default in the studio, use it in new normal and Draft gam
     CHARACTER_DEFAULTS_STORAGE,
   );
   expect(defaults[original.portrait!].card.name).toBe("My Shared Dragon");
+  expect(defaults[original.portrait!].card.tribes).toContain("villains");
   expect(defaults[original.portrait!].card.characterKey).toBe(
     original.portrait,
   );
   await page.getByRole("button", { name: "The table", exact: true }).click();
-  const oldHand = page
-    .locator(".hand-card-button")
-    .filter({ hasText: original.name });
+  const oldHand = page.getByRole("button", {
+    name: new RegExp(`^Select ${original.name},`),
+  });
   await expect(oldHand).toHaveCount(1);
   await expect(oldHand.locator(".edge > b")).toHaveText(oldPips);
+  await expect(oldHand.locator(".stone-tribes")).not.toContainText("Villains");
   await page.getByRole("button", { name: "New match", exact: true }).click();
   await page
     .getByRole("button", { name: "Find a little magic", exact: true })
@@ -56,6 +58,7 @@ test("edit a character default in the studio, use it in new normal and Draft gam
     .locator(".hand-card-button")
     .filter({ hasText: "My Shared Dragon" });
   await expect(updated).toHaveCount(1);
+  await expect(updated.locator(".stone-tribes")).toContainText("Villains");
   await expect(updated.locator(".edge > b")).toHaveText(
     defaults[original.portrait!].card.edges.map(String),
   );
@@ -79,6 +82,7 @@ test("edit a character default in the studio, use it in new normal and Draft gam
     (card: { characterKey: string }) => card.characterKey === original.portrait,
   );
   expect(dragon.name).toBe("My Shared Dragon");
+  expect(dragon.tribes).toContain("villains");
   expect(dragon.edges).toEqual(defaults[original.portrait!].card.edges);
   await page.getByRole("button", { name: /^Collection/ }).click();
   await page

@@ -1,3 +1,6 @@
+import { TribeEditor, TribeSelect, TribeBadges } from "./TribeEditor";
+import { hasTribe, portraitTribes } from "./tribes";
+import type { Tribe } from "./tribes";
 import {
   characterDefault,
   readCharacterDefaults,
@@ -11,6 +14,8 @@ import { CharacterAvatar } from "./CharacterAvatar";
 import { boardSkin, opponent, OPPONENTS } from "./presentation";
 import type { BoardSkinId, OpponentId } from "./presentation";
 import { CaptureFlip } from "./CaptureFlip";
+import { EnvironmentLegend, NextPlayStatus, TileMark } from "./BoardEffects";
+import { boardEnvironments } from "./effects";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { ChangeEvent, ReactNode } from "react";
@@ -53,6 +58,7 @@ import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
   coordinate,
   boardSize,
+  cardEdges,
   handSize,
   DEFAULT_DECK,
   ELEMENTS,
@@ -371,6 +377,7 @@ export default function App() {
   const [resultDismissed, setResultDismissed] = useState(false);
   const [query, setQuery] = useState("");
   const [elementFilter, setElementFilter] = useState("all");
+  const [tribeFilter, setTribeFilter] = useState<Tribe | "">("");
   const [onlyCustom, setOnlyCustom] = useState(false);
   const [onlyGiants, setOnlyGiants] = useState(false);
   const [draft, setDraft] = useState<Stone>(freshDraft);
@@ -389,6 +396,7 @@ export default function App() {
     .map((card) => characterDefault(card, characterDefaults))
     .concat(library.custom);
   const scores = score(match.board);
+  const tileEnvironments = boardEnvironments(match.board);
   const size = boardSize(match.board);
   const capacity = handSize(library.boardSize);
   const done = match.board.every(Boolean);
@@ -407,6 +415,7 @@ export default function App() {
       (!onlyCustom || s.custom) &&
       (!onlyGiants || onlyCustom || s.origin === "giants") &&
       (elementFilter === "all" || s.element === elementFilter) &&
+      (!tribeFilter || hasTribe(s, tribeFilter)) &&
       s.name.toLowerCase().includes(query.toLowerCase()),
   );
   const totalPoints = draft.edges.reduce((a, b) => a + b, 0);
@@ -519,11 +528,13 @@ export default function App() {
     const player = cell ? (cell.playedBy ?? cell.owner) : handOwner;
     const resolved = cell
       ? {
-          edges: cell.edges || stone.edges,
+          edges: cardEdges(cell),
+          inheritedPips: cell.inheritedPips,
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
           comboActive: cell.comboActive,
           comboPrevious: cell.comboPrevious,
+          comboPreviousTribes: cell.comboPreviousTribes,
           grantedKeywords: cell.grantedKeywords,
         }
       : evaluateKeywords(stone, match.board, player);
@@ -541,6 +552,7 @@ export default function App() {
       reductions: cell?.reductions,
       effects: cell?.effects,
       dizzy: cell?.dizzy,
+      environment: cell?.environment,
       size,
     };
   }
@@ -835,6 +847,7 @@ export default function App() {
         setOnlyCustom(true);
         setQuery("");
         setElementFilter("all");
+        setTribeFilter("");
         navigate("collection");
       }
     } catch {
@@ -1075,10 +1088,10 @@ export default function App() {
                         <button
                           key={`${index}-${cell?.owner ?? "empty"}`}
                           id={`board-${index}`}
-                          className={`board-cell ${cell ? "filled" : "empty"} ${match.lastCaptured.includes(index) ? "just-captured" : ""} ${match.lastPlaced === index ? "just-placed" : ""}`}
+                          className={`board-cell ${tileEnvironments[index] ? "has-environment" : ""} ${cell ? "filled" : "empty"} ${match.lastCaptured.includes(index) ? "just-captured" : ""} ${match.lastPlaced === index ? "just-placed" : ""}`}
                           aria-label={
                             cell
-                              ? `${coordinate(index, size)}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${(cell.edges || cell.stone.edges)[0]}, east ${(cell.edges || cell.stone.edges)[1]}, south ${(cell.edges || cell.stone.edges)[2]}, west ${(cell.edges || cell.stone.edges)[3]}.${cell.silenced ? " Silenced." : ""} Inspect card.`
+                              ? `${coordinate(index, size)}: ${cell.stone.name}, controlled by ${names[cell.owner]}, edges north ${cardEdges(cell)[0]}, east ${cardEdges(cell)[1]}, south ${cardEdges(cell)[2]}, west ${cardEdges(cell)[3]}.${cell.silenced ? " Silenced." : ""} Inspect card.`
                               : `${coordinate(index, size)}, empty square`
                           }
                           disabled={
@@ -1137,7 +1150,8 @@ export default function App() {
                                 stone={cell.stone}
                                 played
                                 owner={cell.owner}
-                                edges={cell.edges || cell.stone.edges}
+                                edges={cardEdges(cell)}
+                                environment={cell.environment}
                                 shields={cell.shields}
                                 silenced={cell.silenced}
                                 compact
@@ -1156,6 +1170,7 @@ export default function App() {
                               <span className="place-label">Place stone</span>
                             </>
                           )}
+                          <TileMark environment={tileEnvironments[index]} />
                         </button>
                       ))}
                     </div>
@@ -1204,6 +1219,8 @@ export default function App() {
                     )}
                   </div>
 
+                  <EnvironmentLegend board={match.board} />
+                  <NextPlayStatus board={match.board} names={names} />
                   <div
                     className={`turn-indicator ${aiTurn ? "thinking" : ""}`}
                     role="status"
@@ -1652,6 +1669,14 @@ export default function App() {
                   </select>
                   <ChevronDown size={14} />
                 </div>
+                <div className="tribe-filter">
+                  <TribeSelect
+                    label="Filter by tribe"
+                    value={tribeFilter}
+                    onChange={setTribeFilter}
+                    empty="All tribes"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1738,7 +1763,9 @@ export default function App() {
                   onClick={() =>
                     onlyCustom && !library.custom.length
                       ? openStudio()
-                      : (setQuery(""), setElementFilter("all"))
+                      : (setQuery(""),
+                        setElementFilter("all"),
+                        setTribeFilter(""))
                   }
                 >
                   {onlyCustom && !library.custom.length
@@ -1888,6 +1915,7 @@ export default function App() {
                       setDraft({
                         ...draft,
                         portrait: portrait.id,
+                        tribes: [...portraitTribes(portrait.id)],
                         image: undefined,
                         element: portrait.element,
                         name: portrait.name,
@@ -1895,6 +1923,10 @@ export default function App() {
                         edges: original ? [...original.edges] : draft.edges,
                       });
                     }}
+                  />
+                  <TribeEditor
+                    stone={draft}
+                    onChange={(tribes) => setDraft({ ...draft, tribes })}
                   />
                   <div className="upload-box">
                     <div>
@@ -2149,6 +2181,7 @@ export default function App() {
                 grantedKeywords={dialog.inspection.grantedKeywords}
                 edges={dialog.inspection.edges}
                 shields={dialog.inspection.shields}
+                environment={dialog.inspection.environment}
                 silenced={dialog.inspection.silenced}
               />
             </div>
@@ -2297,9 +2330,52 @@ export default function App() {
             <Layers size={19} />
             <p>
               <strong>Combo</strong> checks the last card you played. Matching
-              this card’s element grants its listed pips and/or keywords once,
-              before captures. Your first card cannot Combo. Capturing or
-              silencing your previous card does not change its element history.
+              its chosen element or tribe condition grants the listed pips
+              and/or keywords once, before captures. Choose element, shared
+              tribe, either, or both in the studio. Your first card cannot
+              Combo. Capturing or silencing your previous card does not change
+              its history.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Sparkles size={19} />
+            <p>
+              <strong>Dizzy</strong> rolls only its marked sides from 0–5 before
+              captures; a ? marks each pending side. The rolled pips stay on the
+              card.
+            </p>
+          </div>
+          <div className="rule-line">
+            <ArrowRight size={19} />
+            <p>
+              <strong>Next Play</strong> queues + or − pips on one side or every
+              side of your next card or the opponent’s next card. Pending
+              changes stack and apply once before Dizzy and captures. They do
+              not affect the caster, and canceled plays spend none. A chosen
+              recipient tribe waits for the next matching card; other cards do
+              not spend it.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Grid2X2 size={19} />
+            <p>
+              <strong>Environment</strong> places a lasting effect on any empty
+              or occupied tile before captures. Choose Elemental Spring, Blight,
+              Bastion, War Banner, Crosswind, Mirror Pool, or Equalizer in the
+              studio. Only the newest environment on a tile applies. It affects
+              either player and stays on the tile through captures, Silence, and
+              position swaps. Tile markers and the list below the board explain
+              its current effects. All seven terrains can affect a chosen tribe.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Layers size={19} />
+            <p>
+              <strong>Tribes</strong> are character groups and game families,
+              such as Giants, SWAP Force, and Imaginators. Cards can have more
+              than one. Edit tags in the studio and filter the collection by
+              tribe. Combo, Resonance, Next Play, and environments can match
+              these tags.
             </p>
           </div>
           <button
@@ -2473,6 +2549,7 @@ export default function App() {
                   : "THE ORIGINAL COLLECTION"}
           </div>
           <h2>{dialog.stone.name}</h2>
+          <TribeBadges stone={dialog.stone} />
           <p className="dialog-intro">
             {dialog.stone.description ||
               "An original little legend, made by you."}

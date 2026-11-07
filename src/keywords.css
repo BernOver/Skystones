@@ -864,3 +864,315 @@
   right: auto;
   left: -9px;
 }
+
+.keyword-editor-row:has(.effect-editor-options) {
+  grid-template-columns: minmax(0, 1fr) 36px;
+}
+.keyword-editor-row:has(.effect-editor-options) > .icon-button {
+  grid-column: 2;
+  grid-row: 1;
+}
+.keyword-editor-row:has(.effect-editor-options)
+  > div:not(:first-child):not(.effect-editor-options) {
+  grid-column: 1;
+  grid-row: 3;
+}
+.effect-editor-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.effect-editor-options label {
+  min-width: 0;
+}
+.tile-environment-mark {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--terrain-color, #527e55);
+  color: white;
+  border: 1px solid #fff9;
+  box-shadow: 0 1px 4px #0004;
+  pointer-events: auto;
+}
+.tile-environment-mark b {
+  font-size: 14px;
+  line-height: 1;
+}
+.tile-environment-mark > span {
+  display: none;
+}
+.board-cell.has-environment,
+.adventure-square.has-environment {
+  outline: 2px solid #acb99b;
+  outline-offset: -2px;
+}
+.environment-legend,
+.next-play-status {
+  border: 1px solid #dadfcf;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  background: #f5f6ef;
+  color: #4d6552;
+  font-size: 12px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.environment-legend summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+.environment-legend p,
+.next-play-status p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.environment-legend p strong {
+  display: inline;
+  margin-right: 4px;
+}
+.environment-legend > small,
+.next-play-status > small {
+  font-size: 10px;
+  color: #74836c;
+}
+.next-play-status {
+  background: #f1eaf6;
+  border-color: #d5c7e0;
+  color: #705388;
+}
+.next-play-status p > strong {
+  display: block;
+}
+.next-play-status p > span {
+  display: block;
+}
+.next-play-status p small {
+  opacity: 0.75;
+}
+.terrain-inspection-note,
+.next-play-inspection-note {
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #eaf0e3;
+  color: #4b6549;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.next-play-inspection-note {
+  background: #f1eaf6;
+  color: #705388;
+}
+.edge .attack-pip {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 3px;
+  border-radius: 5px;
+  background: #b56c3d;
+  color: #fff;
+  font-size: 9px;
+  line-height: 12px;
+  white-space: nowrap;
+  z-index: 3;
+}
+.edge.has-both-pips .attack-pip {
+  margin-top: 14px;
+}
+.edge-2 .attack-pip {
+  top: auto;
+  bottom: 100%;
+}
+.edge-2.has-both-pips .attack-pip {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+.edge-1 .attack-pip {
+  top: 50%;
+  left: auto;
+  right: 100%;
+  transform: translateY(-50%);
+}
+.edge-3 .attack-pip {
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+}
+.attack-stat {
+  color: #a55f37;
+  font-size: 10px;
+}
+@media (max-width: 480px) {
+  .effect-editor-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tile-environment-mark {
+    width: 18px;
+    height: 17px;
+    top: 2px;
+    left: 2px;
+  }
+  .tile-environment-mark b {
+    font-size: 12px;
+  }
+}
+
+.tribe-editor {
+  border: 0;
+  margin: 20px 0 14px;
+  padding: 0;
+}
+.tribe-editor legend {
+  font: 500 20px var(--font-display, Georgia, serif);
+  color: #364d43;
+}
+.tribe-editor p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #7c8b72;
+}
+.tribe-editor > div {
+  margin-top: 12px;
+}
+.tribe-editor > div > small {
+  display: block;
+  font-size: 10px;
+  margin-bottom: 7px;
+  color: #77876d;
+}
+.tribe-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tribe-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid #d7ddcb;
+  border-radius: 8px;
+  font-size: 11px;
+  background: #fafbf6;
+  cursor: pointer;
+}
+.tribe-options label.is-active {
+  background: #e8eee0;
+  border-color: #a9bb98;
+  color: #4e6947;
+}
+.tribe-options input {
+  accent-color: #6d8a5e;
+}
+.tribe-editor > button {
+  font-size: 10px;
+  margin-top: 8px;
+}
+.tribe-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  margin: 8px 0 12px;
+}
+.tribe-badges > span {
+  padding: 3px 8px;
+  border: 1px solid #d5d8df;
+  border-radius: 12px;
+  color: #6b6680;
+  background: #eeecf2;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.stone-tribes {
+  font-size: 8px;
+  line-height: 11px;
+  color: #81768c;
+  padding: 1px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.compact .stone-tribes,
+.adventure-board .stone-tribes {
+  font-size: 6px;
+  line-height: 8px;
+  padding: 0 3px;
+}
+.tribe-filter {
+  min-width: 160px;
+}
+.tribe-filter label {
+  font-size: 10px;
+  color: #7c8b72;
+}
+.tribe-filter select {
+  display: block;
+  width: 100%;
+  padding: 8px 24px 8px 9px;
+  border: 1px solid #d9dfcc;
+  border-radius: 8px;
+  color: #52634c;
+  background: #fafbf7;
+  font-size: 11px;
+}
+.combo-trigger-options {
+  grid-row: auto;
+  grid-column: auto;
+}
+.combo-tribe-history {
+  color: #786486;
+  font-size: 10px;
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .tribe-filter {
+    min-width: 0;
+    width: 100%;
+  }
+  .board-size-4 .stone-tribes,
+  .adventure-board-4 .stone-tribes {
+    display: none;
+  }
+  :is(.board-size-4, .adventure-board-4) .edge :is(.shield-pip, .attack-pip) {
+    font-size: 6px;
+    line-height: 8px;
+    gap: 1px;
+    padding: 0 1px;
+    border-radius: 3px;
+  }
+  :is(.board-size-4, .adventure-board-4)
+    .edge
+    :is(.shield-pip, .attack-pip)
+    svg {
+    width: 7px;
+    height: 7px;
+  }
+  :is(.board-size-4, .adventure-board-4) .edge.has-both-pips .attack-pip {
+    margin-top: 9px;
+  }
+  :is(.board-size-4, .adventure-board-4) .edge-2.has-both-pips .attack-pip {
+    margin-top: 0;
+    margin-bottom: 9px;
+  }
+}
+.collection-filters {
+  flex-wrap: wrap;
+}
+.tribe-filter > label {
+  font-size: 0;
+}

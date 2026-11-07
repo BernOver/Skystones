@@ -9,7 +9,10 @@ import {
   SIDE_NAMES,
   keywordKey,
   validateKeywords,
+  repeatableKeyword,
 } from "./game";
+import { ENVIRONMENTS, defaultEnvironment } from "./effects";
+import type { EffectSide, EnvironmentKind } from "./effects";
 import type {
   BasicKeyword,
   ComboKeyword,
@@ -20,6 +23,8 @@ import type {
   StoneKeyword,
 } from "./game";
 import { KeywordDetails } from "./CardInspection";
+import { TribeSelect } from "./TribeEditor";
+import type { ComboCondition } from "./tribes";
 
 export function defaultKeyword(
   type: KeywordType,
@@ -29,6 +34,9 @@ export function defaultKeyword(
   if (type === "silence") return { type };
   if (type === "dizzy") return { type, sides: [side] };
   if (type === "combo") return { type, pips: [{ side, amount: 1 }] };
+  if (type === "next-play") return { type, side, amount: 1, recipient: "self" };
+  if (type === "environment")
+    return { type, environment: defaultEnvironment("elemental", element) };
   if (type === "resonance") return { type, side, element };
   return { type, side };
 }
@@ -46,7 +54,8 @@ function Fields({
   onChange: (value: StoneKeyword) => void;
 }) {
   const suffix = label.replace(/\D/g, "");
-  const side = "side" in keyword && keyword.side !== "any" ? keyword.side : 0;
+  const side =
+    "side" in keyword && typeof keyword.side === "number" ? keyword.side : 0;
   return (
     <>
       <div>
@@ -71,6 +80,205 @@ function Fields({
           </select>
         </label>
       </div>
+      {keyword.type === "next-play" && (
+        <div className="effect-editor-options">
+          <label>
+            Next player
+            <select
+              aria-label={`Next player · ${label}`}
+              value={keyword.recipient}
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  recipient: e.target.value as "self" | "opponent",
+                })
+              }
+            >
+              <option value="self">Your next card</option>
+              <option value="opponent">Opponent’s next card</option>
+            </select>
+          </label>
+          <label>
+            Pip change
+            <select
+              aria-label={`Pip change · ${label}`}
+              value={keyword.amount}
+              onChange={(e) =>
+                onChange({ ...keyword, amount: Number(e.target.value) })
+              }
+            >
+              {[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value > 0 ? "+" : ""}
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <TribeSelect
+            label={`Recipient tribe · ${label}`}
+            value={keyword.tribe || ""}
+            empty="Any card"
+            onChange={(tribe) =>
+              onChange({ ...keyword, tribe: tribe || undefined })
+            }
+          />
+          {!!keyword.tribe && (
+            <small>
+              Waits for the next card of this tribe. Other cards do not spend
+              it.
+            </small>
+          )}
+        </div>
+      )}
+      {keyword.type === "environment" && (
+        <div className="effect-editor-options">
+          <label>
+            Tile environment
+            <select
+              aria-label={`Tile environment · ${label}`}
+              value={keyword.environment.kind}
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  environment: {
+                    ...defaultEnvironment(
+                      e.target.value as EnvironmentKind,
+                      element,
+                    ),
+                    ...(keyword.environment.tribe
+                      ? { tribe: keyword.environment.tribe }
+                      : {}),
+                  },
+                })
+              }
+            >
+              {Object.entries(ENVIRONMENTS).map(([value, info]) => (
+                <option key={value} value={value}>
+                  {info.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {keyword.environment.kind === "elemental"
+              ? "Match by"
+              : "Affected cards"}
+            <select
+              aria-label={`${keyword.environment.kind === "elemental" ? "Match by" : "Affected cards"} · ${label}`}
+              value={keyword.environment.tribe ? "tribe" : "all"}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  environment: {
+                    ...keyword.environment,
+                    tribe:
+                      event.target.value === "tribe" ? "giants" : undefined,
+                  },
+                })
+              }
+            >
+              <option value="all">
+                {keyword.environment.kind === "elemental"
+                  ? "Element"
+                  : "Every card"}
+              </option>
+              <option value="tribe">Tribe</option>
+            </select>
+          </label>
+          {!!keyword.environment.tribe && (
+            <TribeSelect
+              label={`Affected tribe · ${label}`}
+              value={keyword.environment.tribe}
+              empty={false}
+              onChange={(tribe) =>
+                tribe &&
+                onChange({
+                  ...keyword,
+                  environment: { ...keyword.environment, tribe },
+                })
+              }
+            />
+          )}
+          {"side" in keyword.environment && (
+            <label>
+              Terrain sides
+              <select
+                aria-label={`Terrain sides · ${label}`}
+                value={keyword.environment.side}
+                onChange={(e) =>
+                  onChange({
+                    ...keyword,
+                    environment: {
+                      ...keyword.environment,
+                      side:
+                        e.target.value === "all"
+                          ? "all"
+                          : (Number(e.target.value) as EffectSide),
+                    } as typeof keyword.environment,
+                  })
+                }
+              >
+                <option value="all">Every side</option>
+                {SIDE_NAMES.map((name, index) => (
+                  <option key={name} value={index}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {"amount" in keyword.environment && (
+            <label>
+              Terrain pips
+              <select
+                aria-label={`Terrain pips · ${label}`}
+                value={keyword.environment.amount}
+                onChange={(e) =>
+                  onChange({
+                    ...keyword,
+                    environment: {
+                      ...keyword.environment,
+                      amount: Number(e.target.value),
+                    } as typeof keyword.environment,
+                  })
+                }
+              >
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {keyword.environment.kind === "elemental" &&
+            !keyword.environment.tribe && (
+              <label>
+                Boosted element
+                <select
+                  aria-label={`Boosted element · ${label}`}
+                  value={keyword.environment.element}
+                  onChange={(e) =>
+                    onChange({
+                      ...keyword,
+                      environment: {
+                        ...keyword.environment,
+                        element: e.target.value as Element,
+                      } as typeof keyword.environment,
+                    })
+                  }
+                >
+                  {Object.entries(ELEMENTS).map(([value, info]) => (
+                    <option key={value} value={value}>
+                      {info.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+        </div>
+      )}
       {keyword.type === "dizzy" && (
         <fieldset className="dizzy-side-options">
           <legend>Dizzy sides</legend>
@@ -106,8 +314,8 @@ function Fields({
                 onChange({
                   ...keyword,
                   side:
-                    e.target.value === "any"
-                      ? "any"
+                    e.target.value === "any" || e.target.value === "all"
+                      ? e.target.value
                       : (Number(e.target.value) as Side),
                 } as StoneKeyword)
               }
@@ -120,6 +328,9 @@ function Fields({
               {keyword.type === "sunder" && (
                 <option value="any">Any · choose when played</option>
               )}
+              {keyword.type === "next-play" && (
+                <option value="all">Every side</option>
+              )}
             </select>
           </label>
         </div>
@@ -127,21 +338,48 @@ function Fields({
       {keyword.type === "resonance" && (
         <div className="resonance-element-field">
           <label>
-            Counted element {suffix}
+            Count by
             <select
-              aria-label={`Counted element ${label.replace("Keyword ", "")}`}
-              value={keyword.element}
-              onChange={(e) =>
-                onChange({ ...keyword, element: e.target.value as Element })
+              aria-label={`Count by · ${label}`}
+              value={keyword.tribe ? "tribe" : "element"}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  tribe: event.target.value === "tribe" ? "giants" : undefined,
+                })
               }
             >
-              {Object.entries(ELEMENTS).map(([key, value]) => (
-                <option key={key} value={key}>
-                  {value.name}
-                </option>
-              ))}
+              <option value="element">Element</option>
+              <option value="tribe">Tribe</option>
             </select>
           </label>
+          {keyword.tribe ? (
+            <TribeSelect
+              label={`Counted tribe ${suffix}`}
+              value={keyword.tribe}
+              empty={false}
+              onChange={(tribe) => tribe && onChange({ ...keyword, tribe })}
+            />
+          ) : (
+            <>
+              <label>
+                Counted element {suffix}
+                <select
+                  aria-label={`Counted element ${label.replace("Keyword ", "")}`}
+                  value={keyword.element}
+                  onChange={(e) =>
+                    onChange({ ...keyword, element: e.target.value as Element })
+                  }
+                >
+                  {Object.entries(ELEMENTS).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
         </div>
       )}
       {(keyword.type === "sunder" || keyword.type === "shield") && (
@@ -179,9 +417,42 @@ function ComboFields({
   const grants = keyword.keywords || [];
   return (
     <div className="combo-editor">
+      <div className="effect-editor-options combo-trigger-options">
+        <label>
+          Combo trigger
+          <select
+            aria-label="Combo trigger"
+            value={keyword.condition || "element"}
+            onChange={(event) =>
+              onChange({
+                ...keyword,
+                condition: event.target.value as ComboCondition,
+                ...(event.target.value === "element"
+                  ? { tribe: undefined }
+                  : {}),
+              })
+            }
+          >
+            <option value="element">Same element</option>
+            <option value="tribe">Shared tribe</option>
+            <option value="either">Same element or tribe</option>
+            <option value="both">Same element and tribe</option>
+          </select>
+        </label>
+        {!!keyword.condition && keyword.condition !== "element" && (
+          <TribeSelect
+            label="Combo tribe"
+            value={keyword.tribe || ""}
+            empty="Any shared tribe"
+            onChange={(tribe) =>
+              onChange({ ...keyword, tribe: tribe || undefined })
+            }
+          />
+        )}
+      </div>
       <p>
-        If your previous played card has the same element, gain these pips and
-        keywords once before captures. Your first card cannot Combo.
+        If your previous played card matches the chosen trigger, gain these pips
+        and keywords once before captures. Your first card cannot Combo.
       </p>
       <div className="combo-pip-grid">
         {SIDE_NAMES.map((name, side) => (
@@ -292,7 +563,7 @@ export function KeywordEditor({
   function update(index: number, value: StoneKeyword) {
     const next = keywords.map((old, i) => (i === index ? value : old));
     if (
-      value.type !== "sunder" &&
+      !repeatableKeyword(value.type) &&
       keywords.some(
         (old, i) => i !== index && keywordKey(old) === keywordKey(value),
       )
@@ -302,7 +573,7 @@ export function KeywordEditor({
     }
     if (!validateKeywords(next)) {
       setError(
-        "Choose at least one Dizzy side. Sunder can repeat on the same edge; other keywords need a unique edge. Combo needs a pip bonus or granted keyword.",
+        "Choose valid effect settings and at least one Dizzy side. Sunder, Next Play, and Environment can repeat. Combo needs a pip bonus or granted keyword.",
       );
       return;
     }
@@ -409,6 +680,12 @@ export function KeywordEditor({
           <p>
             <strong>Dizzy</strong> rolls each selected edge from 0 to{" "}
             {DIZZY_EDGE_CAP} before captures. A ? marks each affected edge.
+          </p>
+          <p>
+            <strong>Next Play</strong> queues + or − pips on one side or every
+            side of your next card or the opponent’s next card.{" "}
+            <strong>Environment</strong> places one of seven lasting tile
+            effects anywhere on the board.
           </p>
           <p>
             <strong>Shield</strong> adds directional defense pips, never attack
