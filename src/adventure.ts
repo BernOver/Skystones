@@ -45,6 +45,7 @@ import {
   validEffectSide,
   validPipAmount,
   withTileEnvironments,
+  shiftEffectText,
 } from "./effects.ts";
 import type { EnvironmentKind } from "./effects.ts";
 import {
@@ -1102,11 +1103,21 @@ export function playAdventureCard(
     move.captured.length > 0 &&
     hasRelic(run, "duelists-bracer") &&
     !battle.bracerUsed;
+  let objective = battle.objective;
+  if (battle.objectiveKind === "chest")
+    for (const effect of move.effects)
+      if (
+        effect.type === "shift" &&
+        effect.moved &&
+        effect.target === objective
+      )
+        objective = effect.to;
   const next = {
     ...run,
     lives: bracer ? Math.min(maxLives(run), run.lives + 1) : run.lives,
     battle: {
       ...battle,
+      ...(objective !== undefined ? { objective } : {}),
       board: arena
         ? withArenaElement(conjured.board, arena.next)
         : conjured.board,
@@ -1122,7 +1133,14 @@ export function playAdventureCard(
         (battle.current === 0 && hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
-        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}`,
+        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
+          .filter((effect) => effect.type === "shift")
+          .map((effect) =>
+            effect.type === "shift"
+              ? ` · ${shiftEffectText(effect, run.size)}`
+              : "",
+          )
+          .join("")}`,
         ...battle.log,
       ].slice(0, 20),
     },
@@ -1454,42 +1472,62 @@ function rollWorkshopOffer(
             ? { pool: "tokens" as const }
             : {}),
         }
-      : type === "environment"
+      : type === "shift"
         ? {
             type,
-            environment: defaultEnvironment(
-              (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
-                Math.floor(rng() * 7)
-              ],
-              elements[Math.floor(rng() * elements.length)],
-            ),
+            side,
+            direction: ([side, (side + 1) % 4, (side + 3) % 4] as Side[])[
+              Math.floor(rng() * 3)
+            ],
+            affects: (["enemies", "allies", "both"] as const)[
+              Math.floor(rng() * 3)
+            ],
           }
-        : type === "next-play"
+        : type === "environment"
           ? {
               type,
-              side: rng() < 0.5 ? "all" : side,
-              amount: rng() < 0.35 ? -1 : 1,
-              recipient: rng() < 0.35 ? "opponent" : "self",
+              environment: defaultEnvironment(
+                (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
+                  Math.floor(rng() * 7)
+                ],
+                elements[Math.floor(rng() * elements.length)],
+              ),
             }
-          : type === "combo"
+          : type === "next-play"
             ? {
                 type,
-                pips: [{ side, amount: 1 }],
-                keywords: [{ type: "shield", side: ((side + 2) % 4) as Side }],
-              }
-            : type === "dizzy"
-              ? { type, sides: [side] }
-              : type === "silence"
-                ? { type }
-                : type === "resonance"
+                side: rng() < 0.5 ? "all" : side,
+                amount: rng() < 0.35 ? -1 : 1,
+                recipient: rng() < 0.35 ? "opponent" : "self",
+                ...((run.seed + run.floor + reroll) % 3 === 0
                   ? {
-                      type,
-                      side,
-                      element: elements[Math.floor(rng() * elements.length)],
+                      amount: run.seed % 2 ? 0 : 1,
+                      recipient: "self" as const,
+                      keywords: [{ type: "shield" as const, side }],
                     }
-                  : type === "sunder"
-                    ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
-                    : { type, side };
+                  : {}),
+              }
+            : type === "combo"
+              ? {
+                  type,
+                  pips: [{ side, amount: 1 }],
+                  keywords: [
+                    { type: "shield", side: ((side + 2) % 4) as Side },
+                  ],
+                }
+              : type === "dizzy"
+                ? { type, sides: [side] }
+                : type === "silence"
+                  ? { type }
+                  : type === "resonance"
+                    ? {
+                        type,
+                        side,
+                        element: elements[Math.floor(rng() * elements.length)],
+                      }
+                    : type === "sunder"
+                      ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
+                      : { type, side };
   const tribeRoll =
     (run.seed ^
       Math.imul(run.floor + 1, 0x79b1) ^
@@ -1738,6 +1776,10 @@ function validBattleCard(value: unknown): value is Stone {
     (stone.conjured === undefined || stone.conjured === true) &&
     (stone.token === undefined ||
       (stone.token === true && stone.conjured === true)) &&
+    (stone.receivedKeywords === undefined ||
+      (Array.isArray(stone.receivedKeywords) &&
+        stone.receivedKeywords.length > 0 &&
+        validateKeywords(stone.receivedKeywords))) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1770,7 +1812,13 @@ function validPlaced(value: unknown, length: number): boolean {
             effect &&
             [0, 1].includes(effect.recipient) &&
             validEffectSide(effect.side) &&
-            validPipAmount(effect.amount, true) &&
+            (validPipAmount(effect.amount, true) ||
+              (effect.amount === 0 && !!effect.keywords?.length)) &&
+            (effect.keywords === undefined ||
+              (Array.isArray(effect.keywords) &&
+                effect.keywords.length > 0 &&
+                effect.keywords.length <= 5 &&
+                validateKeywords(effect.keywords))) &&
             (effect.tribe === undefined || validTribe(effect.tribe)),
         ))) &&
     (cell.arenaElement === undefined ||
@@ -1853,7 +1901,19 @@ function validPlaced(value: unknown, length: number): boolean {
         cell.effects.every(
           (effect) =>
             effect &&
-            ["sunder", "silence", "environment"].includes(effect.type) &&
+            ["sunder", "silence", "environment", "shift"].includes(
+              effect.type,
+            ) &&
+            (effect.type !== "shift" ||
+              (Number.isInteger(effect.to) &&
+                effect.to >= -1 &&
+                effect.to < length &&
+                [0, 1, 2, 3].includes(effect.direction) &&
+                [0, 1, 2, 3].includes(effect.side) &&
+                ["allies", "enemies", "both"].includes(effect.affects) &&
+                typeof effect.moved === "boolean" &&
+                (effect.reason === undefined ||
+                  ["no-target", "blocked"].includes(effect.reason)))) &&
             (effect.type !== "environment" ||
               validateEnvironment(effect.environment)) &&
             (effect.keywordIndex === undefined ||
@@ -1861,7 +1921,7 @@ function validPlaced(value: unknown, length: number): boolean {
                 effect.keywordIndex >= 0 &&
                 effect.keywordIndex < MAX_KEYWORDS + 5)) &&
             Number.isInteger(effect.target) &&
-            effect.target >= 0 &&
+            effect.target >= (effect.type === "shift" ? -1 : 0) &&
             effect.target < length &&
             (effect.type !== "sunder" ||
               (Number.isInteger(effect.side) &&

@@ -61,10 +61,29 @@ The Runesmith’s Shrine adds keywords; the Twinflame Forge combines two cards.
 Spire Crossroads offer adapted encounters in each act. Card transformation
 can grant up to 5 keywords. The potion and event guides explain all choices.
 
-New card effects: in Card studio > Add keyword, choose Next Play or Environment.
+New card effects: in Card studio > Add keyword, choose Next Play, Shift,
+or Environment.
 Next Play queues + or - 1-5 pips on one side or every side, for your next card
-or the opponent's next card. Queued changes stack and are spent once when that
-player places a card, before Dizzy and captures. Canceled plays spend none.
+or the opponent's next card. It can also grant up to five configured keywords,
+with or without a pip change. Add keywords, then choose None in Pip change for
+a keywords-only effect. Queued gifts appear in hand previews and activate on
+the recipient's next matching play, before Dizzy and captures. Targeted gifts
+use the normal target picker. Combo can grant Next Play, and Next Play can
+grant Combo or another Next Play, up to three nested levels. Conjure token
+templates inside gifts are bundled when sharing a card. Existing unique
+keywords take priority, and a card holds at most 24 keywords. Queued changes
+stack in cast order and are spent once. Canceled plays spend none.
+
+Shift automatically affects only the card adjacent to its printed side.
+Choose its fixed movement direction (Up/Right/Down/Left) and whether it affects
+enemies, allies, or both in the studio. There is no target choice during play.
+It moves that neighbor one tile before captures, wrapping at the movement edge.
+Target adjacency does not wrap. Missing/ineligible neighbors do nothing;
+occupied destinations and the incoming card's tile block movement. Cards do
+not swap or push. Moved cards keep their owner and resolved effects without
+replaying keywords. Terrain stays on its tile; a chest follows its card.
+Later effects and captures use the new positions. One Shift per printed side
+is allowed, including through Combo and Next Play, on both board sizes.
 
 Environment chooses any empty or occupied tile before captures. Seven terrains:
 - Elemental Spring: a chosen element gains pips on one side or every side.

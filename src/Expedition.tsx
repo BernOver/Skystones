@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { SpireEncounter, SpireEventGuide } from "./SpireEncounter";
 import { SPIRE_CATALOG, getSpireEvent } from "./spireEvents";
-import { validateStone } from "./game";
+import { validateStone, withNextKeywords } from "./game";
 import { PotionPicker, PotionGuide } from "./PotionPicker";
 import { adventurePotionAvailability, POTION_IDS } from "./potions";
 import { InscriptionEvent, FusionEvent } from "./AdventureEvents";
@@ -388,6 +388,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     owner: Owner = 0,
   ) {
     const cell = boardIndex !== undefined ? battle?.board[boardIndex] : null;
+    if (!cell && battle) stone = withNextKeywords(stone, battle.board, owner);
     const resolved = cell
       ? {
           edges: cardEdges(cell),
@@ -428,7 +429,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
   function play(placement: number) {
     if (selected === null || ai || !battle) return;
     const stone = battle.hands[0][selected];
-    if (prepareTargeting(battle.board, stone, [], 0).pending) {
+    if (prepareTargeting(battle.board, stone, [], 0, placement).pending) {
       setTarget({ placement, cardIndex: selected, targets: [] });
       setInspection(null);
     } else act((current) => playAdventureCard(current, placement, selected));
@@ -436,7 +437,13 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
   function chooseTarget(boardIndex: number, chosenSide?: Side) {
     if (!target || !battle) return;
     const stone = battle.hands[0][target.cardIndex],
-      state = prepareTargeting(battle.board, stone, target.targets, 0);
+      state = prepareTargeting(
+        battle.board,
+        stone,
+        target.targets,
+        0,
+        target.placement,
+      );
     if (
       !state.pending?.options.some(
         (option) =>
@@ -452,7 +459,10 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
         ...(chosenSide !== undefined ? { side: chosenSide } : {}),
       },
     ];
-    if (prepareTargeting(battle.board, stone, targets, 0).pending)
+    if (
+      prepareTargeting(battle.board, stone, targets, 0, target.placement)
+        .pending
+    )
       setTarget({ ...target, targets });
     else {
       act((current) =>
@@ -935,7 +945,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                     onBlur={() => setInspection(null)}
                   >
                     <StoneCard
-                      stone={stone}
+                      stone={withNextKeywords(stone, battle.board, 1)}
                       owner={1}
                       grantedKeywords={
                         adventureCardStrengths(run, stone, 1).grantedKeywords
@@ -974,7 +984,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                 onBlur={() => setInspection(null)}
               >
                 <StoneCard
-                  stone={stone}
+                  stone={withNextKeywords(stone, battle.board, 0)}
                   grantedKeywords={
                     adventureCardStrengths(run, stone).grantedKeywords
                   }

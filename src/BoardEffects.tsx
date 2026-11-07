@@ -7,7 +7,7 @@ import {
   boardEnvironments,
   environmentText,
   pendingPipEffects,
-  pipEffectText,
+  nextEffectText,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
 
@@ -79,7 +79,7 @@ export function NextPlayStatus({
           </strong>
           {entry.effects.map((effect, index) => (
             <span key={index}>
-              {pipEffectText(effect)}
+              {nextEffectText(effect)}
               {effect.tribe
                 ? ` on next ${tribeName(effect.tribe)} card`
                 : ""}{" "}

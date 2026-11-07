@@ -36,7 +36,7 @@ import {
   ENVIRONMENTS,
   environmentAttack,
   environmentDefense,
-  pipEffectText,
+  nextEffectText,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
 import { conjureSource } from "./conjure";
@@ -696,22 +696,24 @@ export const StoneCard = memo(
                           keyword.type === "conjure"
                             ? `${keyword.count} ${conjureSource(keyword)}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
                             : keyword.type === "next-play"
-                              ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${pipEffectText(keyword)}`
-                              : keyword.type === "environment"
-                                ? ENVIRONMENTS[keyword.environment.kind].name
-                                : keyword.type === "silence" ||
-                                    keyword.type === "dizzy" ||
-                                    keyword.type === "combo"
-                                  ? keyword.type === "dizzy"
-                                    ? dizzySides(keyword)
-                                        .map((side) => SIDE_LETTERS[side])
-                                        .join("/")
-                                    : keyword.type === "combo"
-                                      ? comboRequirement(stone, keyword)
-                                      : "ON PLAY"
-                                  : keyword.side === "any"
-                                    ? "ANY EDGE"
-                                    : SIDE_LETTERS[keyword.side],
+                              ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}`
+                              : keyword.type === "shift"
+                                ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
+                                : keyword.type === "environment"
+                                  ? ENVIRONMENTS[keyword.environment.kind].name
+                                  : keyword.type === "silence" ||
+                                      keyword.type === "dizzy" ||
+                                      keyword.type === "combo"
+                                    ? keyword.type === "dizzy"
+                                      ? dizzySides(keyword)
+                                          .map((side) => SIDE_LETTERS[side])
+                                          .join("/")
+                                      : keyword.type === "combo"
+                                        ? comboRequirement(stone, keyword)
+                                        : "ON PLAY"
+                                    : keyword.side === "any"
+                                      ? "ANY EDGE"
+                                      : SIDE_LETTERS[keyword.side],
                         )
                         .join("/")}
                     </b>

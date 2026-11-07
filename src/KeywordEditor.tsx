@@ -4,6 +4,7 @@ import {
   ELEMENTS,
   KEYWORD_RULES,
   MAX_KEYWORDS,
+  MAX_KEYWORD_DEPTH,
   DIZZY_EDGE_CAP,
   dizzySides,
   SIDE_NAMES,
@@ -37,6 +38,13 @@ export function defaultKeyword(
   if (type === "dizzy") return { type, sides: [side] };
   if (type === "combo") return { type, pips: [{ side, amount: 1 }] };
   if (type === "next-play") return { type, side, amount: 1, recipient: "self" };
+  if (type === "shift")
+    return {
+      type,
+      side,
+      direction: ((side + 1) % 4) as Side,
+      affects: "enemies",
+    };
   if (type === "environment")
     return { type, environment: defaultEnvironment("elemental", element) };
   if (type === "conjure")
@@ -55,15 +63,19 @@ function Fields({
   label,
   element,
   allowCombo = true,
+  depth = 0,
   onChange,
 }: {
   keyword: StoneKeyword;
   label: string;
   element: Element;
   allowCombo?: boolean;
+  depth?: number;
   onChange: (value: StoneKeyword) => void;
 }) {
-  const suffix = label.replace(/\D/g, "");
+  const suffix = /^Keyword \d+$/.test(label)
+    ? label.replace("Keyword ", "")
+    : label;
   const side =
     "side" in keyword && typeof keyword.side === "number" ? keyword.side : 0;
   return (
@@ -287,10 +299,15 @@ function Fields({
                 onChange({ ...keyword, amount: Number(e.target.value) })
               }
             >
-              {[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5].map((value) => (
-                <option key={value} value={value}>
-                  {value > 0 ? "+" : ""}
-                  {value}
+              {[-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map((value) => (
+                <option
+                  key={value}
+                  value={value}
+                  disabled={value === 0 && !keyword.keywords?.length}
+                >
+                  {value === 0
+                    ? "None · keywords only"
+                    : `${value > 0 ? "+" : ""}${value}`}
                 </option>
               ))}
             </select>
@@ -309,6 +326,59 @@ function Fields({
               it.
             </small>
           )}
+          <NextKeywordFields
+            keyword={keyword}
+            element={element}
+            label={label}
+            depth={depth}
+            onChange={onChange}
+          />
+        </div>
+      )}
+      {keyword.type === "shift" && (
+        <div className="effect-editor-options">
+          <label>
+            Movement direction
+            <select
+              aria-label={`Shift direction · ${label}`}
+              value={keyword.direction}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  direction: Number(event.target.value) as Side,
+                })
+              }
+            >
+              {["Up", "Right", "Down", "Left"].map((name, i) => (
+                <option key={i} value={i}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Affects
+            <select
+              aria-label={`Shift affects · ${label}`}
+              value={keyword.affects}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  affects: event.target.value as "enemies" | "allies" | "both",
+                })
+              }
+            >
+              <option value="enemies">Enemies only</option>
+              <option value="allies">Allies only</option>
+              <option value="both">Allies and enemies</option>
+            </select>
+          </label>
+          <small>
+            Only the neighbor on the printed side is affected, before captures.
+            It moves one tile in this fixed direction, wrapping at the board
+            edge. Occupied destinations and the tile you are playing on block
+            movement. No target or direction choice during play.
+          </small>
         </div>
       )}
       {keyword.type === "environment" && (
@@ -485,10 +555,14 @@ function Fields({
       {"side" in keyword && (
         <div>
           <label>
-            {keyword.type === "sunder" ? "Target edge" : "Affected edge"}{" "}
+            {keyword.type === "sunder"
+              ? "Target edge"
+              : keyword.type === "shift"
+                ? "Adjacent side"
+                : "Affected edge"}{" "}
             {suffix}
             <select
-              aria-label={`${keyword.type === "sunder" ? "Target edge" : "Affected edge"} ${label.replace("Keyword ", "")}`}
+              aria-label={`${keyword.type === "sunder" ? "Target edge" : keyword.type === "shift" ? "Adjacent side" : "Affected edge"} ${label.replace("Keyword ", "")}`}
               value={keyword.side}
               onChange={(e) =>
                 onChange({
@@ -585,23 +659,133 @@ function Fields({
     </>
   );
 }
+function NextKeywordFields({
+  keyword,
+  element,
+  label,
+  depth,
+  onChange,
+}: {
+  keyword: Extract<StoneKeyword, { type: "next-play" }>;
+  element: Element;
+  label: string;
+  depth: number;
+  onChange: (value: StoneKeyword) => void;
+}) {
+  const grants = keyword.keywords || [];
+  const update = (keywords: StoneKeyword[]) =>
+    onChange({
+      ...keyword,
+      amount: keywords.length || keyword.amount ? keyword.amount : 1,
+      keywords: keywords.length ? keywords : undefined,
+    });
+  return (
+    <fieldset
+      className="next-keyword-grants"
+      aria-label={`Next Play keywords · ${label}`}
+    >
+      <legend>Keywords for the next card</legend>
+      <p>
+        They are added before its on-play checks and captures. Choose None for a
+        keywords-only effect. Unique keywords already on the same edge are kept;
+        extra grants stop at the card’s 24-keyword limit.
+      </p>
+      {grants.map((grant, index) => {
+        const grantLabel = `${label} grant ${index + 1}`;
+        const change = (value: StoneKeyword) =>
+          update(grants.map((old, i) => (i === index ? value : old)));
+        return (
+          <div className="next-grant-entry" key={index}>
+            <div className="keyword-editor-row">
+              <Fields
+                keyword={grant}
+                label={grantLabel}
+                element={element}
+                depth={depth + 1}
+                onChange={change}
+              />
+              <button
+                className="icon-button"
+                type="button"
+                aria-label={`Remove ${grantLabel}`}
+                onClick={() => update(grants.filter((_, i) => i !== index))}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+            {grant.type === "combo" && (
+              <ComboFields
+                keyword={grant}
+                element={element}
+                depth={depth + 1}
+                labelPrefix={grantLabel}
+                onChange={change}
+              />
+            )}
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        className="button button-outline"
+        aria-label={`Add Next Play keyword · ${label}`}
+        disabled={grants.length >= 5 || depth >= MAX_KEYWORD_DEPTH}
+        onClick={() => {
+          for (const type of [
+            "shield",
+            "shift",
+            "sunder",
+            "dizzy",
+            "resonance",
+            "conjure",
+            "head-start",
+            "comeback",
+            "silence",
+            "environment",
+            "next-play",
+            "combo",
+          ] as KeywordType[])
+            for (const side of [0, 1, 2, 3] as Side[]) {
+              const value = defaultKeyword(type, side, element);
+              if (validateKeywords([...grants, value])) {
+                update([...grants, value]);
+                return;
+              }
+            }
+        }}
+      >
+        <Plus size={14} />
+        Add Next Play keyword <span>{grants.length}/5</span>
+      </button>
+      {depth >= MAX_KEYWORD_DEPTH && (
+        <small>Maximum effect nesting reached.</small>
+      )}
+    </fieldset>
+  );
+}
 function ComboFields({
   keyword,
   element,
   onChange,
+  depth = 0,
+  labelPrefix,
 }: {
   keyword: ComboKeyword;
   element: Element;
   onChange: (value: ComboKeyword) => void;
+  depth?: number;
+  labelPrefix?: string;
 }) {
   const grants = keyword.keywords || [];
+  const aria = (name: string) =>
+    labelPrefix ? `${labelPrefix} · ${name}` : name;
   return (
     <div className="combo-editor">
       <div className="effect-editor-options combo-trigger-options">
         <label>
           Combo trigger
           <select
-            aria-label="Combo trigger"
+            aria-label={aria("Combo trigger")}
             value={keyword.condition || "element"}
             onChange={(event) =>
               onChange({
@@ -621,7 +805,7 @@ function ComboFields({
         </label>
         {!!keyword.condition && keyword.condition !== "element" && (
           <TribeSelect
-            label="Combo tribe"
+            label={aria("Combo tribe")}
             value={keyword.tribe || ""}
             empty="Any shared tribe"
             onChange={(tribe) =>
@@ -639,7 +823,7 @@ function ComboFields({
           <label key={name}>
             Combo {name} pips
             <select
-              aria-label={`Combo ${name} pips`}
+              aria-label={aria(`Combo ${name} pips`)}
               value={
                 keyword.pips?.find((pip) => pip.side === side)?.amount || 0
               }
@@ -668,9 +852,14 @@ function ComboFields({
         <div className="keyword-editor-row combo-grant" key={index}>
           <Fields
             keyword={grant}
-            label={`Combo keyword ${index + 1}`}
+            label={
+              labelPrefix
+                ? `${labelPrefix} Combo keyword ${index + 1}`
+                : `Combo keyword ${index + 1}`
+            }
             element={element}
             allowCombo={false}
+            depth={depth + 1}
             onChange={(value) =>
               onChange({
                 ...keyword,
@@ -698,7 +887,7 @@ function ComboFields({
       <button
         type="button"
         className="button button-outline"
-        disabled={grants.length >= 5}
+        disabled={grants.length >= 5 || depth >= MAX_KEYWORD_DEPTH}
         onClick={() => {
           for (const type of [
             "shield",
@@ -863,9 +1052,15 @@ export function KeywordEditor({
           </p>
           <p>
             <strong>Next Play</strong> queues + or − pips on one side or every
-            side of your next card or the opponent’s next card.{" "}
+            side of your next card or the opponent’s next card, and/or grants
+            configured keywords. Choose None for a keywords-only effect.{" "}
             <strong>Environment</strong> places one of seven lasting tile
             effects anywhere on the board.
+          </p>
+          <p>
+            <strong>Shift</strong> moves only the neighbor on its printed side
+            in a fixed direction, for enemies, allies, or both. Movement wraps
+            at board edges; occupied destinations block it.
           </p>
           <p>
             <strong>Shield</strong> adds directional defense pips, never attack

@@ -17,7 +17,12 @@ import type {
   Side,
   Stone,
 } from "./game";
-import { ENVIRONMENTS, environmentText, underlyingSide } from "./effects";
+import {
+  ENVIRONMENTS,
+  environmentText,
+  underlyingSide,
+  shiftEffectText,
+} from "./effects";
 import { TileMark } from "./BoardEffects";
 function strengthAfterSunder(
   cell: PlacedStone,
@@ -49,7 +54,7 @@ export function TargetPicker({
   onChoose: (index: number, side?: Side) => void;
   onCancel: () => void;
 }) {
-  const state = prepareTargeting(board, stone, targets, owner);
+  const state = prepareTargeting(board, stone, targets, owner, placement);
   const size = boardSize(board);
   const [chosen, setChosen] = useState<{
     keywordIndex: number;
@@ -132,11 +137,12 @@ export function TargetPicker({
       </p>
       {!!state.effects.length && (
         <p className="target-progress">
-          Chosen so far:{" "}
+          Resolved so far:{" "}
           {state.effects
-            .map(
-              (effect) =>
-                `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, size)}`,
+            .map((effect) =>
+              effect.type === "shift"
+                ? shiftEffectText(effect, size)
+                : `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, size)}`,
             )
             .join(" · ")}
           . You can still cancel this play.

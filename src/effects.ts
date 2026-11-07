@@ -1,6 +1,6 @@
 import { hasTribe, tribeName, validTribe } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
-import type { Stone } from "./game.ts";
+import type { Stone, StoneKeyword, TargetEffect } from "./game.ts";
 import type {
   Board,
   Edges,
@@ -23,6 +23,7 @@ export interface QueuedPips {
   side: EffectSide;
   amount: number;
   tribe?: Tribe;
+  keywords?: StoneKeyword[];
 }
 export const ENVIRONMENTS: Record<
   EnvironmentKind,
@@ -44,6 +45,26 @@ export function pipEffectText(
   effect: Pick<QueuedPips, "side" | "amount">,
 ): string {
   return `${effect.amount > 0 ? "+" : "−"}${Math.abs(effect.amount)} ${effect.side === "all" ? "per side" : `on ${SIDES[effect.side]}`}`;
+}
+export function keywordNames(keywords: StoneKeyword[]): string {
+  return keywords
+    .map((keyword) =>
+      keyword.type
+        .split("-")
+        .map((word) => word[0].toUpperCase() + word.slice(1))
+        .join(" "),
+    )
+    .join(", ");
+}
+export function nextEffectText(
+  effect: Pick<QueuedPips, "side" | "amount" | "keywords">,
+): string {
+  return [
+    effect.amount ? pipEffectText(effect) : "",
+    effect.keywords?.length ? `Gain ${keywordNames(effect.keywords)}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 export function defaultEnvironment(
   kind: EnvironmentKind,
@@ -166,17 +187,19 @@ export function pendingPipEffects(
       );
     return matchingPlays.get(tribe)!;
   };
-  return board.flatMap((cell) =>
-    cell
-      ? (cell.queuedPips || [])
-          .filter(
-            (effect) =>
-              effect.recipient === recipient &&
-              (cell.playedOrder || 0) >= lastMatchingPlay(effect.tribe),
-          )
-          .map((effect) => ({ ...effect, source: cell.stone.name }))
-      : [],
-  );
+  return [...board]
+    .sort((a, b) => (a?.playedOrder || 0) - (b?.playedOrder || 0))
+    .flatMap((cell) =>
+      cell
+        ? (cell.queuedPips || [])
+            .filter(
+              (effect) =>
+                effect.recipient === recipient &&
+                (cell.playedOrder || 0) >= lastMatchingPlay(effect.tribe),
+            )
+            .map((effect) => ({ ...effect, source: cell.stone.name }))
+        : [],
+    );
 }
 export function nextPipModifiers(
   board: Board,
@@ -190,6 +213,51 @@ export function nextPipModifiers(
         if (effect.side === "all" || effect.side === side)
           result[side] += effect.amount;
   return result.map((value) => Math.max(-99, Math.min(99, value))) as Edges;
+}
+export function nextKeywordGrants(
+  board: Board,
+  recipient: Owner,
+  stone: Stone,
+): StoneKeyword[] {
+  return pendingPipEffects(board, recipient).flatMap((effect) =>
+    !effect.tribe || hasTribe(stone, effect.tribe) ? effect.keywords || [] : [],
+  );
+}
+export function adjacentTile(index: number, side: Side, size: number): number {
+  const row = Math.floor(index / size),
+    col = index % size;
+  return [
+    row > 0 ? index - size : -1,
+    col < size - 1 ? index + 1 : -1,
+    row < size - 1 ? index + size : -1,
+    col > 0 ? index - 1 : -1,
+  ][side];
+}
+export function wrappedTile(
+  index: number,
+  direction: Side,
+  size: number,
+): number {
+  const row = Math.floor(index / size),
+    col = index % size;
+  return [
+    ((row + size - 1) % size) * size + col,
+    row * size + ((col + 1) % size),
+    ((row + 1) % size) * size + col,
+    row * size + ((col + size - 1) % size),
+  ][direction];
+}
+export function shiftEffectText(
+  effect: Extract<TargetEffect, { type: "shift" }>,
+  size: number,
+): string {
+  const coordinate = (index: number) =>
+    `${String.fromCharCode(65 + Math.floor(index / size))}${(index % size) + 1}`;
+  return effect.moved
+    ? `Shift ${coordinate(effect.target)} → ${coordinate(effect.to)}`
+    : effect.reason === "no-target"
+      ? "Shift: no eligible adjacent card"
+      : `Shift ${coordinate(effect.target)}: destination blocked`;
 }
 export function boardEnvironments(
   board: Board,

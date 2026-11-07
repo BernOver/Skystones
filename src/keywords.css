@@ -36,6 +36,42 @@
 .keyword-conjure {
   color: #78618e;
 }
+.keyword-shift {
+  color: #5e8591;
+}
+.next-keyword-grants {
+  min-width: 0;
+  grid-column: 1 / -1;
+  border: 1px solid #d4d9e1;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f0f1f6;
+}
+.next-keyword-grants legend {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d6485;
+}
+.next-keyword-grants p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #747384;
+}
+.next-grant-entry {
+  margin: 12px 0;
+}
+.next-granted-rules {
+  padding: 9px;
+  margin: 8px 0;
+  border: 1px solid #d4d9e1;
+  border-radius: 7px;
+}
+.next-granted-rules > strong {
+  font-size: 11px;
+}
+.next-keyword-grants .combo-editor {
+  grid-column: 1 / -1;
+}
 .conjured-notice {
   color: #78618e;
   font-size: 11px;

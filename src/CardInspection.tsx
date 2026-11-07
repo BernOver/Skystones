@@ -41,6 +41,9 @@ import {
   ENVIRONMENTS,
   environmentText,
   pipEffectText,
+  nextEffectText,
+  keywordNames,
+  shiftEffectText,
   environmentAttack,
   environmentDefense,
   environmentAffects,
@@ -145,6 +148,55 @@ export function KeywordDetails({
       {keywordGroups(stone.keywords || []).map(
         ({ type, keywords, keywordIndex }, groupIndex) => {
           if (!keywords.length) return null;
+          if (type === "shift")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <ArrowUpRight size={15} />
+                  <strong>Shift</strong>
+                  <span>Before captures</span>
+                </div>
+                {keywords.map(
+                  (keyword, index) =>
+                    keyword.type === "shift" && (
+                      <p key={index}>
+                        Only the card next to this card’s{" "}
+                        <strong>{SIDE_NAMES[keyword.side]}</strong> side moves
+                        one tile{" "}
+                        <strong>
+                          {["Up", "Right", "Down", "Left"][keyword.direction]}
+                        </strong>
+                        .{" "}
+                        {keyword.affects === "both"
+                          ? "Allies and enemies qualify."
+                          : keyword.affects === "allies"
+                            ? "Allies only."
+                            : "Enemies only."}{" "}
+                        Targets use ownership before placement. Movement wraps
+                        across the board edge. An occupied destination or this
+                        card’s placement tile blocks it. No eligible neighbor
+                        means no movement. This never chooses a direction during
+                        play or triggers the moved card’s keywords.
+                      </p>
+                    ),
+                )}
+                {played &&
+                  effects
+                    ?.filter(
+                      (effect) =>
+                        effect.type === "shift" &&
+                        effect.keywordIndex === effectIndexFor(keywordIndex),
+                    )
+                    .map(
+                      (effect, index) =>
+                        effect.type === "shift" && (
+                          <span className="keyword-status" key={index}>
+                            {shiftEffectText(effect, size)}
+                          </span>
+                        ),
+                    )}
+              </section>
+            );
           if (type === "conjure")
             return (
               <section className="keyword-rule" key={groupIndex}>
@@ -196,17 +248,29 @@ export function KeywordDetails({
                 {keywords.map(
                   (keyword, index) =>
                     keyword.type === "next-play" && (
-                      <p key={index}>
-                        {keyword.recipient === "self"
-                          ? `Your next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`
-                          : `The opponent’s next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`}{" "}
-                        receives <strong>{pipEffectText(keyword)}</strong> once,
-                        before Dizzy and captures. Changes stack, cannot reduce
-                        pips below zero, and stay on that card after play.{" "}
-                        {keyword.tribe
-                          ? "Other tribes do not spend this queued effect."
-                          : ""}
-                      </p>
+                      <div key={index}>
+                        <p>
+                          {keyword.recipient === "self"
+                            ? `Your next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`
+                            : `The opponent’s next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`}
+                          : <strong>{nextEffectText(keyword)}</strong> once,
+                          before Dizzy and captures. Changes stack, cannot
+                          reduce pips below zero, and stay on that card after
+                          play.{" "}
+                          {keyword.tribe
+                            ? "Other tribes do not spend this queued effect."
+                            : ""}
+                        </p>
+                        {!!keyword.keywords?.length && (
+                          <div className="next-granted-rules">
+                            <strong>Keywords added to the next card</strong>
+                            <KeywordDetails
+                              stone={{ ...stone, keywords: keyword.keywords }}
+                              size={size}
+                            />
+                          </div>
+                        )}
+                      </div>
                     ),
                 )}
                 <span className="keyword-status">
@@ -808,6 +872,20 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           {played
             ? "Included in this card’s pips; capture and Silence do not spend it again."
             : "Included in the preview. Spent only when you place this card."}
+        </p>
+      )}
+      {!!stone.receivedKeywords?.length && (
+        <p className="next-play-inspection-note">
+          {played ? "Next Play keywords received" : "Next Play keyword preview"}
+          : {keywordNames(stone.receivedKeywords)}.
+          {played
+            ? " These were added before this card’s on-play checks. "
+            : " These are added if you play this card next; the queue is still unspent. "}
+          {silenced
+            ? "Silence has disabled them; completed effects stay."
+            : played
+              ? "They stay on this card through captures."
+              : "Conditions are checked when you place the card."}
         </p>
       )}
       {inspection.arenaElement && inspection.arenaElement === stone.element && (

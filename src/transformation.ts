@@ -59,10 +59,22 @@ export function transformedCard(
   const elements = Object.keys(ELEMENTS) as Element[],
     candidates: StoneKeyword[] = [
       {
+        type: "shift",
+        side: (seed % 4) as Side,
+        direction: ((seed + 1) % 4) as Side,
+        affects: "enemies",
+      },
+      {
         type: "conjure",
         mode: "random",
         count: 1,
         recipient: "self",
+        ...(seed % 3 === 0
+          ? {
+              amount: 0,
+              keywords: [{ type: "shield" as const, side: (seed % 4) as Side }],
+            }
+          : {}),
         ...(seed % 2 === 0 ? { pool: "tokens" as const } : {}),
       },
       { type: "silence" },

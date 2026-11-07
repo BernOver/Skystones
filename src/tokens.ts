@@ -1,6 +1,6 @@
 import { validateStone } from "./game.ts";
 import { hasTribe } from "./tribes.ts";
-import type { Stone } from "./game.ts";
+import type { Stone, StoneKeyword } from "./game.ts";
 
 export const TOKEN_ID_PREFIX = "custom-token-";
 export const LIBRARY_STORAGE = "skystones-library-v1";
@@ -88,6 +88,7 @@ export function tokenDefinition(value: unknown): value is Stone {
     validateStone(value) &&
     value.token === true &&
     !value.conjured &&
+    !value.receivedKeywords &&
     validTokenKey(value.id)
   );
 }
@@ -123,9 +124,13 @@ export function deckEligible(card: Stone): boolean {
 export function tokenDependencies(card: Stone, tokens = readTokens()): Stone[] {
   const found = new Map<string, Stone>();
   const visit = (stone: Stone) => {
-    const keywords = (stone.keywords || []).flatMap((keyword) =>
-      keyword.type === "combo" ? keyword.keywords || [] : [keyword],
-    );
+    const flatten = (keywords: StoneKeyword[]): StoneKeyword[] =>
+      keywords.flatMap((keyword) =>
+        keyword.type === "combo" || keyword.type === "next-play"
+          ? flatten(keyword.keywords || [])
+          : [keyword],
+      );
+    const keywords = flatten(stone.keywords || []);
     const add = (token: Stone) => {
       if (found.has(token.id)) return;
       found.set(token.id, token);

@@ -638,7 +638,7 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder purchases, and
     } else assert.throws(buyAgain);
     seen.add(keyword.type);
   }
-  assert.equal(seen.size, 11);
+  assert.equal(seen.size, 12);
 });
 test("Market Map stocks four distinct merchant cards without applying card reward relics", () => {
   const base: Adventure = {

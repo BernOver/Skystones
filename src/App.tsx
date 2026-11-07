@@ -15,7 +15,7 @@ import { boardSkin, opponent, OPPONENTS } from "./presentation";
 import type { BoardSkinId, OpponentId } from "./presentation";
 import { CaptureFlip } from "./CaptureFlip";
 import { EnvironmentLegend, NextPlayStatus, TileMark } from "./BoardEffects";
-import { boardEnvironments } from "./effects";
+import { boardEnvironments, shiftEffectText } from "./effects";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { ChangeEvent, ReactNode } from "react";
@@ -68,6 +68,7 @@ import {
   placeStone,
   score,
   evaluateKeywords,
+  withNextKeywords,
   validateStone,
   prepareTargeting,
   KEYWORD_RULES,
@@ -282,9 +283,10 @@ function applyMove(
         captured: move.captured.length,
         effects: [
           move.effects
-            .map(
-              (effect) =>
-                `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, boardSize(match.board))}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
+            .map((effect) =>
+              effect.type === "shift"
+                ? shiftEffectText(effect, boardSize(match.board))
+                : `${KEYWORD_RULES[effect.type].name} → ${coordinate(effect.target, boardSize(match.board))}${effect.type === "sunder" ? ` ${SIDE_NAMES[effect.side]} −${effect.amount ?? 1}` : ""}`,
             )
             .join(" · "),
           conjurationSummary(
@@ -567,6 +569,7 @@ export default function App() {
   ): Inspection {
     const cell = boardIndex !== undefined ? match.board[boardIndex] : null;
     const player = cell ? (cell.playedBy ?? cell.owner) : handOwner;
+    if (!cell) stone = withNextKeywords(stone, match.board, player);
     const resolved = cell
       ? {
           edges: cardEdges(cell),
@@ -701,7 +704,9 @@ export default function App() {
   function playAt(index: number) {
     if (aiTurn || done || match.board[index] || selected === null) return;
     const stone = match.hands[match.current][selected];
-    if (prepareTargeting(match.board, stone, [], match.current).pending) {
+    if (
+      prepareTargeting(match.board, stone, [], match.current, index).pending
+    ) {
       setDialog({ kind: "target", index, cardIndex: selected, targets: [] });
       return;
     }
@@ -716,6 +721,7 @@ export default function App() {
       stone,
       dialog.targets,
       match.current,
+      dialog.index,
     );
     if (
       !state.pending ||
@@ -732,7 +738,10 @@ export default function App() {
         ...(side !== undefined ? { side } : {}),
       },
     ];
-    if (prepareTargeting(match.board, stone, targets, match.current).pending) {
+    if (
+      prepareTargeting(match.board, stone, targets, match.current, dialog.index)
+        .pending
+    ) {
       setDialog({ ...dialog, targets });
     } else {
       setMatch(applyMove(match, dialog.index, dialog.cardIndex, targets));
@@ -923,6 +932,7 @@ export default function App() {
           : `custom-${createId()}`,
         custom: true,
         conjured: undefined,
+        receivedKeywords: undefined,
       };
       const importedTokens = payload.tokens === undefined ? [] : payload.tokens;
       if (!Array.isArray(importedTokens))
@@ -1442,7 +1452,11 @@ export default function App() {
                         }
                       >
                         <StoneCard
-                          stone={stone}
+                          stone={withNextKeywords(
+                            stone,
+                            match.board,
+                            handOwner,
+                          )}
                           grantedKeywords={
                             evaluateKeywords(stone, match.board, handOwner)
                               .grantedKeywords
@@ -2515,11 +2529,23 @@ export default function App() {
             <ArrowRight size={19} />
             <p>
               <strong>Next Play</strong> queues + or − pips on one side or every
-              side of your next card or the opponent’s next card. Pending
-              changes stack and apply once before Dizzy and captures. They do
-              not affect the caster, and canceled plays spend none. A chosen
-              recipient tribe waits for the next matching card; other cards do
-              not spend it.
+              side of your next card or the opponent’s next card. It can also
+              grant up to five configured keywords, with or without pips.
+              Keywords activate on that card’s play. Pending changes stack and
+              apply once before Dizzy and captures. They do not affect the
+              caster, and canceled plays spend none. A chosen recipient tribe
+              waits for the next matching card; other cards do not spend it.
+            </p>
+          </div>
+          <div className="rule-line">
+            <ArrowRight size={19} />
+            <p>
+              <strong>Shift</strong> moves only the neighbor on its printed
+              side, one tile in its fixed direction, before captures. It can
+              affect enemies, allies, or both. Movement wraps at board edges;
+              target adjacency does not. Occupied destinations and the incoming
+              card’s tile block movement. No target choice is needed, and moved
+              cards keep their owner without replaying keywords.
             </p>
           </div>
           <div className="rule-line">
