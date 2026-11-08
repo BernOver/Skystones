@@ -89,6 +89,17 @@ templates inside gifts are bundled when sharing a card. Existing unique
 keywords take priority, and a card holds at most 24 keywords. Queued changes
 stack in cast order and are spent once. Canceled plays spend none.
 
+Next Play elements: choose Recipient element to wait for a card of that element,
+Change next card's element to recolor the receiving card, or both. A chosen tribe
+must match too. For example: the next Water Giants card becomes Fire and gains
++2 North pips. Requirements check the submitted card before any element changes;
+unrelated cards do not spend the queue. Choose None in Pip change for an
+element-only effect. Matching changes resolve in cast order; the last element
+change wins. The new element applies before Combo, terrain, boss auras and
+captures, and stays through captures, Silence and Adventure reloads. Original
+cards and templates keep their element. Previews and inspection show the result.
+These settings work through Combo and Conjure grants and in shared card files.
+
 Shift automatically affects only the card adjacent to its printed side.
 Choose its fixed movement direction (Up/Right/Down/Left) and whether it affects
 enemies, allies, or both in the studio. There is no target choice during play.
@@ -126,7 +137,7 @@ Fusion combines both cards' tribes. Card-file exports include edited tags.
   Its card label shows the requirement: Combo Magic, Combo Giants,
   Combo Magic / Giants (either), or Combo Magic + Giants (both).
 - Resonance can count a chosen tribe across both owners instead of an element.
-- Next Play can wait for the next matching tribe; other cards do not spend it.
+- Next Play can wait for an element, tribe, or both; other cards do not spend it.
 - All seven environments can affect a chosen tribe. Other cards are unaffected.
   Elemental Spring can match a tribe instead of an element.
 New Draft pools, shops, shrines, and transformations can offer tribe effects.

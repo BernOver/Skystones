@@ -37,6 +37,8 @@ import {
   evaluateKeywords,
   arenaEdges,
   withArenaElement,
+  withNextKeywords,
+  validReceivedElement,
 } from "./game.ts";
 import {
   defaultEnvironment,
@@ -942,7 +944,11 @@ export function adventureCardStrengths(
   stone: Stone,
   owner: Owner = 0,
 ) {
-  const prepared = adventureStoneForPlay(run, stone, owner);
+  const prepared = withNextKeywords(
+    adventureStoneForPlay(run, stone, owner),
+    run.battle?.board || [],
+    owner,
+  );
   const result = evaluateKeywords(prepared, run.battle?.board || [], owner);
   return {
     ...result,
@@ -1780,6 +1786,8 @@ function validBattleCard(value: unknown): value is Stone {
       (Array.isArray(stone.receivedKeywords) &&
         stone.receivedKeywords.length > 0 &&
         validateKeywords(stone.receivedKeywords))) &&
+    (stone.receivedElement === undefined ||
+      validReceivedElement(stone.receivedElement)) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1813,7 +1821,14 @@ function validPlaced(value: unknown, length: number): boolean {
             [0, 1].includes(effect.recipient) &&
             validEffectSide(effect.side) &&
             (validPipAmount(effect.amount, true) ||
-              (effect.amount === 0 && !!effect.keywords?.length)) &&
+              (effect.amount === 0 &&
+                (!!effect.keywords?.length || !!effect.changeElement))) &&
+            (effect.element === undefined ||
+              (typeof effect.element === "string" &&
+                Object.hasOwn(ELEMENTS, effect.element))) &&
+            (effect.changeElement === undefined ||
+              (typeof effect.changeElement === "string" &&
+                Object.hasOwn(ELEMENTS, effect.changeElement))) &&
             (effect.keywords === undefined ||
               (Array.isArray(effect.keywords) &&
                 effect.keywords.length > 0 &&
@@ -1833,6 +1848,9 @@ function validPlaced(value: unknown, length: number): boolean {
       (Number.isInteger(cell.playedOrder) &&
         cell.playedOrder >= 1 &&
         cell.playedOrder <= length)) &&
+    (cell.playedElement === undefined ||
+      (typeof cell.playedElement === "string" &&
+        Object.hasOwn(ELEMENTS, cell.playedElement))) &&
     (cell.comboActive === undefined || typeof cell.comboActive === "boolean") &&
     (cell.comboPreviousTribes === undefined ||
       validateTribes(cell.comboPreviousTribes)) &&

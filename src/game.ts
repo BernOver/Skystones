@@ -5,7 +5,8 @@ import {
   environmentAttack,
   environmentDefense,
   nextPipModifiers,
-  nextKeywordGrants,
+  pendingPipEffects,
+  nextEffectMatches,
   adjacentTile,
   wrappedTile,
   validateEnvironment,
@@ -90,6 +91,8 @@ export type BasicKeyword =
       amount: number;
       recipient: "self" | "opponent";
       tribe?: Tribe;
+      element?: Element;
+      changeElement?: Element;
       keywords?: StoneKeyword[];
     }
   | ShiftKeyword
@@ -156,7 +159,10 @@ export const KEYWORD_RULES = {
   dizzy: { name: "Dizzy", condition: "before captures" },
   shield: { name: "Shield", condition: "defense only" },
   combo: { name: "Combo", condition: "previous card match" },
-  "next-play": { name: "Next Play", condition: "queue pips or keywords" },
+  "next-play": {
+    name: "Next Play",
+    condition: "queue pips, keywords, or an element",
+  },
   environment: { name: "Environment", condition: "choose any tile" },
   conjure: { name: "Conjure", condition: "add cards to a hand" },
   shift: { name: "Shift", condition: "move the printed-side neighbor" },
@@ -235,6 +241,7 @@ export interface Stone {
   conjured?: true;
   token?: true;
   receivedKeywords?: StoneKeyword[];
+  receivedElement?: { before: Element; after: Element };
 }
 export interface PlacedStone {
   stone: Stone;
@@ -257,6 +264,8 @@ export interface PlacedStone {
   comboPrevious?: Element;
   comboPreviousTribes?: Tribe[];
   playedOrder?: number;
+  // Element submitted from the hand, before Next Play changes it.
+  playedElement?: Element;
   arenaElement?: Element;
   queuedPips?: QueuedPips[];
   inheritedPips?: Edges;
@@ -320,19 +329,39 @@ export function withNextKeywords(
 ): Stone {
   if (
     stone.receivedKeywords?.length ||
+    stone.receivedElement ||
     !board.some((cell) =>
-      cell?.queuedPips?.some((effect) => effect.keywords?.length),
+      cell?.queuedPips?.some(
+        (effect) => effect.keywords?.length || effect.changeElement,
+      ),
     )
   )
     return stone;
-  const granted = nextKeywordGrants(board, owner, stone);
-  if (!granted.length) return stone;
+  const matching = pendingPipEffects(board, owner).filter((effect) =>
+    nextEffectMatches(effect, stone),
+  );
+  const granted = matching.flatMap((effect) => effect.keywords || []);
+  const element = matching.reduce<Element | undefined>(
+    (value, effect) => effect.changeElement || value,
+    undefined,
+  );
+  if (!granted.length && !element) return stone;
   const { keywords, added: received } = mergeKeywordGrants(
     stone.keywords || [],
     granted,
   );
-  return received.length
-    ? { ...stone, keywords, receivedKeywords: received }
+  return received.length || element
+    ? {
+        ...stone,
+        keywords,
+        ...(received.length ? { receivedKeywords: received } : {}),
+        ...(element
+          ? {
+              element,
+              receivedElement: { before: stone.element, after: element },
+            }
+          : {}),
+      }
     : stone;
 }
 
@@ -757,6 +786,7 @@ export function chooseKeywordTargets(
   owner: Owner,
   arenaElement?: Element,
 ): KeywordTarget[] {
+  stone = withNextKeywords(stone, board, owner);
   const targets: KeywordTarget[] = [];
   const resolved = evaluateKeywords(stone, board, owner).edges;
   const sides = [
@@ -941,6 +971,10 @@ export function placeStone(
             side: keyword.side,
             amount: keyword.amount,
             ...(keyword.tribe ? { tribe: keyword.tribe } : {}),
+            ...(keyword.element ? { element: keyword.element } : {}),
+            ...(keyword.changeElement
+              ? { changeElement: keyword.changeElement }
+              : {}),
             ...(keyword.keywords?.length
               ? { keywords: structuredClone(keyword.keywords) }
               : {}),
@@ -952,6 +986,7 @@ export function placeStone(
     stone,
     owner,
     playedBy: owner,
+    playedElement: stone.receivedElement?.before || stone.element,
     playedOrder:
       1 + Math.max(0, ...board.map((cell) => cell?.playedOrder || 0)),
     ...resolved,
@@ -1187,6 +1222,8 @@ export function validateStone(value: unknown): value is Stone {
       (Array.isArray(s.receivedKeywords) &&
         s.receivedKeywords.length > 0 &&
         validateKeywords(s.receivedKeywords))) &&
+    (s.receivedElement === undefined ||
+      validReceivedElement(s.receivedElement)) &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
     (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
     (s.baseEdges === undefined ||
@@ -1197,6 +1234,19 @@ export function validateStone(value: unknown): value is Stone {
       (typeof s.image === "string" &&
         /^data:image\/(png|jpeg|webp);base64,/.test(s.image) &&
         s.image.length < 3_000_000))
+  );
+}
+
+export function validReceivedElement(
+  value: unknown,
+): value is NonNullable<Stone["receivedElement"]> {
+  if (!value || typeof value !== "object") return false;
+  const change = value as Stone["receivedElement"];
+  return (
+    typeof change?.before === "string" &&
+    Object.hasOwn(ELEMENTS, change.before) &&
+    typeof change.after === "string" &&
+    Object.hasOwn(ELEMENTS, change.after)
   );
 }
 
@@ -1250,14 +1300,21 @@ export function validateKeywords(
       (!validEffectSide(keyword.side) ||
         !(
           validPipAmount(keyword.amount, true) ||
-          (keyword.amount === 0 && keyword.keywords?.length)
+          (keyword.amount === 0 &&
+            (keyword.keywords?.length || keyword.changeElement))
         ) ||
         (keyword.keywords !== undefined &&
           (!Array.isArray(keyword.keywords) ||
             keyword.keywords.length < 1 ||
             keyword.keywords.length > 5 ||
             !validateKeywords(keyword.keywords, depth + 1))) ||
-        !["self", "opponent"].includes(keyword.recipient))
+        !["self", "opponent"].includes(keyword.recipient) ||
+        (keyword.element !== undefined &&
+          (typeof keyword.element !== "string" ||
+            !Object.hasOwn(ELEMENTS, keyword.element))) ||
+        (keyword.changeElement !== undefined &&
+          (typeof keyword.changeElement !== "string" ||
+            !Object.hasOwn(ELEMENTS, keyword.changeElement))))
     )
       return false;
     if (

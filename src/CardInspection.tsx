@@ -42,6 +42,7 @@ import {
   environmentText,
   pipEffectText,
   nextEffectText,
+  nextRequirementText,
   keywordNames,
   shiftEffectText,
   environmentAttack,
@@ -267,14 +268,17 @@ export function KeywordDetails({
                       <div key={index}>
                         <p>
                           {keyword.recipient === "self"
-                            ? `Your next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`
-                            : `The opponent’s next${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""} card`}
+                            ? `Your next${nextRequirementText(keyword) ? ` ${nextRequirementText(keyword)}` : ""} card`
+                            : `The opponent’s next${nextRequirementText(keyword) ? ` ${nextRequirementText(keyword)}` : ""} card`}
                           : <strong>{nextEffectText(keyword)}</strong> once,
                           before Dizzy and captures. Changes stack, cannot
                           reduce pips below zero, and stay on that card after
                           play.{" "}
-                          {keyword.tribe
-                            ? "Other tribes do not spend this queued effect."
+                          {keyword.tribe || keyword.element
+                            ? "All selected requirements must match before any element change; other cards do not spend this queued effect."
+                            : ""}
+                          {keyword.changeElement
+                            ? " Element changes apply before Combo, terrain and captures, persist through capture and Silence, and use the last matching change in cast order."
                             : ""}
                         </p>
                         {!!keyword.keywords?.length && (
@@ -899,6 +903,16 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           {played
             ? "Included in this card’s pips; capture and Silence do not spend it again."
             : "Included in the preview. Spent only when you place this card."}
+        </p>
+      )}
+      {stone.receivedElement && (
+        <p className="next-play-inspection-note">
+          <strong>Next Play element {played ? "received" : "preview"}</strong> ·{" "}
+          {ELEMENTS[stone.receivedElement.before].name} →{" "}
+          {ELEMENTS[stone.receivedElement.after].name}.
+          {played
+            ? " Changed before Combo and captures; capture and Silence do not reverse it."
+            : " Applied if you play this card next. The queued effect is still unspent."}
         </p>
       )}
       {!!stone.receivedKeywords?.length && (

@@ -967,6 +967,7 @@ export default function App() {
         custom: true,
         conjured: undefined,
         receivedKeywords: undefined,
+        receivedElement: undefined,
       };
       if (!validateStone(stone))
         throw new Error(
@@ -2577,8 +2578,11 @@ export default function App() {
               grant up to five configured keywords, with or without pips.
               Keywords activate on that card’s play. Pending changes stack and
               apply once before Dizzy and captures. They do not affect the
-              caster, and canceled plays spend none. A chosen recipient tribe
-              waits for the next matching card; other cards do not spend it.
+              caster, and canceled plays spend none. Choose a recipient element
+              and/or tribe to wait for a matching card. Next Play can also
+              change that card’s element before Combo, terrain, and captures.
+              All chosen requirements are checked first; the last matching
+              element change wins.
             </p>
           </div>
           <div className="rule-line">

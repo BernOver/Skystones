@@ -360,11 +360,13 @@ function Fields({
                 <option
                   key={value}
                   value={value}
-                  disabled={value === 0 && !keyword.keywords?.length}
+                  disabled={
+                    value === 0 &&
+                    !keyword.keywords?.length &&
+                    !keyword.changeElement
+                  }
                 >
-                  {value === 0
-                    ? "None · keywords only"
-                    : `${value > 0 ? "+" : ""}${value}`}
+                  {value === 0 ? "None" : `${value > 0 ? "+" : ""}${value}`}
                 </option>
               ))}
             </select>
@@ -372,15 +374,65 @@ function Fields({
           <TribeSelect
             label={`Recipient tribe · ${label}`}
             value={keyword.tribe || ""}
-            empty="Any card"
+            empty="Any tribe"
             onChange={(tribe) =>
               onChange({ ...keyword, tribe: tribe || undefined })
             }
           />
-          {!!keyword.tribe && (
+          <label>
+            Recipient element
+            <select
+              aria-label={`Recipient element · ${label}`}
+              value={keyword.element || ""}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  element: (event.target.value || undefined) as
+                    Element | undefined,
+                })
+              }
+            >
+              <option value="">Any element</option>
+              {Object.entries(ELEMENTS).map(([id, info]) => (
+                <option key={id} value={id}>
+                  {info.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Change next card’s element
+            <select
+              aria-label={`Change element · ${label}`}
+              value={keyword.changeElement || ""}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  changeElement: (event.target.value || undefined) as
+                    Element | undefined,
+                  amount:
+                    !event.target.value &&
+                    !keyword.keywords?.length &&
+                    keyword.amount === 0
+                      ? 1
+                      : keyword.amount,
+                })
+              }
+            >
+              <option value="">Keep its element</option>
+              {Object.entries(ELEMENTS).map(([id, info]) => (
+                <option key={id} value={id}>
+                  {info.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!!(keyword.tribe || keyword.element || keyword.changeElement) && (
             <small>
-              Waits for the next card of this tribe. Other cards do not spend
-              it.
+              All chosen element and tribe requirements must match before any
+              element change. Other cards do not spend it. Element changes apply
+              before Combo, terrain, and captures; the last matching change
+              wins.
             </small>
           )}
           <GrantKeywordFields
@@ -743,7 +795,12 @@ function GrantKeywordFields({
     onChange({
       ...keyword,
       ...(keyword.type === "next-play"
-        ? { amount: keywords.length || keyword.amount ? keyword.amount : 1 }
+        ? {
+            amount:
+              keywords.length || keyword.changeElement || keyword.amount
+                ? keyword.amount
+                : 1,
+          }
         : {}),
       keywords: keywords.length ? keywords : undefined,
     });
@@ -760,7 +817,7 @@ function GrantKeywordFields({
       <p>
         {conjure
           ? "Every copy gains these keywords when generated. They activate only when that copy is played. Use keywords alone or combine them with extra pips. "
-          : "They are added before its on-play checks and captures. Choose None for a keywords-only effect. "}
+          : "They are added before its on-play checks and captures. Choose None to omit a pip change. "}
         Unique keywords already on the same edge are kept; extra grants stop at
         the card’s 24-keyword limit.
       </p>

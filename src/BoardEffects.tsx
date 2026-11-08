@@ -1,4 +1,3 @@
-import { tribeName } from "./tribes";
 import type { CSSProperties } from "react";
 import { boardSize, coordinate } from "./game";
 import type { Board } from "./game";
@@ -8,6 +7,7 @@ import {
   environmentText,
   pendingPipEffects,
   nextEffectText,
+  nextRequirementText,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
 
@@ -73,15 +73,15 @@ export function NextPlayStatus({
         <p key={entry.owner}>
           <strong>
             {names[entry.owner]} ·{" "}
-            {entry.effects.some((effect) => effect.tribe)
+            {entry.effects.some((effect) => effect.tribe || effect.element)
               ? "queued effects"
               : "next card"}
           </strong>
           {entry.effects.map((effect, index) => (
             <span key={index}>
               {nextEffectText(effect)}
-              {effect.tribe
-                ? ` on next ${tribeName(effect.tribe)} card`
+              {nextRequirementText(effect)
+                ? ` on next ${nextRequirementText(effect)} card`
                 : ""}{" "}
               <small>from {effect.source}</small>
             </span>
@@ -89,8 +89,8 @@ export function NextPlayStatus({
         </p>
       ))}
       <small>
-        Pending changes stack. Tribe-specific changes wait for the next matching
-        card.
+        Pending changes stack. Element and tribe requirements wait for the next
+        matching card, before any element changes.
       </small>
     </div>
   );

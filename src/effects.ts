@@ -23,6 +23,8 @@ export interface QueuedPips {
   side: EffectSide;
   amount: number;
   tribe?: Tribe;
+  element?: Element;
+  changeElement?: Element;
   keywords?: StoneKeyword[];
 }
 export const ENVIRONMENTS: Record<
@@ -57,14 +59,38 @@ export function keywordNames(keywords: StoneKeyword[]): string {
     .join(", ");
 }
 export function nextEffectText(
-  effect: Pick<QueuedPips, "side" | "amount" | "keywords">,
+  effect: Pick<QueuedPips, "side" | "amount" | "keywords" | "changeElement">,
 ): string {
   return [
     effect.amount ? pipEffectText(effect) : "",
     effect.keywords?.length ? `Gain ${keywordNames(effect.keywords)}` : "",
+    effect.changeElement ? `Become ${elementName(effect.changeElement)}` : "",
   ]
     .filter(Boolean)
     .join(" · ");
+}
+function elementName(element: Element): string {
+  return element[0].toUpperCase() + element.slice(1);
+}
+export function nextRequirementText(
+  effect: Pick<QueuedPips, "element" | "tribe">,
+): string {
+  return [
+    effect.element ? elementName(effect.element) : "",
+    effect.tribe ? tribeName(effect.tribe) : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+export function nextEffectMatches(
+  effect: Pick<QueuedPips, "element" | "tribe">,
+  stone?: Stone,
+  submittedElement = stone?.receivedElement?.before || stone?.element,
+): boolean {
+  return (
+    (!effect.element || (!!stone && submittedElement === effect.element)) &&
+    (!effect.tribe || (!!stone && hasTribe(stone, effect.tribe)))
+  );
 }
 export function defaultEnvironment(
   kind: EnvironmentKind,
@@ -172,20 +198,25 @@ export function pendingPipEffects(
     0,
     ...history.map((cell) => cell?.playedOrder || 0),
   );
-  const matchingPlays = new Map<Tribe, number>();
-  const lastMatchingPlay = (tribe?: Tribe) => {
-    if (!tribe) return lastPlay;
-    if (!matchingPlays.has(tribe))
+  const matchingPlays = new Map<string, number>();
+  const lastMatchingPlay = (effect: QueuedPips) => {
+    if (!effect.tribe && !effect.element) return lastPlay;
+    const key = `${effect.element || ""}:${effect.tribe || ""}`;
+    if (!matchingPlays.has(key))
       matchingPlays.set(
-        tribe,
+        key,
         Math.max(
           0,
           ...history
-            .filter((cell) => !!cell && hasTribe(cell.stone, tribe))
+            .filter(
+              (cell) =>
+                !!cell &&
+                nextEffectMatches(effect, cell.stone, cell.playedElement),
+            )
             .map((cell) => cell?.playedOrder || 0),
         ),
       );
-    return matchingPlays.get(tribe)!;
+    return matchingPlays.get(key)!;
   };
   return [...board]
     .sort((a, b) => (a?.playedOrder || 0) - (b?.playedOrder || 0))
@@ -195,7 +226,7 @@ export function pendingPipEffects(
             .filter(
               (effect) =>
                 effect.recipient === recipient &&
-                (cell.playedOrder || 0) >= lastMatchingPlay(effect.tribe),
+                (cell.playedOrder || 0) >= lastMatchingPlay(effect),
             )
             .map((effect) => ({ ...effect, source: cell.stone.name }))
         : [],
@@ -208,7 +239,7 @@ export function nextPipModifiers(
 ): Edges {
   const result: Edges = [0, 0, 0, 0];
   for (const effect of pendingPipEffects(board, recipient))
-    if (!effect.tribe || (!!stone && hasTribe(stone, effect.tribe)))
+    if (nextEffectMatches(effect, stone))
       for (let side = 0; side < 4; side++)
         if (effect.side === "all" || effect.side === side)
           result[side] += effect.amount;
@@ -220,7 +251,7 @@ export function nextKeywordGrants(
   stone: Stone,
 ): StoneKeyword[] {
   return pendingPipEffects(board, recipient).flatMap((effect) =>
-    !effect.tribe || hasTribe(stone, effect.tribe) ? effect.keywords || [] : [],
+    nextEffectMatches(effect, stone) ? effect.keywords || [] : [],
   );
 }
 export function adjacentTile(index: number, side: Side, size: number): number {

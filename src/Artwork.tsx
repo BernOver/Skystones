@@ -37,6 +37,7 @@ import {
   environmentAttack,
   environmentDefense,
   nextEffectText,
+  nextRequirementText,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
 import { conjureSource, conjureBuffText } from "./conjure";
@@ -696,7 +697,7 @@ export const StoneCard = memo(
                           keyword.type === "conjure"
                             ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
                             : keyword.type === "next-play"
-                              ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}`
+                              ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
                               : keyword.type === "shift"
                                 ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
                                 : keyword.type === "environment"
