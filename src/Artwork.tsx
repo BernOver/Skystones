@@ -739,6 +739,7 @@ export const StoneCard = memo(
         >
           {stone.token ? "Token · " : ""}
           {stone.conjured ? "Conjured · " : ""}
+          {stone.encounterStart ? "Encounter · " : ""}
           {stoneTribes(stone).map(tribeName).join(" · ") || "No tribes"}
         </div>
         <div className="stone-caption">

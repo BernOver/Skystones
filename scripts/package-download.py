@@ -58,6 +58,33 @@ Deleting a deck keeps the cards. Deleting a custom card or turning it into a
 token removes it from every saved deck. Incomplete decks need replacements
 before starting a new match. The current match keeps its hand and board.
 
+Custom tribes: in Card studio > Tribes, enter a name and choose Add tribe.
+New tribes are selected immediately and available on other cards and in Combo,
+Resonance, Next Play, Conjure, environments and Collection filters. Card files
+include custom tribe names, including nested keywords and token dependencies.
+
+Adventure workshop: open it from Adventure setup or the run screen. Edit an
+original encounter or choose New encounter. Create or reuse an enemy character;
+choose a bundled portrait or upload a PNG/JPG/WebP up to 2 MB. Set its name,
+encounter title and story. Saved character edits update encounter definitions
+that share that character. Existing battles keep their saved setup.
+Choose one or more pools: Easy encounters, Hard encounters, Events, Bosses.
+Choose Act 1, Act 2, or both. Pool and act selections can be combined freely.
+Event fights offer Fight or Leave. Stops with no matching fights can be skipped.
+Use a generated enemy hand or choose any 0-20 cards, independently of board size.
+Duplicates, custom cards and starting tokens are allowed without Conjure. Every
+copy keeps its chosen stats and gets a unique battle identity. Empty hands pass;
+custom duels end when the board fills or both hands are empty. Extra cards may
+remain unused. Templates, player decks and packs stay unchanged. Reloads retain
+starting tokens, repeated cards, portraits and the exact active encounter.
+Choose Standard, Treasure chest, Throne, Elemental Vortex, or Golden throne
+starting conditions. Boss pool membership controls act progression.
+Test encounter uses current edits, including unsaved changes. Choose a board
+size, act and pool to practice with a fresh Adventure player deck. Tests do not
+write the saved run or spend its gold, lives or rewards. Restart test retries;
+Back to encounter editor keeps the edits. Save encounter before changing fights.
+Saved edits apply to new fights, including the remaining map of a saved run.
+
 Discard abilities: add them in Card studio > Add keyword.
 - Discard: remove 1-5 chosen or random cards from your hand, the opponent's,
   or both. Repeat for separate groups. Resolve captures, then all Conjure gains,
@@ -192,7 +219,7 @@ battle only. Adventure saves them without repairing intentional duplicates;
 they never join your pack or change saved Draft picks. New Draft pools, shops,
 shrines, and transformations can offer Conjure.
 
-Token cards are available ONLY through Conjure. Collection > Tokens includes
+Token cards are available through Conjure or custom enemy starting hands. Collection > Tokens includes
 Chompy Seedling, Arkeyan Drone, Fire Spark, Water Wisp, Shadow Decoy, and Magic
 Echo. Choose Create a token, or check Token only in Card studio. Set its pips,
 element, tribes, portrait, and keywords, then Save token template.

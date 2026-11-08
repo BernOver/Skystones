@@ -73,7 +73,7 @@ export const DEFAULT_TOKENS: Stone[] = [
       custom: true,
       origin: "skylanders",
       description:
-        "A token available only through Conjure. Lasts for the current battle.",
+        "A token for Conjure or custom enemy hands. Lasts for the current battle.",
     }) as Stone,
 );
 
@@ -88,6 +88,7 @@ export function tokenDefinition(value: unknown): value is Stone {
     validateStone(value) &&
     value.token === true &&
     !value.conjured &&
+    !value.encounterStart &&
     !value.receivedKeywords &&
     !value.receivedElement &&
     !value.discardBuffs &&

@@ -890,12 +890,17 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
       <TribeBadges stone={stone} />
       {stone.token && (
         <p className="conjured-notice">
-          Token · available only through Conjure.
+          Token · available through Conjure or a custom enemy’s starting hand.
         </p>
       )}
       {stone.conjured && (
         <p className="conjured-notice">
           Conjured card · lasts for this battle only.
+        </p>
+      )}
+      {stone.encounterStart && (
+        <p className="conjured-notice">
+          Encounter starting card · this battle only.
         </p>
       )}
       <div className="inspection-stats">

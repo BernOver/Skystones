@@ -345,7 +345,7 @@ for (const size of [3, 4] as BoardSize[]) {
     ).toHaveText(ember.edges.map(String));
     await page.locator("#board-1").click();
     await expect(page.getByRole("dialog")).toContainText(
-      "Token · available only through Conjure.",
+      "Token · available through Conjure or a custom enemy’s starting hand.",
     );
     await expect(page.getByRole("dialog")).toContainText(
       "Conjured card · lasts for this battle only.",

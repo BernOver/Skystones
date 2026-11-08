@@ -51,13 +51,20 @@ export const OPPONENTS = [
   { id: "golden-queen", name: "Golden Queen", color: "#af812f" },
 ] as const;
 export type OpponentId = (typeof OPPONENTS)[number]["id"];
-export type Opponent = (typeof OPPONENTS)[number];
-export function opponent(value: unknown): Opponent {
+export type Opponent = {
+  id: string;
+  name: string;
+  color: string;
+  portrait?: string;
+  image?: string;
+};
+export function opponent(value: unknown): (typeof OPPONENTS)[number] {
   return OPPONENTS.find((enemy) => enemy.id === value) || OPPONENTS[0];
 }
 export function adventureOpponent(
   run: Pick<Adventure, "seed" | "floor" | "node" | "battle">,
 ): Opponent {
+  if (run.node?.encounter) return run.node.encounter.character;
   if (
     run.battle?.boss === "golden-queen" ||
     (run.node?.kind === "boss" && run.floor >= 9)
@@ -196,6 +203,12 @@ export function adventureEncounter(
   run: Pick<Adventure, "seed" | "floor" | "node" | "battle">,
 ): { name: string; description: string; opponent?: Opponent } {
   const node = run.node;
+  if (node?.encounter)
+    return {
+      name: node.encounter.name,
+      description: node.encounter.description,
+      opponent: node.encounter.character,
+    };
   if (!node)
     return {
       name: run.battle?.name || "Stone Keeper",
@@ -228,7 +241,8 @@ export function adventureEncounter(
       : (run.battle?.kind || node.kind) === "elite"
         ? "elite"
         : "battle";
-  const [title, flavor] = ENCOUNTER_FLAVOR[enemy.id][kind];
+  const [title, flavor] =
+    ENCOUNTER_FLAVOR[enemy.id as keyof typeof ENCOUNTER_FLAVOR][kind];
   const rules =
     kind === "chest"
       ? "Hold the central chest at the finish for bonus gold."

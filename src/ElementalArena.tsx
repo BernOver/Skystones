@@ -5,9 +5,11 @@ import type { Element } from "./game";
 export function ElementalArena({
   current,
   next,
+  opponentName = "Kaos",
 }: {
   current: Element;
   next: Element;
+  opponentName?: string;
 }) {
   const Current = ELEMENT_ICONS[current],
     Next = ELEMENT_ICONS[next];
@@ -21,7 +23,7 @@ export function ElementalArena({
         <Orbit size={20} />
         <div>
           <strong>Elemental Vortex</strong>
-          <span>Win the score to defeat Kaos.</span>
+          <span>Win the score to defeat {opponentName}.</span>
         </div>
       </div>
       <div className="elemental-forecast">

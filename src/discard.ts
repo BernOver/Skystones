@@ -148,8 +148,21 @@ export function discardPriority(stone: Stone): number {
 export function finishCardsRequired(
   board: Board,
   nextPlayer: Owner,
+  hands?: [Stone[], Stone[]],
 ): [number, number] {
   const remaining = board.filter((cell) => !cell).length;
+  if (hands) {
+    const stock = hands.map((hand) => hand.length),
+      required: [number, number] = [0, 0];
+    let current = nextPlayer;
+    for (let left = remaining; left > 0 && stock.some(Boolean); left--) {
+      if (!stock[current]) current = (1 - current) as Owner;
+      stock[current]--;
+      required[current]++;
+      current = (1 - current) as Owner;
+    }
+    return required;
+  }
   const count: [number, number] = [
     Math.floor(remaining / 2),
     Math.floor(remaining / 2),
@@ -172,6 +185,7 @@ export function resolveDiscards(
   seed: number,
   choices: DiscardChoice[] = [],
   automatic = true,
+  passEmptyHands = false,
 ): {
   board: Board;
   hands: [Stone[], Stone[]];
@@ -186,7 +200,11 @@ export function resolveDiscards(
     if (choices.length) throw new Error("This card has no discard choices.");
     return { board, hands, records: [] };
   }
-  const required = finishCardsRequired(board, (1 - actor) as Owner);
+  const required = finishCardsRequired(
+    board,
+    (1 - actor) as Owner,
+    passEmptyHands ? hands : undefined,
+  );
   let nextBoard = [...board];
   const nextHands: [Stone[], Stone[]] = [[...hands[0]], [...hands[1]]],
     records: DiscardRecord[] = [],

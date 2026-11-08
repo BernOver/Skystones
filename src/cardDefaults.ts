@@ -35,6 +35,7 @@ export function parseCharacterDefaults(value: unknown): CharacterDefaults {
       entry.card.defaultRevision === undefined &&
       !entry.card.token &&
       !entry.card.conjured &&
+      !entry.card.encounterStart &&
       !entry.card.receivedKeywords &&
       !entry.card.receivedElement &&
       !entry.card.discardBuffs &&
@@ -84,6 +85,7 @@ export function editedCharacterDefault(
     receivedKeywords: _received,
     receivedElement: _element,
     discardBuffs: _discard,
+    encounterStart: _encounter,
     ...definition
   } = edited;
   const card: Stone = {

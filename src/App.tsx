@@ -1,3 +1,4 @@
+import { customTribeLabels, rememberCustomTribes } from "./tribes";
 import { TribeEditor, TribeSelect, TribeBadges } from "./TribeEditor";
 import { hasTribe, portraitTribes } from "./tribes";
 import type { Tribe } from "./tribes";
@@ -820,7 +821,9 @@ export default function App() {
   }
   function toggleDeck(stone: Stone) {
     if (!deckEligible(stone)) {
-      setToast("Tokens are available only through Conjure.");
+      setToast(
+        "Tokens are available through Conjure or custom enemy starting hands.",
+      );
       return;
     }
     const included = library.deck.includes(stone.id);
@@ -930,7 +933,7 @@ export default function App() {
       setDraft(stone);
       setToast(
         stone.token
-          ? `${stone.name} is saved as a Conjure-only token. Choose it in a Conjure keyword.`
+          ? `${stone.name} is saved as a token template. Use it in Conjure or the Adventure workshop.`
           : `${stone.name} is saved to your collection. A little legend is born!`,
       );
     }
@@ -984,6 +987,7 @@ export default function App() {
               format: "skystones-card",
               version: 1,
               card,
+              customTribes: customTribeLabels([card, ...dependencies]),
               ...(dependencies.length ? { tokens: dependencies } : {}),
             },
             null,
@@ -1029,6 +1033,7 @@ export default function App() {
           : `custom-${createId()}`,
         custom: true,
         conjured: undefined,
+        encounterStart: undefined,
         receivedKeywords: undefined,
         receivedElement: undefined,
         discardBuffs: undefined,
@@ -1045,6 +1050,7 @@ export default function App() {
         ...(stone.token ? [stone] : []),
       ]);
       tokenDependencies(stone, tokenCatalogue(custom));
+      rememberCustomTribes([stone, ...importedTokens], payload.customTribes);
       if (
         saveLibrary({
           ...library,
@@ -1172,7 +1178,9 @@ export default function App() {
       </header>
 
       <main className={`main-content page-${page}`}>
-        {page === "run" && <Expedition skin={library.boardSkin} />}
+        {page === "run" && (
+          <Expedition skin={library.boardSkin} customCards={library.custom} />
+        )}
         {page === "draft" && (
           <Draft
             onPlay={(draftSize, hands) => {
@@ -1928,9 +1936,9 @@ export default function App() {
 
             {onlyTokens && (
               <p className="tokens-note">
-                Tokens are available only through Conjure. Create or edit
-                templates here; they cannot enter normal decks, Draft pools, or
-                Adventure packs, rewards, and shops.
+                Tokens are available through Conjure or custom enemy starting
+                hands. Create or edit templates here; they cannot enter normal
+                decks, Draft pools, or Adventure packs, rewards, and shops.
               </p>
             )}
             {onlyGiants && !onlyCustom && !onlyTokens && (
@@ -1952,7 +1960,7 @@ export default function App() {
                       <div className="collection-card-stage">
                         <span className="collection-badge">
                           {stone.token ? (
-                            "TOKEN · CONJURE ONLY"
+                            "TOKEN"
                           ) : stone.custom ? (
                             <>
                               <Sparkles size={11} />
@@ -2941,7 +2949,8 @@ export default function App() {
             )}
             {dialog.stone.token && (
               <p className="tokens-note">
-                Token template · available only through Conjure.
+                Token template · use with Conjure or custom enemy starting
+                hands.
               </p>
             )}
             {!dialog.stone.custom && (

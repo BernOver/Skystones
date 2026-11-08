@@ -53,7 +53,7 @@ Select a stone from your hand, then an empty square. A higher facing edge captur
 
 Open **Collection → Saved deck** to keep multiple named decks. **New deck** starts an empty deck for either board size. **Duplicate deck** copies your current cards into a separate slot; **Rename deck** changes its name. Edits save automatically in this browser, including incomplete decks, and survive reloads. Your old selection carries over as **My deck**. Each slot holds five distinct cards for 3×3 or eight for 4×4.
 
-Switch decks in Collection or **New match → Match deck**. Selecting a deck also selects its board size, and each size remembers the last deck you used. A new match uses exactly the selected deck once it is complete. Saved decks reference your cards, so character-default edits apply to new games normally. Deleting a custom card or turning it into a Conjure-only token removes it from every deck; affected slots remain incomplete until you choose replacements. Deleting a deck keeps its cards in your collection. A match already in progress keeps its hand and board.
+Switch decks in Collection or **New match → Match deck**. Selecting a deck also selects its board size, and each size remembers the last deck you used. A new match uses exactly the selected deck once it is complete. Saved decks reference your cards, so character-default edits apply to new games normally. Deleting a custom card or turning it into a token removes it from every deck; affected slots remain incomplete until you choose replacements. Deleting a deck keeps its cards in your collection. A match already in progress keeps its hand and board.
 
 ## Board skins and enemy portraits
 
@@ -210,6 +210,20 @@ Add keywords in the card studio. For Resonance, choose the element to count. For
 
 Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures and draft selections resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
+## Custom tribes and Adventure encounters
+
+In **Card studio → Tribes**, enter a name and choose **Add tribe** (or press Enter). The new tribe is selected on the card and saved for other cards. Custom tribes work with Combo, Resonance, Next Play, Conjure filters, environments, and the Collection filter. Card exports include their names; importing restores them, including tribes used by nested keyword grants and token templates. Built-in tribes keep their existing behavior.
+
+Open **Adventure → Adventure workshop** from setup or an existing run. Choose an original encounter to edit it, or **New encounter** to create one. Create or reuse an enemy character, choose any bundled portrait or upload a PNG/JPG/WebP image up to 2 MB, and write its name and encounter story. Saving a character updates other encounter definitions using that character; an active battle keeps its saved setup.
+
+- Select one or more pools: **Easy encounters**, **Hard encounters**, **Events**, and **Bosses**. Select **Act 1**, **Act 2**, or both. All selected acts are eligible, and pool membership works independently: one fight can be an Act II hard encounter, event fight, and boss. Maps choose eligible encounters deterministically for that run. Event fights offer **Fight** or **Leave** before combat. A stop with no enabled matching fights can be skipped.
+- Use the usual generated enemy hand, or choose a fixed hand of **0–20 cards**, independently of the 3×3/4×4 player hand size. Repeated cards, custom cards, and starting tokens are allowed. Each entry is copied with a unique battle ID and its configured stats; no Conjure is required for starting tokens. Templates, normal decks, rewards, and the player’s pack stay unchanged.
+- Choose a standard duel, central treasure chest, throne objective, Elemental Vortex, or golden throne with the two-corner requirement. Boss pool membership controls act progression; choosing a mechanic for another pool does not turn it into an act boss.
+- An empty hand automatically passes its turns. Discard protection accounts for these passes and actual Conjure gains, reserving all remaining cards if the hands cannot fill the board. Custom fights end when the board fills or both hands are empty, then use the usual scoring and rewards. Extra starting cards may remain unused when the board fills. Saves preserve repeated enemy cards, starting tokens, portraits, story, and mechanics.
+- **Test encounter** uses the current edits, including unsaved changes. Choose its board size, act, and pool. Tests use a fresh Adventure player deck and never write to the saved run or spend its resources. **Restart test** tries it again; **Back to encounter editor** returns to the same edits. Reloading leaves the original Adventure intact.
+
+Save encounter edits before switching fights. Changes apply to newly entered fights, including the remaining map of an existing run; battles already underway retain their saved definition. Custom content is saved in this browser, including the downloadable offline game.
+
 ## Discard abilities
 
 In **Card studio → Add keyword**, choose:
@@ -241,9 +255,9 @@ Each chosen side can gain **1–5 pips** once when the copy enters the hand; cho
 
 Grant up to **five configured keywords**, including Combo, Next Play, or Conjure, with the same three-level nesting limit as other grants. Keywords appear on the new card immediately and activate only when it is played. Existing unique keywords on the same edge take priority; repeated Sunder and other repeatable entries can stack, up to the 24-keyword card limit. Creating cards never triggers their keywords or spends Next Play. The card preview and inspection explain configured buffs and granted rules. Card files include buffs and any token templates referenced by nested grants. Adventures save the generated copies exactly, and those cards never join your pack or alter saved Draft picks. Existing Conjure cards without buffs keep their behavior.
 
-## Conjure-only tokens
+## Token cards
 
-Open **Collection → Tokens** for six starter templates: **Chompy Seedling, Arkeyan Drone, Fire Spark, Water Wisp, Shadow Decoy, and Magic Echo**. Tokens have their own fixed pips, element, portrait, tribes, and keywords. They are available only through Conjure and never appear in normal starting decks, Draft pools, Adventure packs, rewards, shops, or transformations as ordinary cards. A shop or transformation can offer a **Conjure** keyword that generates tokens.
+Open **Collection → Tokens** for six starter templates: **Chompy Seedling, Arkeyan Drone, Fire Spark, Water Wisp, Shadow Decoy, and Magic Echo**. Tokens have their own fixed pips, element, portrait, tribes, and keywords. They are available through Conjure or custom enemy starting hands and never appear in normal starting decks, Draft pools, Adventure packs, rewards, shops, or transformations as ordinary cards. A shop or transformation can offer a **Conjure** keyword that generates tokens.
 
 1. Choose **Create a token**, or check **Token only · available through Conjure** in the card studio. Set its stats and keywords, then **Save token template**. Saved tokens stay token-only. Editing an existing ordinary custom card into a token removes it from your next deck; a match already in progress keeps its saved copy.
 2. On another card, add **Conjure → Card source → Specified token**, then select the template, count, and receiving player. Combo can grant token Conjure, and tokens can themselves have Conjure; their keywords activate only when played.

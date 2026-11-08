@@ -1,3 +1,11 @@
+import { EncounterEditor } from "./EncounterEditor";
+import { readEncounterLibrary } from "./encounters";
+import type { EncounterDefinition, EncounterPool } from "./encounters";
+import {
+  adventureNodes,
+  continueEmptyAdventurePath,
+  testAdventureEncounter,
+} from "./adventure";
 import { EnvironmentLegend, NextPlayStatus, TileMark } from "./BoardEffects";
 import { boardEnvironments, ENVIRONMENTS } from "./effects";
 import { CharacterAvatar } from "./CharacterAvatar";
@@ -119,7 +127,9 @@ const NODE_ICONS = {
 function loadAdventure(): Adventure | null {
   try {
     const value = JSON.parse(localStorage.getItem(ADVENTURE_STORAGE) || "null");
-    return restoreAdventure(value);
+    const run = restoreAdventure(value);
+    const library = readEncounterLibrary();
+    return run && library ? { ...run, encounterLibrary: library } : run;
   } catch {
     return null;
   }
@@ -190,8 +200,99 @@ export function RunDialog({
     </div>
   );
 }
-export function Expedition({ skin }: { skin: BoardSkinId }) {
-  const [run, setRun] = useState<Adventure | null>(loadAdventure),
+export function Expedition({
+  skin,
+  customCards = [],
+}: {
+  skin: BoardSkinId;
+  customCards?: Stone[];
+}) {
+  const [editor, setEditor] = useState(false);
+  const [test, setTest] = useState<{
+    run: Adventure;
+    encounter: EncounterDefinition;
+    size: BoardSize;
+    act: 1 | 2;
+    pool: EncounterPool;
+    key: number;
+  } | null>(null);
+  const beginTest = (
+    encounter: EncounterDefinition,
+    size: BoardSize,
+    act: 1 | 2,
+    pool: EncounterPool,
+  ) =>
+    setTest({
+      run: testAdventureEncounter(encounter, size, act, pool),
+      encounter,
+      size,
+      act,
+      pool,
+      key: Date.now(),
+    });
+  return (
+    <>
+      {editor ? (
+        <div hidden={!!test}>
+          <EncounterEditor
+            customCards={customCards}
+            onClose={() => setEditor(false)}
+            onTest={beginTest}
+          />
+        </div>
+      ) : (
+        <ExpeditionView skin={skin} onEdit={() => setEditor(true)} />
+      )}
+      {test && (
+        <>
+          <section
+            className="encounter-test-banner"
+            aria-label="Encounter practice test"
+          >
+            <span>
+              <strong>Test encounter</strong> · Your saved Adventure is
+              unchanged.
+            </span>
+            <button
+              className="button button-outline"
+              onClick={() =>
+                beginTest(test.encounter, test.size, test.act, test.pool)
+              }
+            >
+              Restart test
+            </button>
+            <button
+              className="button button-dark"
+              onClick={() => setTest(null)}
+            >
+              Back to encounter editor
+            </button>
+          </section>
+          <ExpeditionView
+            key={test.key}
+            skin={skin}
+            initialRun={test.run}
+            testMode
+          />
+        </>
+      )}
+    </>
+  );
+}
+function ExpeditionView({
+  skin,
+  initialRun,
+  testMode = false,
+  onEdit,
+}: {
+  skin: BoardSkinId;
+  initialRun?: Adventure;
+  testMode?: boolean;
+  onEdit?: () => void;
+}) {
+  const [run, setRun] = useState<Adventure | null>(
+      () => initialRun || loadAdventure(),
+    ),
     [setup, setSetup] = useState(false),
     [size, setSize] = useState<BoardSize>(3),
     [error, setError] = useState(""),
@@ -222,7 +323,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     [serviceCard, setServiceCard] = useState(""),
     [element, setElement] = useState<Element>("fire");
   useEffect(() => {
-    if (!run) return;
+    if (!run || testMode) return;
     try {
       localStorage.setItem(ADVENTURE_STORAGE, JSON.stringify(run));
       if (run.note)
@@ -233,7 +334,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
         "Your run could not be saved in this browser. Keep this tab open to continue.",
       );
     }
-  }, [run]);
+  }, [run, testMode]);
   useEffect(() => {
     if (!run || setup || run.phase !== "battle" || run.battle?.current !== 1)
       return;
@@ -322,6 +423,14 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
             Find potions along the route
           </span>
         </div>
+        {onEdit && (
+          <button
+            className="button button-outline adventure-workshop-button"
+            onClick={onEdit}
+          >
+            Adventure workshop
+          </button>
+        )}
         <label className="run-size-label">
           Adventure board size
           <select
@@ -609,6 +718,14 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
           New adventure
         </button>
       </div>
+      {onEdit && (
+        <button
+          className="button button-outline adventure-workshop-button"
+          onClick={onEdit}
+        >
+          Adventure workshop
+        </button>
+      )}
       <div className="run-toolbar">
         <span>
           <Heart size={18} />
@@ -790,7 +907,18 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               next battle.
             </p>
           )}
-          {ROUTE.map((row, floor) => (
+          {!adventureNodes(run).length && (
+            <div className="run-panel">
+              <p>No enabled encounters match this stop’s pool and act.</p>
+              <button
+                className="button button-dark"
+                onClick={() => act(continueEmptyAdventurePath)}
+              >
+                Continue journey
+              </button>
+            </div>
+          )}
+          {ROUTE.map((_, floor) => (
             <div
               key={floor}
               className={`run-map-row ${floor === run.floor ? "current" : floor < run.floor ? "completed" : "future"}`}
@@ -801,7 +929,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
                   : `${adventureAct(floor)}.${adventureStop(floor)}`}
               </span>
               <div className="run-route-options">
-                {row.map((node) => {
+                {adventureNodes(run, floor).map((node) => {
                   const preview = adventureEncounter({
                     ...run,
                     floor,
@@ -857,14 +985,14 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
         >
           <div className="run-battle-heading">
             <div className="encounter-opponent">
-              <CharacterAvatar
-                id={adventureOpponent(run).id}
-                name={adventureOpponent(run).name}
-                color={adventureOpponent(run).color}
-              />
+              <CharacterAvatar {...adventureOpponent(run)} />
               <div>
                 <div className="eyebrow">
-                  {battle.boss || run.node?.kind === "boss"
+                  {(
+                    battle.customEncounter
+                      ? battle.kind === "boss"
+                      : battle.boss || run.node?.kind === "boss"
+                  )
                     ? `ACT ${adventureAct(run.floor)} BOSS`
                     : run.node?.kind === "elite"
                       ? "ELITE KEEPER"
@@ -890,6 +1018,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
           <p className="encounter-flavor">{encounter.description}</p>
           {adventureArena(run) && (
             <ElementalArena
+              opponentName={adventureOpponent(run).name}
               current={adventureArena(run)!.current}
               next={adventureArena(run)!.next}
             />
@@ -900,8 +1029,8 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               {battle.objectiveKind === "chest"
                 ? `Hold the chest at ${coordinate(battle.objective, run.size)} at the finish: +${45 + (hasRelic(run, "treasure-magnet") ? 30 : 0)} gold before percentage bonuses.`
                 : battle.boss === "golden-queen"
-                  ? `Win the score, hold Golden Queen’s shielded throne at ${coordinate(battle.objective, run.size)}, and control at least two corners.`
-                  : `Win the score AND hold Kaos’s throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
+                  ? `Win the score, hold ${adventureOpponent(run).name}’s shielded throne at ${coordinate(battle.objective, run.size)}, and control at least two corners.`
+                  : `Win the score AND hold ${adventureOpponent(run).name}’s throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
             </p>
           )}
           <div
@@ -1087,7 +1216,27 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
               : encounter.description}
           </p>
           <div className="event-options">
-            {run.spireEvent ? (
+            {run.node.encounter ? (
+              <>
+                <button
+                  className="button button-dark"
+                  disabled={!deckReady}
+                  onClick={() =>
+                    act((current) => resolveAdventureEvent(current, "fight"))
+                  }
+                >
+                  Fight this encounter
+                </button>
+                <button
+                  className="button button-outline"
+                  onClick={() =>
+                    act((current) => resolveAdventureEvent(current, "leave"))
+                  }
+                >
+                  Leave encounter
+                </button>
+              </>
+            ) : run.spireEvent ? (
               <SpireEncounter
                 key={`${run.spireEvent.id}-${run.spireEvent.stage}`}
                 run={run}
@@ -1598,7 +1747,9 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
           </h2>
           <p>
             {run.victory
-              ? "You defeated Kaos and Golden Queen. The Golden Isles are free."
+              ? run.encounterLibrary || run.node?.encounter
+                ? "Your expedition is complete. The Golden Isles are free."
+                : "You defeated Kaos and Golden Queen. The Golden Isles are free."
               : "Your lives are spent. A new journey begins with a new little deck."}
           </p>
           <p>

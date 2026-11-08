@@ -85,7 +85,8 @@ export type ShiftKeyword = {
   affects: "enemies" | "allies" | "both";
 };
 export type TargetKeyword =
-  { type: "sunder"; side: Side | "any"; amount?: number } | { type: "silence" };
+  | { type: "sunder"; side: Side | "any"; amount?: number }
+  | { type: "silence" };
 export type BasicKeyword =
   | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | { type: "resonance"; side: Side; element: Element; tribe?: Tribe }
@@ -266,6 +267,7 @@ export interface Stone {
   tribes?: Tribe[];
   conjured?: true;
   token?: true;
+  encounterStart?: true;
   receivedKeywords?: StoneKeyword[];
   receivedElement?: { before: Element; after: Element };
   discardBuffs?: DiscardBuffs;
@@ -978,7 +980,7 @@ export function placeStone(
     arenaElement?: Element;
   } = {},
 ): Move {
-  if (stone.token && !stone.conjured)
+  if (stone.token && !stone.conjured && !stone.encounterStart)
     throw new Error("Generate this token through Conjure before playing it.");
   stone = withNextKeywords(stone, board, owner);
   if (
@@ -1255,6 +1257,9 @@ export function validateStone(value: unknown): value is Stone {
     (s.tribes === undefined || validateTribes(s.tribes)) &&
     (s.conjured === undefined || s.conjured === true) &&
     (s.token === undefined || s.token === true) &&
+    (s.encounterStart === undefined ||
+      (s.encounterStart === true &&
+        String(s.id).startsWith("custom-encounter-"))) &&
     (s.receivedKeywords === undefined ||
       (Array.isArray(s.receivedKeywords) &&
         s.receivedKeywords.length > 0 &&

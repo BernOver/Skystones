@@ -5,11 +5,15 @@ export function CharacterAvatar({
   name,
   color = "#547f9a",
   small = false,
+  portrait,
+  image,
 }: {
   id: string;
   name: string;
   color?: string;
   small?: boolean;
+  portrait?: string;
+  image?: string;
 }) {
   return (
     <span
@@ -17,7 +21,7 @@ export function CharacterAvatar({
       style={{ "--portrait-color": color } as CSSProperties}
     >
       <img
-        src={portraitImage(id)}
+        src={image || portraitImage(portrait || id)}
         alt={`${name} portrait`}
         width={64}
         height={64}

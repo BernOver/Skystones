@@ -1,4 +1,15 @@
 import {
+  readEncounterLibrary,
+  validEncounterLibrary,
+  validEncounter,
+  encountersForPool,
+} from "./encounters.ts";
+import type {
+  EncounterLibrary,
+  EncounterDefinition,
+  EncounterPool,
+} from "./encounters.ts";
+import {
   stoneTribes,
   validTribe,
   validateTribes,
@@ -115,12 +126,19 @@ export {
 export type { Potion, PotionChoice } from "./potions.ts";
 
 export type NodeKind =
-  "battle" | "elite" | "event" | "chest" | "shop" | "camp" | "boss";
+  | "battle"
+  | "elite"
+  | "event"
+  | "chest"
+  | "shop"
+  | "camp"
+  | "boss";
 export interface AdventureNode {
   id: string;
   name: string;
   kind: NodeKind;
   description: string;
+  encounter?: EncounterDefinition;
 }
 export const ROUTE: AdventureNode[][] = [
   [
@@ -437,9 +455,11 @@ export interface AdventureBattle {
   boss?: "kaos" | "golden-queen" | "kaos-vortex";
   bossWon?: boolean;
   elementCycle?: Element[];
+  customEncounter?: true;
 }
 export interface Adventure {
   version: 1;
+  encounterLibrary?: EncounterLibrary;
   seed: number;
   size: BoardSize;
   floor: number;
@@ -567,6 +587,9 @@ export function newAdventure(
   });
   return {
     version: 1,
+    ...(readEncounterLibrary()
+      ? { encounterLibrary: readEncounterLibrary() }
+      : {}),
     ...(note && validateStone(note) ? { note } : {}),
     seed,
     size,
@@ -588,6 +611,97 @@ export function newAdventure(
     relicOffers: [],
     rewardPicksRemaining: 0,
   };
+}
+export function adventureNodes(
+  run: Pick<Adventure, "floor" | "seed" | "encounterLibrary">,
+  floor = run.floor,
+): AdventureNode[] {
+  const row = ROUTE[floor] || [];
+  if (!run.encounterLibrary) return row;
+  const act = adventureAct(floor),
+    used = new Set<string>();
+  const choose = (
+    pool: EncounterPool,
+    slot: number,
+  ): AdventureNode | undefined => {
+    const candidates = encountersForPool(
+      run.encounterLibrary!,
+      pool,
+      act,
+    ).filter((encounter) => !used.has(`${pool}:${encounter.id}`));
+    if (!candidates.length) return;
+    const offset = ((run.seed >>> 0) + Math.imul(floor + 1, 101) + slot) >>> 0;
+    const encounter = candidates[offset % candidates.length];
+    used.add(`${pool}:${encounter.id}`);
+    return {
+      id: `encounter:${floor}:${slot}:${encounter.id}`,
+      name: encounter.name,
+      description: encounter.description,
+      kind:
+        pool === "easy"
+          ? "battle"
+          : pool === "hard"
+            ? "elite"
+            : pool === "boss"
+              ? "boss"
+              : "event",
+      encounter,
+    };
+  };
+  const nodes = row.flatMap((node, slot) => {
+    const pool =
+      node.kind === "battle"
+        ? "easy"
+        : node.kind === "elite"
+          ? "hard"
+          : node.kind === "boss"
+            ? "boss"
+            : node.kind === "chest"
+              ? "event"
+              : undefined;
+    const chosen = pool ? choose(pool, slot) : node;
+    return chosen ? [chosen] : [];
+  });
+  if (
+    row.some((node) => node.kind === "event") &&
+    !row.some((node) => node.kind === "chest")
+  ) {
+    const event = choose("event", row.length);
+    if (event) nodes.push(event);
+  }
+  return nodes;
+}
+export function continueEmptyAdventurePath(run: Adventure): Adventure {
+  if (run.phase !== "map" || adventureNodes(run).length)
+    throw new Error("Choose an encounter on this path.");
+  if (run.floor === ROUTE.length - 1)
+    return {
+      ...run,
+      phase: "ended",
+      victory: true,
+      message: "No enabled encounters remain. Your expedition is complete.",
+    };
+  return advance(run);
+}
+export function testAdventureEncounter(
+  encounter: EncounterDefinition,
+  size: BoardSize,
+  act: 1 | 2,
+  pool: EncounterPool = encounter.pools[0],
+  seed = Math.floor(Math.random() * 2 ** 30),
+): Adventure {
+  if (!validEncounter(encounter))
+    throw new Error("Complete the encounter before testing it.");
+  const run = newAdventure(size, seed);
+  const floor = (act === 1 ? 0 : 9) + (pool === "boss" ? 8 : 0);
+  const node: AdventureNode = {
+    id: `encounter-test:${encounter.id}`,
+    name: encounter.name,
+    description: encounter.description,
+    kind: pool === "boss" ? "boss" : pool === "hard" ? "elite" : "battle",
+    encounter: structuredClone(encounter),
+  };
+  return beginBattle({ ...run, floor }, node);
 }
 function advance(run: Adventure): Adventure {
   return {
@@ -634,7 +748,18 @@ function beginBattle(
   },
 ): Adventure {
   const kind = options?.kind || node.kind;
-  const vortex = node.id === "elemental-vortex";
+  const encounter = node.encounter;
+  const mechanic = encounter?.mechanic;
+  const vortex = encounter
+    ? mechanic === "vortex"
+    : node.id === "elemental-vortex";
+  const queen = encounter
+    ? mechanic === "golden"
+    : kind === "boss" && run.floor >= 9;
+  const isChest = encounter ? mechanic === "chest" : kind === "chest";
+  const isThrone = encounter
+    ? mechanic === "throne" || mechanic === "golden"
+    : kind === "boss" && !vortex;
   const elementCycle = vortex
     ? (Object.keys(ELEMENTS) as Element[]).filter(
         (element) => element !== "neutral",
@@ -658,40 +783,46 @@ function beginBattle(
     middle = run.size === 3 ? 4 : 5;
   let objective: number | undefined,
     objectiveKind: "chest" | "throne" | undefined;
-  if (kind === "chest" || (kind === "boss" && !vortex)) {
+  if (isChest || isThrone) {
     objective = middle;
-    objectiveKind = kind === "chest" ? "chest" : "throne";
+    objectiveKind = isChest ? "chest" : "throne";
     const stone: Stone = {
       ...STARTER_STONES[5],
       id: `custom-run-objective-${node.id}`,
-      name:
-        kind === "chest"
+      name: encounter
+        ? `${encounter.character.name}’s ${isChest ? "Treasure" : "Throne"}`
+        : isChest
           ? "Guarded Treasure"
-          : run.floor < 9
+          : !queen
             ? "Kaos’s Throne"
             : "Golden Queen’s Throne",
-      creature: kind === "chest" ? "chest" : "robot",
-      portrait:
-        kind === "chest"
+      creature: isChest ? "chest" : "robot",
+      ...(encounter?.character.image
+        ? { image: encounter.character.image }
+        : {}),
+      portrait: encounter
+        ? encounter.character.portrait
+        : isChest
           ? "chompy-mage"
-          : run.floor < 9
+          : !queen
             ? "kaos"
             : "golden-queen",
       element: "tech",
-      edges: kind === "chest" ? [1, 1, 1, 1] : [0, 3, 0, 3],
-      keywords:
-        kind === "boss" && run.floor >= 9
-          ? [
-              { type: "shield", side: 0 },
-              { type: "shield", side: 2 },
-            ]
-          : [],
+      edges: isChest ? [1, 1, 1, 1] : [0, 3, 0, 3],
+      keywords: queen
+        ? [
+            { type: "shield", side: 0 },
+            { type: "shield", side: 2 },
+          ]
+        : [],
       description:
-        kind === "chest"
-          ? "Control this chest at the finish for 45 extra gold."
-          : run.floor < 9
-            ? "Take Kaos’s throne and win the score to enter Act II."
-            : "Take Golden Queen’s throne, win the score, and control at least two corners.",
+        encounter && !isChest
+          ? `Control the throne and win the score.${queen ? " Also hold at least two corners." : ""}`
+          : isChest
+            ? "Control this chest at the finish for 45 extra gold."
+            : !queen
+              ? "Take Kaos’s throne and win the score to enter Act II."
+              : "Take Golden Queen’s throne, win the score, and control at least two corners.",
     };
     board[middle] = {
       stone,
@@ -713,20 +844,32 @@ function beginBattle(
     ) - (run.size === 4 ? 1 : 0),
   );
   const enemyIdentities: string[] = [];
-  const enemies = Array.from({ length: handSize(run.size) }, (_, i) => {
-    const card = makeRunCard(
-      run.seed + run.floor * 131 + i * 19,
-      budget,
-      `${run.seed}-enemy-${run.floor}-${i}`,
-      run.floor >= 6 ? Math.min(5, Math.floor(run.floor / 3)) : 0,
-      0,
-      enemyIdentities,
-    );
-    enemyIdentities.push(characterIdentity(card));
-    return card;
-  });
-  const normalHand = run.deck.map((id) =>
-    run.inventory.find((stone) => stone.id === id)!,
+  const generatedEnemies = Array.from(
+    { length: handSize(run.size) },
+    (_, i) => {
+      const card = makeRunCard(
+        run.seed + run.floor * 131 + i * 19,
+        budget,
+        `${run.seed}-enemy-${run.floor}-${i}`,
+        run.floor >= 6 ? Math.min(5, Math.floor(run.floor / 3)) : 0,
+        0,
+        enemyIdentities,
+      );
+      enemyIdentities.push(characterIdentity(card));
+      return card;
+    },
+  );
+  const enemies =
+    encounter?.deck !== undefined
+      ? encounter.deck.map((card, cardIndex) => ({
+          ...structuredClone(card),
+          id: `custom-encounter-${run.seed}-${run.floor}-${cardIndex}`,
+          custom: true as const,
+          encounterStart: true as const,
+        }))
+      : generatedEnemies;
+  const normalHand = run.deck.map(
+    (id) => run.inventory.find((stone) => stone.id === id)!,
   );
   const curseCards = (run.curses || [])
     .slice(0, Math.max(0, normalHand.length - 1))
@@ -737,13 +880,24 @@ function beginBattle(
     phase: "battle",
     battle: {
       ...(options || {}),
-      ...(kind === "boss"
+      ...(encounter
+        ? {
+            customEncounter: true as const,
+            kind:
+              kind === "boss"
+                ? ("boss" as const)
+                : kind === "elite"
+                  ? ("elite" as const)
+                  : ("battle" as const),
+          }
+        : {}),
+      ...((encounter ? vortex || isThrone : kind === "boss")
         ? {
             boss: vortex
               ? ("kaos-vortex" as const)
-              : run.floor < 9
-                ? ("kaos" as const)
-                : ("golden-queen" as const),
+              : queen
+                ? ("golden-queen" as const)
+                : ("kaos" as const),
           }
         : {}),
       board,
@@ -755,20 +909,22 @@ function beginBattle(
       current: 0,
       turns: 0,
       name:
-        kind === "boss"
+        encounter?.name ||
+        (kind === "boss"
           ? vortex
             ? node.name
             : run.floor < 9
               ? "Kaos · Throne of Chaos"
               : "Golden Queen · The Golden Court"
-          : node.name,
+          : node.name),
       objective,
       objectiveKind,
       lastCaptured: [],
       log: [],
     },
-    message:
-      kind === "boss"
+    message: encounter
+      ? `${encounter.description} ${encounter.deck !== undefined ? `${enemies.length} enemy starting cards. Empty hands pass; the duel ends when the board is full or both hands are empty.` : ""}`
+      : kind === "boss"
         ? vortex
           ? "Kaos’s Elemental Vortex: win the score. Each turn’s element gives matching cards on both sides +1 on every edge. The next-element icon previews the following turn."
           : run.floor < 9
@@ -782,8 +938,15 @@ function beginBattle(
 export function enterAdventureNode(run: Adventure, id: string): Adventure {
   if (run.phase !== "map")
     throw new Error("Finish your current encounter first.");
-  const node = ROUTE[run.floor].find((node) => node.id === id);
+  const node = adventureNodes(run).find((node) => node.id === id);
   if (!node) throw new Error("Choose a node on your current path.");
+  if (node.encounter && node.kind === "event")
+    return {
+      ...run,
+      node: structuredClone(node),
+      phase: "event",
+      message: node.description,
+    };
   if (node.id.startsWith("spire-")) {
     const event = chooseSpireEvent(run);
     return {
@@ -796,7 +959,7 @@ export function enterAdventureNode(run: Adventure, id: string): Adventure {
     };
   }
   if (["battle", "elite", "boss"].includes(node.kind))
-    return beginBattle(run, node);
+    return beginBattle(run, structuredClone(node));
   if (node.kind === "shop") {
     // Older saves already beyond the first merchant have no offer history.
     // Recover that shop's original roll so the next merchant still differs.
@@ -971,8 +1134,9 @@ function finishBattle(run: Adventure): Adventure {
   const battle = run.battle!,
     [you, enemy] = score(battle.board),
     throne = battle.objectiveKind === "throne";
-  const bossBattle =
-    !!battle.boss || battle.kind === "boss" || run.node?.kind === "boss";
+  const bossBattle = battle.customEncounter
+    ? battle.kind === "boss"
+    : !!battle.boss || battle.kind === "boss" || run.node?.kind === "boss";
   const held =
     battle.objective !== undefined &&
     battle.board[battle.objective]?.owner === 0;
@@ -1021,7 +1185,7 @@ function finishBattle(run: Adventure): Adventure {
   if (won && battle.eventHeal && !run.healingLocked)
     lives = Math.min(maxLives(run), lives + battle.eventHeal);
   const victory = bossBattle && won && run.floor >= 9;
-  const message = `${won ? "Victory" : draw ? "A draw" : "Battle lost"} · ${you}–${enemy}. +${earned} gold.${chest ? ` Chest secured: +${chest} bonus gold included.` : battle.objectiveKind === "chest" ? " The chest stayed with the keeper." : ""}${throne && !held ? " You did not secure the throne." : ""}${queen && corners < 2 ? ` You held ${corners} corners; Golden Queen requires at least two.` : ""}${bossBattle && won && !victory ? " Kaos is defeated! Claim your rewards to enter Act II: The Golden Isles." : ""}${!won && !draw ? " One life lost." : ""}${revived ? " Phoenix Feather restores you to 1 life. The feather is now spent." : ""}${won && !run.healingLocked && hasRelic(run, "campfire-charm") ? " Campfire Charm restores 1 life, up to your maximum lives." : ""}`;
+  const message = `${won ? "Victory" : draw ? "A draw" : "Battle lost"} · ${you}–${enemy}. +${earned} gold.${chest ? ` Chest secured: +${chest} bonus gold included.` : battle.objectiveKind === "chest" ? " The chest stayed with the keeper." : ""}${throne && !held ? " You did not secure the throne." : ""}${queen && corners < 2 ? ` You held ${corners} corners; ${run.node?.encounter?.character.name || "Golden Queen"} requires at least two.` : ""}${bossBattle && won && !victory ? ` ${battle.customEncounter ? battle.name : "Kaos"} is defeated! Claim your rewards to enter Act II: The Golden Isles.` : ""}${!won && !draw ? " One life lost." : ""}${revived ? " Phoenix Feather restores you to 1 life. The feather is now spent." : ""}${won && !run.healingLocked && hasRelic(run, "campfire-charm") ? " Campfire Charm restores 1 life, up to your maximum lives." : ""}`;
   const potions =
     won && (run.floor % 3 === 0 || hasRelic(run, "herbalists-lens"))
       ? receiveFreePotions(run, adventurePotionOffers(run, 1, 0x64726f70))
@@ -1121,6 +1285,7 @@ export function playAdventureCard(
     run.seed ^ Math.imul(battle.turns + 1, 0x6d2b79f5) ^ index,
     discardChoices,
     !manualDiscard,
+    !!battle.customEncounter,
   );
   if (discarded.pending) throw new DiscardSelectionRequired(discarded.pending);
   const bracer =
@@ -1170,7 +1335,23 @@ export function playAdventureCard(
       ].slice(0, 20),
     },
   };
-  return move.board.every(Boolean) ? finishBattle(next) : next;
+  if (move.board.every(Boolean)) return finishBattle(next);
+  if (
+    next.battle!.customEncounter &&
+    !next.battle!.hands[next.battle!.current].length
+  ) {
+    const other = (1 - next.battle!.current) as Owner;
+    if (!next.battle!.hands[other].length) return finishBattle(next);
+    return {
+      ...next,
+      battle: {
+        ...next.battle!,
+        current: other,
+        log: ["Empty hand: turn passed.", ...next.battle!.log].slice(0, 20),
+      },
+    };
+  }
+  return next;
 }
 export function adventureEnemyMove(run: Adventure): Adventure {
   if (run.phase !== "battle" || run.battle?.current !== 1) return run;
@@ -1339,6 +1520,12 @@ export function resolveAdventureEvent(
 ): Adventure {
   if (run.phase !== "event" || !run.node)
     throw new Error("There is no event to resolve.");
+  if (run.node.encounter) {
+    if (choice === "leave") return advance(run);
+    if (choice === "fight")
+      return beginBattle(run, run.node, { kind: "battle" });
+    throw new Error("Choose to fight or leave this encounter.");
+  }
   const eventId = adventureEventId(run.node.id);
   if (run.node.id.startsWith("spire-"))
     return resolveSpireEvent(
@@ -1812,8 +1999,12 @@ function validBattleCard(value: unknown): value is Stone {
     stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 64) &&
     (stone.tribes === undefined || validateTribes(stone.tribes)) &&
     (stone.conjured === undefined || stone.conjured === true) &&
+    (stone.encounterStart === undefined ||
+      (stone.encounterStart === true &&
+        stone.id.startsWith("custom-encounter-"))) &&
     (stone.token === undefined ||
-      (stone.token === true && stone.conjured === true)) &&
+      (stone.token === true &&
+        (stone.conjured === true || stone.encounterStart === true))) &&
     (stone.receivedKeywords === undefined ||
       (Array.isArray(stone.receivedKeywords) &&
         stone.receivedKeywords.length > 0 &&
@@ -1991,6 +2182,17 @@ function validPlaced(value: unknown, length: number): boolean {
 export function validateAdventure(value: unknown): value is Adventure {
   if (!value || typeof value !== "object") return false;
   const run = value as Adventure;
+  if (
+    run.encounterLibrary !== undefined &&
+    !validEncounterLibrary(run.encounterLibrary)
+  )
+    return false;
+  if (
+    run.node?.encounter !== undefined &&
+    (!validEncounter(run.node.encounter) ||
+      !["battle", "elite", "boss", "event"].includes(run.node.kind))
+  )
+    return false;
   if (run.spireEvent !== undefined && !validSpireState(run.spireEvent))
     return false;
   if (
@@ -2135,13 +2337,20 @@ export function validateAdventure(value: unknown): value is Adventure {
   if (
     ["battle", "event", "shop", "reward"].includes(run.phase) &&
     (!run.node ||
-      !ROUTE[run.floor].some(
-        (node) => node.id === run.node!.id && node.kind === run.node!.kind,
-      ))
+      (!run.node.encounter &&
+        !ROUTE[run.floor].some(
+          (node) => node.id === run.node!.id && node.kind === run.node!.kind,
+        )))
   )
     return false;
   if (run.battle) {
     const battle = run.battle;
+    if (
+      (battle.customEncounter !== undefined &&
+        battle.customEncounter !== true) ||
+      !!run.node?.encounter !== (battle.customEncounter === true)
+    )
+      return false;
     if (
       !Array.isArray(battle.board) ||
       battle.board.length !== run.size ** 2 ||
@@ -2246,7 +2455,7 @@ export function restoreAdventure(value: unknown): Adventure | null {
         ),
       },
     };
-  if (run.node?.kind === "boss" && run.battle) {
+  if (run.node?.kind === "boss" && run.battle && !run.node.encounter) {
     const boss =
       run.node.id === "elemental-vortex"
         ? "kaos-vortex"
@@ -2446,11 +2655,13 @@ function repairAdventureCards(run: Adventure): Adventure {
             board: withTileEnvironments(board!),
             hands: [
               run.battle.hands[0].map(appearance),
-              uniqueCharacters(
-                run.battle.hands[1].map(plain),
-                run.seed ^ 0x656e65,
-                enemyUsed,
-              ).map(plain),
+              run.battle.customEncounter
+                ? run.battle.hands[1].map(plain)
+                : uniqueCharacters(
+                    run.battle.hands[1].map(plain),
+                    run.seed ^ 0x656e65,
+                    enemyUsed,
+                  ).map(plain),
             ] as [Stone[], Stone[]],
           },
         }
