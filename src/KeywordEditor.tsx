@@ -28,6 +28,8 @@ import { TribeSelect } from "./TribeEditor";
 import type { ComboCondition } from "./tribes";
 import { CONJURE_CARDS, MAX_HAND_CARDS } from "./conjure";
 import { readTokens } from "./tokens";
+import type { BuffSpec } from "./discard";
+import "./discard.css";
 
 export function defaultKeyword(
   type: KeywordType,
@@ -56,13 +58,76 @@ export function defaultKeyword(
       recipient: "self",
     };
   if (type === "resonance") return { type, side, element };
+  if (type === "discard")
+    return { type, mode: "random", recipient: "opponent", count: 1 };
+  if (type === "scavenge")
+    return { type, from: "self", pips: [{ side, amount: 1 }] };
+  if (type === "parting-gift")
+    return { type, target: "allies", pips: [{ side, amount: 1 }] };
+  if (type === "discard-priority") return { type, priority: 1 };
   return { type, side };
+}
+function BuffFields({
+  spec,
+  label,
+  onChange,
+}: {
+  spec: BuffSpec;
+  label: string;
+  onChange: (spec: BuffSpec) => void;
+}) {
+  return (
+    <fieldset className="discard-buff-fields">
+      <legend>Pips and Shield buffs</legend>
+      {(["pips", "shields"] as const).map((kind) => (
+        <div key={kind} className="discard-buff-grid">
+          {SIDE_NAMES.map((name, side) => (
+            <label key={side}>
+              {name} {kind === "pips" ? "pips" : "Shield"}
+              <select
+                aria-label={`${label} ${name} ${kind}`}
+                value={
+                  spec[kind]?.find((pip) => pip.side === side)?.amount || 0
+                }
+                onChange={(event) => {
+                  const values = (spec[kind] || []).filter(
+                      (pip) => pip.side !== side,
+                    ),
+                    amount = Number(event.target.value);
+                  if (amount) values.push({ side: side as Side, amount });
+                  onChange({
+                    pips: spec.pips,
+                    shields: spec.shields,
+                    [kind]: values.length
+                      ? values.sort((a, b) => a.side - b.side)
+                      : undefined,
+                  });
+                }}
+              >
+                <option value="0">None</option>
+                {[1, 2, 3, 4, 5].map((amount) => (
+                  <option key={amount} value={amount}>
+                    +{amount}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      ))}
+      <small>
+        Choose at least one bonus. Each actual discard grants these buffs once.
+        Ordinary pips cap at 99.
+      </small>
+    </fieldset>
+  );
 }
 function Fields({
   keyword,
   label,
   element,
   allowCombo = true,
+  allowHandOnly = true,
   depth = 0,
   onChange,
 }: {
@@ -70,6 +135,7 @@ function Fields({
   label: string;
   element: Element;
   allowCombo?: boolean;
+  allowHandOnly?: boolean;
   depth?: number;
   onChange: (value: StoneKeyword) => void;
 }) {
@@ -94,6 +160,11 @@ function Fields({
           >
             {Object.entries(KEYWORD_RULES)
               .filter(([type]) => allowCombo || type !== "combo")
+              .filter(
+                ([type]) =>
+                  allowHandOnly ||
+                  (type !== "parting-gift" && type !== "discard-priority"),
+              )
               .map(([type, rule]) => (
                 <option key={type} value={type}>
                   {rule.name} · {rule.condition}
@@ -102,6 +173,155 @@ function Fields({
           </select>
         </label>
       </div>
+      {keyword.type === "discard" && (
+        <div className="effect-editor-options">
+          <label>
+            Discard from
+            <select
+              aria-label={`Discard from · ${label}`}
+              value={keyword.recipient}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  recipient: event.target.value as "self" | "opponent" | "both",
+                })
+              }
+            >
+              <option value="self">Your hand</option>
+              <option value="opponent">Opponent’s hand</option>
+              <option value="both">Both hands</option>
+            </select>
+          </label>
+          <label>
+            Selection
+            <select
+              aria-label={`Discard selection · ${label}`}
+              value={keyword.mode}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  mode: event.target.value as "chosen" | "random",
+                })
+              }
+            >
+              <option value="chosen">Choose the cards</option>
+              <option value="random">Random cards</option>
+            </select>
+          </label>
+          <label>
+            Cards discarded
+            <select
+              aria-label={`Discard count · ${label}`}
+              value={keyword.count}
+              onChange={(event) =>
+                onChange({ ...keyword, count: Number(event.target.value) })
+              }
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <small>
+            After captures, Conjure resolves first. Only cards beyond the number
+            needed for each player’s remaining turns can be discarded. Add
+            Scavenge to reward discards, and Parting Gift to cards that reward
+            being discarded.
+          </small>
+        </div>
+      )}
+      {keyword.type === "scavenge" && (
+        <div className="effect-editor-options">
+          <label>
+            Watch discards from
+            <select
+              aria-label={`Scavenge from · ${label}`}
+              value={keyword.from}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  from: event.target.value as "self" | "opponent" | "both",
+                })
+              }
+            >
+              <option value="self">Your hand</option>
+              <option value="opponent">Opponent’s hand</option>
+              <option value="both">Either hand</option>
+            </select>
+          </label>
+          <BuffFields
+            spec={keyword}
+            label={`Scavenge · ${label}`}
+            onChange={(spec) => onChange({ ...keyword, ...spec })}
+          />
+          <small>
+            This card must be on the board. It gains the chosen buffs per card
+            actually discarded, after captures. Silence disables the ability and
+            discard buffs.
+          </small>
+        </div>
+      )}
+      {keyword.type === "parting-gift" && (
+        <div className="effect-editor-options">
+          <label>
+            Buff recipients
+            <select
+              aria-label={`Parting Gift recipients · ${label}`}
+              value={keyword.target}
+              onChange={(event) =>
+                onChange({
+                  ...keyword,
+                  target: event.target.value as "discarder" | "allies" | "hand",
+                })
+              }
+            >
+              <option value="allies">Its owner’s board cards</option>
+              <option value="hand">Its owner’s remaining hand</option>
+              <option value="discarder">The card causing the discard</option>
+            </select>
+          </label>
+          <BuffFields
+            spec={keyword}
+            label={`Parting Gift · ${label}`}
+            onChange={(spec) => onChange({ ...keyword, ...spec })}
+          />
+          <small>
+            Triggers from the actual hand card when discarded, including random
+            discards. Conjured cards can receive this keyword. It does not
+            trigger on play, and never changes your permanent card templates.
+          </small>
+        </div>
+      )}
+      {keyword.type === "discard-priority" && (
+        <div className="effect-editor-options">
+          <label>
+            Random discard priority
+            <input
+              aria-label={`Discard priority · ${label}`}
+              type="number"
+              min={1}
+              max={99}
+              value={keyword.priority ?? 1}
+              onChange={(event) => {
+                const priority = event.target.valueAsNumber;
+                if (
+                  Number.isInteger(priority) &&
+                  priority >= 1 &&
+                  priority <= 99
+                )
+                  onChange({ ...keyword, priority });
+              }}
+            />
+          </label>
+          <small>
+            Higher priority is selected first by random discards. Equal ranks
+            are random. Chosen discards ignore priority. Protected finishing
+            cards cannot be discarded.
+          </small>
+        </div>
+      )}
       {keyword.type === "conjure" && (
         <div className="effect-editor-options conjure-editor-options">
           <label>
@@ -832,6 +1052,7 @@ function GrantKeywordFields({
             >
               <Fields
                 keyword={grant}
+                allowHandOnly={conjure}
                 label={grantLabel}
                 element={element}
                 depth={depth + 1}
@@ -992,6 +1213,7 @@ function ComboFields({
             }
             element={element}
             allowCombo={false}
+            allowHandOnly={false}
             depth={depth + 1}
             onChange={(value) =>
               onChange({
@@ -1199,6 +1421,14 @@ export function KeywordEditor({
           <p>
             <strong>Shield</strong> adds directional defense pips, never attack
             pips.
+          </p>
+          <p>
+            <strong>Discard</strong> removes chosen or random hand cards after
+            Conjure while reserving enough to finish the board.{" "}
+            <strong>Scavenge</strong> gains buffs per discarded card.{" "}
+            <strong>Parting Gift</strong> rewards being discarded, and{" "}
+            <strong>Discard Priority</strong> makes random discards choose a
+            card first.
           </p>
           <p>
             <strong>Combo</strong> grants pips and/or keywords when your

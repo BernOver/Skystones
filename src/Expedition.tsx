@@ -37,6 +37,9 @@ import {
 } from "./CardInspection";
 import type { Inspection } from "./CardInspection";
 import { TargetPicker } from "./TargetPicker";
+import { DiscardPicker } from "./DiscardPicker";
+import { DiscardSelectionRequired } from "./discard";
+import type { DiscardChoice, DiscardPending } from "./discard";
 import {
   ELEMENTS,
   KEYWORD_RULES,
@@ -208,6 +211,13 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     cardIndex: number;
     targets: KeywordTarget[];
   } | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<{
+    placement: number;
+    cardIndex: number;
+    targets: KeywordTarget[];
+    choices: DiscardChoice[];
+    pending: DiscardPending;
+  } | null>(null);
   const [service, setService] = useState<"pip" | "element" | "keyword">("pip"),
     [serviceCard, setServiceCard] = useState(""),
     [element, setElement] = useState<Element>("fire");
@@ -275,6 +285,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     setSetup(false);
     setSelected(null);
     setTarget(null);
+    setDiscardTarget(null);
     setPotionTarget(null);
     setDeckOpen(false);
     setError("");
@@ -415,6 +426,8 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
       reductions: cell?.reductions,
       effects: cell?.effects,
       conjurations: cell?.conjurations,
+      discards: cell?.discards,
+      discardBuffs: cell?.discardBuffs,
       playerNames: ["You", "Keeper"],
       dizzy: cell?.dizzy,
       environment: cell?.environment,
@@ -432,7 +445,47 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     if (prepareTargeting(battle.board, stone, [], 0, placement).pending) {
       setTarget({ placement, cardIndex: selected, targets: [] });
       setInspection(null);
-    } else act((current) => playAdventureCard(current, placement, selected));
+    } else commitAdventurePlay(placement, selected);
+  }
+  function commitAdventurePlay(
+    placement: number,
+    cardIndex: number,
+    targets: KeywordTarget[] = [],
+    choices: DiscardChoice[] = [],
+  ) {
+    if (!run) return;
+    try {
+      const next = playAdventureCard(
+        run,
+        placement,
+        cardIndex,
+        targets,
+        choices,
+        true,
+      );
+      setRun(next);
+      setError("");
+      setInspection(null);
+      setTarget(null);
+      setDiscardTarget(null);
+    } catch (value) {
+      if (value instanceof DiscardSelectionRequired) {
+        setTarget(null);
+        setDiscardTarget({
+          placement,
+          cardIndex,
+          targets,
+          choices,
+          pending: value.pending,
+        });
+        setInspection(null);
+      } else
+        setError(
+          value instanceof Error
+            ? value.message
+            : "That card could not be played.",
+        );
+    }
   }
   function chooseTarget(boardIndex: number, chosenSide?: Side) {
     if (!target || !battle) return;
@@ -465,10 +518,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
     )
       setTarget({ ...target, targets });
     else {
-      act((current) =>
-        playAdventureCard(current, target.placement, target.cardIndex, targets),
-      );
-      setTarget(null);
+      commitAdventurePlay(target.placement, target.cardIndex, targets);
     }
   }
   function workshop() {
@@ -1560,6 +1610,34 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
           </button>
         </section>
       )}
+      {discardTarget && battle && (
+        <RunDialog
+          title="Choose cards to discard"
+          onClose={() => setDiscardTarget(null)}
+        >
+          <DiscardPicker
+            key={`${discardTarget.pending.keywordIndex}-${discardTarget.pending.owner}`}
+            pending={discardTarget.pending}
+            names={["You", "Keeper"]}
+            onCancel={() => setDiscardTarget(null)}
+            onConfirm={(cardIds) =>
+              commitAdventurePlay(
+                discardTarget.placement,
+                discardTarget.cardIndex,
+                discardTarget.targets,
+                [
+                  ...discardTarget.choices,
+                  {
+                    keywordIndex: discardTarget.pending.keywordIndex,
+                    owner: discardTarget.pending.owner,
+                    cardIds,
+                  },
+                ],
+              )
+            }
+          />
+        </RunDialog>
+      )}
       {target && battle && (
         <RunDialog
           title="Adventure keyword target"
@@ -1682,6 +1760,7 @@ export function Expedition({ skin }: { skin: BoardSkinId }) {
       )}
       {inspection &&
         !target &&
+        !discardTarget &&
         !card &&
         !inspected &&
         !eventGuide &&

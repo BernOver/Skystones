@@ -100,6 +100,15 @@ for (const size of [3, 4] as const)
           .locator("button:enabled");
         if (await sides.count()) await sides.first().click();
       }
+      while (await page.locator(".discard-picker").count()) {
+        const text = await page.locator(".discard-choice-count").innerText();
+        const count = Number(text.split("/")[1].trim().split(" ")[0]);
+        for (let i = 0; i < count; i++)
+          await page.locator(".discard-card-button").nth(i).click();
+        await page
+          .getByRole("button", { name: "Discard selected cards", exact: true })
+          .click();
+      }
       await expect(page.locator(".board-cell.filled")).toHaveCount(turn + 1);
     }
     await expect(page.locator(".result-card")).toBeVisible();

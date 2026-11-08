@@ -57,6 +57,29 @@ a new size creates a separate resized copy and keeps the original.
 Deleting a deck keeps the cards. Deleting a custom card or turning it into a
 token removes it from every saved deck. Incomplete decks need replacements
 before starting a new match. The current match keeps its hand and board.
+
+Discard abilities: add them in Card studio > Add keyword.
+- Discard: remove 1-5 chosen or random cards from your hand, the opponent's,
+  or both. Repeat for separate groups. Resolve captures, then all Conjure gains,
+  then discards. Chosen discards can include freshly generated cards. The card's
+  player chooses the victims. Canceling leaves the whole play unchanged.
+- Scavenge: board cards gain configured pips and/or Shield for each actual
+  discard from your hand, the opponent's, or either hand. Buffs do not repeat
+  captures. Skipped discards grant nothing.
+- Parting Gift: when discarded, buff its owner's board cards, remaining hand,
+  or the card causing the discard. Choose pips and/or Shield on specified sides.
+  Hand gifts apply when those cards are played. Permanent card templates and
+  the Adventure pack stay unchanged. Silence disables board discard bonuses.
+- Discard Priority: random discards select the highest priority first (1-99).
+  Unmarked cards rank zero; equal priorities are random. Chosen discards ignore
+  priority. These hand-only abilities can be printed or granted by Conjure.
+Each player ALWAYS keeps enough cards for every remaining turn on the board.
+Unsafe discards are skipped. Conjure counts only cards actually gained after
+its hand cap, filters and token availability. Priority never overrides safety.
+On a fresh 4x4 board there are no spare cards without Conjure. Battle logs and
+inspection show discarded cards, protected counts and buffs. Adventure saves
+temporary hand buffs and completed discard histories. New Draft pools, shops,
+shrines and transformations include the new abilities; older pools stay intact.
 Use Adventure for the roguelike expedition. Both normal matches and adventures
 offer 3x3 (5-card hands) and 4x4 (8-card hands) boards.
 Use Draft for a two-player shared-pool draft, then play with your drafted hands.

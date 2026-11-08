@@ -64,7 +64,7 @@ test("every merchant and reroll has a different keyword type from the previous o
     assert.equal(nextShop.shopRerolls, 0);
     roundtrip(nextShop);
   }
-  assert.equal(types.size, 12);
+  assert.equal(types.size, 16);
 });
 test("paid rerolls refresh all stock and workshop offers, retain purchases, and never replay entry gold", () => {
   const initial = {
@@ -207,7 +207,7 @@ test("the shrine offers three distinct stable keyword types and all twelve can a
       seen.add(offer.type);
     }
   }
-  assert.equal(seen.size, 12);
+  assert.equal(seen.size, 16);
 });
 for (const size of [3, 4] as const)
   test(`${size}×${size} shrine inscribes exactly one chosen stone for free and cannot be claimed twice`, () => {
@@ -239,7 +239,14 @@ for (const size of [3, 4] as const)
         card.id === id ? { ...card, keywords: [offer] } : card,
       ),
     };
-    assert.throws(() => resolveAdventureEvent(duplicate, "inscribe:1", id));
+    if (
+      ["sunder", "next-play", "environment", "conjure", "discard"].includes(
+        offer.type,
+      )
+    )
+      assert.ok(resolveAdventureEvent(duplicate, "inscribe:1", id));
+    else
+      assert.throws(() => resolveAdventureEvent(duplicate, "inscribe:1", id));
     assert.throws(() => resolveAdventureEvent(run, "inscribe:3", id));
     assert.throws(() => resolveAdventureEvent(run, "inscribe:1", "missing"));
   });

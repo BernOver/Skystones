@@ -6,6 +6,14 @@ import {
   tribalKeyword,
 } from "./tribes.ts";
 import {
+  resolveDiscards,
+  DiscardSelectionRequired,
+  discardSummary,
+  validDiscardBuffs,
+  validateDiscardRecords,
+} from "./discard.ts";
+import type { DiscardChoice } from "./discard.ts";
+import {
   characterDefault,
   withAdditionalKeywords,
   readCharacterDefaults,
@@ -1066,6 +1074,8 @@ export function playAdventureCard(
   index: number,
   cardIndex: number,
   targets: KeywordTarget[] = [],
+  discardChoices: DiscardChoice[] = [],
+  manualDiscard = false,
 ): Adventure {
   if (run.phase !== "battle" || !run.battle)
     throw new Error("There is no active battle.");
@@ -1104,6 +1114,15 @@ export function playAdventureCard(
       Math.imul(battle.turns + 1, 0x85ebca6b) ^
       index,
   );
+  const discarded = resolveDiscards(
+    conjured.board,
+    index,
+    conjured.hands,
+    run.seed ^ Math.imul(battle.turns + 1, 0x6d2b79f5) ^ index,
+    discardChoices,
+    !manualDiscard,
+  );
+  if (discarded.pending) throw new DiscardSelectionRequired(discarded.pending);
   const bracer =
     battle.current === 0 &&
     move.captured.length > 0 &&
@@ -1125,9 +1144,9 @@ export function playAdventureCard(
       ...battle,
       ...(objective !== undefined ? { objective } : {}),
       board: arena
-        ? withArenaElement(conjured.board, arena.next)
-        : conjured.board,
-      hands: conjured.hands,
+        ? withArenaElement(discarded.board, arena.next)
+        : discarded.board,
+      hands: discarded.hands,
       current: (battle.current === 0 ? 1 : 0) as Owner,
       turns: battle.turns + 1,
       captures:
@@ -1139,7 +1158,7 @@ export function playAdventureCard(
         (battle.current === 0 && hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
-        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
+        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${discarded.records.length ? ` · ${discardSummary(discarded.records, ["You", "Keeper"])}` : ""}${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
           .filter((effect) => effect.type === "shift")
           .map((effect) =>
             effect.type === "shift"
@@ -1478,62 +1497,75 @@ function rollWorkshopOffer(
             ? { pool: "tokens" as const }
             : {}),
         }
-      : type === "shift"
-        ? {
-            type,
-            side,
-            direction: ([side, (side + 1) % 4, (side + 3) % 4] as Side[])[
-              Math.floor(rng() * 3)
-            ],
-            affects: (["enemies", "allies", "both"] as const)[
-              Math.floor(rng() * 3)
-            ],
-          }
-        : type === "environment"
-          ? {
-              type,
-              environment: defaultEnvironment(
-                (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
-                  Math.floor(rng() * 7)
-                ],
-                elements[Math.floor(rng() * elements.length)],
-              ),
-            }
-          : type === "next-play"
-            ? {
-                type,
-                side: rng() < 0.5 ? "all" : side,
-                amount: rng() < 0.35 ? -1 : 1,
-                recipient: rng() < 0.35 ? "opponent" : "self",
-                ...((run.seed + run.floor + reroll) % 3 === 0
+      : type === "discard"
+        ? { type, mode: "random", recipient: "opponent", count: 1 }
+        : type === "scavenge"
+          ? { type, from: "self", pips: [{ side, amount: 1 }] }
+          : type === "parting-gift"
+            ? { type, target: "allies", pips: [{ side, amount: 1 }] }
+            : type === "discard-priority"
+              ? { type, priority: 1 }
+              : type === "shift"
+                ? {
+                    type,
+                    side,
+                    direction: (
+                      [side, (side + 1) % 4, (side + 3) % 4] as Side[]
+                    )[Math.floor(rng() * 3)],
+                    affects: (["enemies", "allies", "both"] as const)[
+                      Math.floor(rng() * 3)
+                    ],
+                  }
+                : type === "environment"
                   ? {
-                      amount: run.seed % 2 ? 0 : 1,
-                      recipient: "self" as const,
-                      keywords: [{ type: "shield" as const, side }],
+                      type,
+                      environment: defaultEnvironment(
+                        (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
+                          Math.floor(rng() * 7)
+                        ],
+                        elements[Math.floor(rng() * elements.length)],
+                      ),
                     }
-                  : {}),
-              }
-            : type === "combo"
-              ? {
-                  type,
-                  pips: [{ side, amount: 1 }],
-                  keywords: [
-                    { type: "shield", side: ((side + 2) % 4) as Side },
-                  ],
-                }
-              : type === "dizzy"
-                ? { type, sides: [side] }
-                : type === "silence"
-                  ? { type }
-                  : type === "resonance"
+                  : type === "next-play"
                     ? {
                         type,
-                        side,
-                        element: elements[Math.floor(rng() * elements.length)],
+                        side: rng() < 0.5 ? "all" : side,
+                        amount: rng() < 0.35 ? -1 : 1,
+                        recipient: rng() < 0.35 ? "opponent" : "self",
+                        ...((run.seed + run.floor + reroll) % 3 === 0
+                          ? {
+                              amount: run.seed % 2 ? 0 : 1,
+                              recipient: "self" as const,
+                              keywords: [{ type: "shield" as const, side }],
+                            }
+                          : {}),
                       }
-                    : type === "sunder"
-                      ? { type, side, amount: 1 + Math.floor(run.floor / 4) }
-                      : { type, side };
+                    : type === "combo"
+                      ? {
+                          type,
+                          pips: [{ side, amount: 1 }],
+                          keywords: [
+                            { type: "shield", side: ((side + 2) % 4) as Side },
+                          ],
+                        }
+                      : type === "dizzy"
+                        ? { type, sides: [side] }
+                        : type === "silence"
+                          ? { type }
+                          : type === "resonance"
+                            ? {
+                                type,
+                                side,
+                                element:
+                                  elements[Math.floor(rng() * elements.length)],
+                              }
+                            : type === "sunder"
+                              ? {
+                                  type,
+                                  side,
+                                  amount: 1 + Math.floor(run.floor / 4),
+                                }
+                              : { type, side };
   const tribeRoll =
     (run.seed ^
       Math.imul(run.floor + 1, 0x79b1) ^
@@ -1788,6 +1820,8 @@ function validBattleCard(value: unknown): value is Stone {
         validateKeywords(stone.receivedKeywords))) &&
     (stone.receivedElement === undefined ||
       validReceivedElement(stone.receivedElement)) &&
+    (stone.discardBuffs === undefined ||
+      validDiscardBuffs(stone.discardBuffs)) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -1806,6 +1840,8 @@ function validPlaced(value: unknown, length: number): boolean {
     (cell.environment === undefined || validateEnvironment(cell.environment)) &&
     (cell.conjurations === undefined ||
       validateConjurations(cell.conjurations)) &&
+    (cell.discards === undefined || validateDiscardRecords(cell.discards)) &&
+    (cell.discardBuffs === undefined || validDiscardBuffs(cell.discardBuffs)) &&
     (cell.inheritedPips === undefined ||
       (Array.isArray(cell.inheritedPips) &&
         cell.inheritedPips.length === 4 &&

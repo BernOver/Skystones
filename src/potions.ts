@@ -257,65 +257,95 @@ export function rotatedPotionStone(stone: Stone): Stone {
               rotate(grant) as Exclude<StoneKeyword, { type: "combo" }>,
           ),
         }
-      : keyword.type === "conjure"
+      : keyword.type === "scavenge" || keyword.type === "parting-gift"
         ? {
             ...keyword,
-            ...(keyword.pips
-              ? {
-                  pips: keyword.pips.map((pip) => ({
-                    ...pip,
-                    side: ((pip.side + 1) % 4) as Side,
-                  })),
-                }
-              : {}),
-            ...(keyword.keywords
-              ? { keywords: keyword.keywords.map(rotate) }
-              : {}),
+            pips: keyword.pips?.map((pip) => ({
+              ...pip,
+              side: ((pip.side + 1) % 4) as Side,
+            })),
+            shields: keyword.shields?.map((pip) => ({
+              ...pip,
+              side: ((pip.side + 1) % 4) as Side,
+            })),
           }
-        : keyword.type === "next-play"
+        : keyword.type === "conjure"
           ? {
               ...keyword,
-              side:
-                typeof keyword.side === "number"
-                  ? (((keyword.side + 1) % 4) as Side)
-                  : keyword.side,
+              ...(keyword.pips
+                ? {
+                    pips: keyword.pips.map((pip) => ({
+                      ...pip,
+                      side: ((pip.side + 1) % 4) as Side,
+                    })),
+                  }
+                : {}),
               ...(keyword.keywords
                 ? { keywords: keyword.keywords.map(rotate) }
                 : {}),
             }
-          : keyword.type === "shift"
+          : keyword.type === "next-play"
             ? {
                 ...keyword,
-                side: ((keyword.side + 1) % 4) as Side,
-                direction: ((keyword.direction + 1) % 4) as Side,
+                side:
+                  typeof keyword.side === "number"
+                    ? (((keyword.side + 1) % 4) as Side)
+                    : keyword.side,
+                ...(keyword.keywords
+                  ? { keywords: keyword.keywords.map(rotate) }
+                  : {}),
               }
-            : keyword.type === "environment" &&
-                "side" in keyword.environment &&
-                typeof keyword.environment.side === "number"
+            : keyword.type === "shift"
               ? {
                   ...keyword,
-                  environment: {
-                    ...keyword.environment,
-                    side: ((keyword.environment.side + 1) % 4) as Side,
-                  },
+                  side: ((keyword.side + 1) % 4) as Side,
+                  direction: ((keyword.direction + 1) % 4) as Side,
                 }
-              : keyword.type === "dizzy"
+              : keyword.type === "environment" &&
+                  "side" in keyword.environment &&
+                  typeof keyword.environment.side === "number"
                 ? {
                     ...keyword,
-                    ...(keyword.sides
-                      ? {
-                          sides: keyword.sides.map(
-                            (side) => ((side + 1) % 4) as Side,
-                          ),
-                        }
-                      : {}),
+                    environment: {
+                      ...keyword.environment,
+                      side: ((keyword.environment.side + 1) % 4) as Side,
+                    },
                   }
-                : "side" in keyword && typeof keyword.side === "number"
-                  ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
-                  : { ...keyword };
+                : keyword.type === "dizzy"
+                  ? {
+                      ...keyword,
+                      ...(keyword.sides
+                        ? {
+                            sides: keyword.sides.map(
+                              (side) => ((side + 1) % 4) as Side,
+                            ),
+                          }
+                        : {}),
+                    }
+                  : "side" in keyword && typeof keyword.side === "number"
+                    ? { ...keyword, side: ((keyword.side + 1) % 4) as Side }
+                    : { ...keyword };
   return {
     ...stone,
     edges: [stone.edges[3], stone.edges[0], stone.edges[1], stone.edges[2]],
+    ...(stone.discardBuffs
+      ? {
+          discardBuffs: {
+            pips: [
+              stone.discardBuffs.pips[3],
+              stone.discardBuffs.pips[0],
+              stone.discardBuffs.pips[1],
+              stone.discardBuffs.pips[2],
+            ] as Edges,
+            shields: [
+              stone.discardBuffs.shields[3],
+              stone.discardBuffs.shields[0],
+              stone.discardBuffs.shields[1],
+              stone.discardBuffs.shields[2],
+            ] as Edges,
+          },
+        }
+      : {}),
     keywords: (stone.keywords || []).map(rotate),
   };
 }

@@ -210,6 +210,21 @@ Add keywords in the card studio. For Resonance, choose the element to count. For
 
 Custom cards, board size, deck selection, and sound preference are saved in this browser's local storage. Normal matches start fresh on reload; Adventures and draft selections resume their saved state. An incomplete saved normal deck uses a starter deck for the initial practice match; complete your five- or eight-card deck before starting another match. Clearing site data removes the collection and adventure, so export any custom creations you want to keep. Storage failures display a message rather than claiming a save succeeded.
 
+## Discard abilities
+
+In **Card studio → Add keyword**, choose:
+
+- **Discard:** remove **1–5 chosen or random cards** from your hand, the opponent’s hand, or both. Repeat it for separate groups. The player of the card chooses victims for chosen discards. Resolve placement and captures first, then **all Conjure entries**, then discards in printed order. The picker includes cards just created by Conjure. Canceling at any step leaves the entire play unchanged.
+- **Scavenge:** while on the board, gain configured **pip and/or Shield bonuses per actual discarded card**. Watch your hand, the opponent’s hand, or either hand, relative to the card’s current controller. A Scavenge card can reward its own Discard effect. Skipped discards grant nothing. Buffs happen after captures and do not cause another capture.
+- **Parting Gift:** when discarded from a hand, grant configured pip and/or Shield buffs to **all cards its owner controls on the board**, **its owner’s remaining hand**, or **the card causing the discard**. These are temporary battle bonuses; permanent cards, character defaults, tokens, saved decks, and the Adventure pack keep their base stats. Hand gifts are included when those cards are later played. Silence disables discard bonuses on a board card and prevents it receiving further board discard buffs.
+- **Discard Priority:** random discards choose cards with the **highest priority first**, using ranks **1–99** (default 1); unmarked cards have priority zero. Ties are randomly selected. Chosen discards ignore priority. Parting Gift and Priority work from the actual hand card, so they can be printed directly or granted when Conjure creates a card. Combo and Next Play do not offer these hand-only grants. Discard and Scavenge can be granted normally.
+
+**Every player must retain enough cards to finish the board.** The safeguard counts remaining empty tiles and whose turn comes next, reserving every future placement for each player. If only two of five requested discards are safe, discard two and skip three. Priority never bypasses this rule. On a fresh 4×4 board neither player has spare cards; Conjure or later surplus is needed for a discard. On 3×3 the player with four remaining turns may have one spare starting card.
+
+Only **actual Conjure gains** count, after its hand cap, filters, and token availability. Missing templates and empty pools cannot promise extra discards. Card creation never activates Parting Gift, Priority, or Scavenge by itself. The battle journal and inspection list discarded cards, protected counts, and buffs. Adventures preserve these histories and temporary hand buffs through reloads. The computer uses the same safeguards and makes its own chosen-card selections.
+
+New Draft pools include discard synergies; existing saved pools keep their definitions. New Adventure shops, shrines, and transformations can offer the four abilities. Draft’s unused offer cards remain separate from hand discards during a match.
+
 ## Next Play elements
 
 In **Card studio → Next Play**, choose **Recipient element** to wait for the next card of that element, **Change next card’s element** to recolor the receiving card, or both. These options work alongside pip changes, keyword grants, and recipient tribes. For example, your next **Water Giants** card can become **Fire** and gain +2 on North. Choose **Pip change → None** for an element-only effect. Removing the last keyword grant keeps None valid if an element change is configured.

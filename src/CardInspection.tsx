@@ -52,6 +52,8 @@ import {
 import type { TileEnvironment } from "./effects";
 import { conjureText, conjurationSummary, MAX_HAND_CARDS } from "./conjure";
 import type { Conjuration } from "./conjure";
+import { discardText, discardSummary } from "./discard";
+import type { DiscardBuffs, DiscardRecord } from "./discard";
 
 export interface Inspection {
   stone: Stone;
@@ -83,6 +85,8 @@ export interface Inspection {
   environment?: TileEnvironment;
   inheritedPips?: Edges;
   conjurations?: Conjuration[];
+  discards?: DiscardRecord[];
+  discardBuffs?: DiscardBuffs;
   playerNames?: string[];
 }
 
@@ -93,6 +97,7 @@ export function KeywordDetails({
   silenced = false,
   effects,
   conjurations,
+  discards,
   playerNames = ["Player one", "Player two"],
   dizzy,
   size = 3,
@@ -107,6 +112,7 @@ export function KeywordDetails({
   silenced?: boolean;
   effects?: TargetEffect[];
   conjurations?: Conjuration[];
+  discards?: DiscardRecord[];
   playerNames?: string[];
   dizzy?: {
     before: Edges;
@@ -196,6 +202,62 @@ export function KeywordDetails({
                           </span>
                         ),
                     )}
+              </section>
+            );
+          if (
+            type === "discard" ||
+            type === "scavenge" ||
+            type === "parting-gift" ||
+            type === "discard-priority"
+          )
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Sparkles size={15} />
+                  <strong>{KEYWORD_RULES[type].name}</strong>
+                  <span>{KEYWORD_RULES[type].condition}</span>
+                </div>
+                {keywords.map((keyword, index) =>
+                  keyword.type === "discard" ||
+                  keyword.type === "scavenge" ||
+                  keyword.type === "parting-gift" ||
+                  keyword.type === "discard-priority" ? (
+                    <p key={index}>{discardText(keyword)}</p>
+                  ) : null,
+                )}
+                {type === "discard" && (
+                  <p>
+                    Conjure is resolved first using its actual pool and hand
+                    cap. Each player keeps enough cards to fill all remaining
+                    squares on their turns. Unsafe discards are skipped and
+                    grant no buffs. Chosen cards are selected by the player of
+                    this card; canceling leaves the entire play untouched.
+                  </p>
+                )}
+                {type === "discard" &&
+                  discards
+                    ?.filter(
+                      (record) =>
+                        record.keywordIndex === effectIndexFor(keywordIndex),
+                    )
+                    .map((record, index) => (
+                      <div key={index} className="keyword-status">
+                        <p>{discardSummary([record], playerNames)}</p>
+                        {record.buffs.map((buff, i) => (
+                          <p key={i}>
+                            {buff.source} → {buff.target}:{" "}
+                            {buff.pips
+                              .flatMap((n, side) =>
+                                n ? [`${SIDE_NAMES[side]} +${n}`] : [],
+                              )
+                              .join(" · ")}
+                            {buff.shields.some(Boolean)
+                              ? ` · Shield ${buff.shields.join("/")} (N/E/S/W)`
+                              : ""}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
               </section>
             );
           if (type === "conjure")
@@ -457,6 +519,7 @@ export function KeywordDetails({
                       silenced={silenced}
                       effects={comboActive ? effects : undefined}
                       conjurations={comboActive ? conjurations : undefined}
+                      discards={comboActive ? discards : undefined}
                       playerNames={playerNames}
                       dizzy={dizzy}
                       size={size}
@@ -891,6 +954,27 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           Terrain stays on the tile and is separate from this card’s keywords.
         </p>
       )}
+      {[
+        { name: "Hand gift bonuses", buff: stone.discardBuffs },
+        { name: "Board discard bonuses", buff: inspection.discardBuffs },
+      ].map(
+        ({ name, buff }) =>
+          buff && (
+            <p key={name} className="next-play-inspection-note">
+              <strong>{name}</strong> ·{" "}
+              {buff.pips
+                .flatMap((n, side) => (n ? [`${SIDE_NAMES[side]} +${n}`] : []))
+                .join(" · ")}
+              {buff.shields.some(Boolean)
+                ? ` · Shield ${buff.shields.join("/")} (N/E/S/W)`
+                : ""}
+              .
+              {silenced
+                ? " Disabled by Silence."
+                : " Included in this card’s strengths. These bonuses last for this battle and are disabled by Silence on the board."}
+            </p>
+          ),
+      )}
       {inspection.inheritedPips?.some(Boolean) && (
         <p className="next-play-inspection-note">
           <strong>Next Play {played ? "received" : "pending"}</strong> ·{" "}
@@ -980,6 +1064,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         silenced={silenced}
         effects={effects}
         conjurations={inspection.conjurations}
+        discards={inspection.discards}
         playerNames={inspection.playerNames}
         dizzy={dizzy}
         size={inspection.size}

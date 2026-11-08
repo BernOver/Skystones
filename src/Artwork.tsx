@@ -41,6 +41,7 @@ import {
 } from "./effects";
 import type { TileEnvironment } from "./effects";
 import { conjureSource, conjureBuffText } from "./conjure";
+import { buffText } from "./discard";
 
 export const ELEMENT_ICONS = {
   fire: Flame,
@@ -712,9 +713,17 @@ export const StoneCard = memo(
                                       : keyword.type === "combo"
                                         ? comboRequirement(stone, keyword)
                                         : "ON PLAY"
-                                    : keyword.side === "any"
-                                      ? "ANY EDGE"
-                                      : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
+                                    : keyword.type === "discard"
+                                      ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
+                                      : keyword.type === "scavenge"
+                                        ? `${keyword.from} · ${buffText(keyword)}`
+                                        : keyword.type === "parting-gift"
+                                          ? `${keyword.target} · ${buffText(keyword)}`
+                                          : keyword.type === "discard-priority"
+                                            ? `${keyword.priority ?? 1}`
+                                            : keyword.side === "any"
+                                              ? "ANY EDGE"
+                                              : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
                         )
                         .join("/")}
                     </b>

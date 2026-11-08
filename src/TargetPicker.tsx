@@ -127,7 +127,8 @@ export function TargetPicker({
         ) : (
           <>
             Disable a board card’s{" "}
-            <strong>keywords and their pip bonuses</strong>.
+            <strong>keywords and their pip bonuses</strong>, including discard
+            buffs.
           </>
         )}{" "}
         {terrain

@@ -106,6 +106,13 @@ import { Expedition } from "./Expedition";
 import { GIANTS_STONES, GIANTS_REFERENCE } from "./giants";
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters";
 import { PortraitPicker } from "./PortraitPicker";
+import {
+  resolveDiscards,
+  DiscardSelectionRequired,
+  discardSummary,
+} from "./discard";
+import type { DiscardChoice, DiscardPending } from "./discard";
+import { DiscardPicker } from "./DiscardPicker";
 import { DeckManager, DeckSelect, DeckForm } from "./DeckManager";
 import type { DeckAction } from "./DeckManager";
 import {
@@ -124,6 +131,14 @@ type Mode = "computer" | "local";
 type DialogState =
   | { kind: "rules" | "new" | "skins" }
   | { kind: "deck"; action: DeckAction }
+  | {
+      kind: "discard";
+      index: number;
+      cardIndex: number;
+      targets: KeywordTarget[];
+      choices: DiscardChoice[];
+      pending: DiscardPending;
+    }
   | { kind: "card" | "delete"; stone: Stone }
   | { kind: "inspect"; inspection: Inspection }
   | {
@@ -258,9 +273,15 @@ function applyMove(
   index: number,
   cardIndex: number,
   targets: KeywordTarget[] = [],
+  discardChoices: DiscardChoice[] = [],
+  manualDiscard = false,
 ): Match {
   const stone = match.hands[match.current][cardIndex];
-  const seed = Math.floor(Math.random() * 0x100000000);
+  const seed =
+    Array.from(`${match.id}:${match.moves}:${index}:${stone.id}`).reduce(
+      (n, char) => Math.imul(n ^ char.charCodeAt(0), 16777619),
+      2166136261,
+    ) >>> 0;
   const move = placeStone(match.board, index, stone, match.current, targets, {
     seed,
   });
@@ -273,10 +294,19 @@ function applyMove(
     () => CONJURE_CARDS.map((card) => characterDefault(card)),
     seed ^ 0x27d4eb2d,
   );
+  const discarded = resolveDiscards(
+    conjured.board,
+    index,
+    conjured.hands,
+    seed ^ 0x6d2b79f5,
+    discardChoices,
+    !manualDiscard,
+  );
+  if (discarded.pending) throw new DiscardSelectionRequired(discarded.pending);
   return {
     ...match,
-    board: conjured.board,
-    hands: conjured.hands,
+    board: discarded.board,
+    hands: discarded.hands,
     current: match.current === 0 ? 1 : 0,
     moves: match.moves + 1,
     lastCaptured: move.captured,
@@ -288,6 +318,12 @@ function applyMove(
         text: `${stone.name} → ${coordinate(index, boardSize(match.board))}`,
         captured: move.captured.length,
         effects: [
+          discardSummary(
+            discarded.records,
+            match.mode === "local"
+              ? ["Player one", "Player two"]
+              : ["You", "Rival"],
+          ),
           move.effects
             .map((effect) =>
               effect.type === "shift"
@@ -602,6 +638,8 @@ export default function App() {
       reductions: cell?.reductions,
       effects: cell?.effects,
       conjurations: cell?.conjurations,
+      discards: cell?.discards,
+      discardBuffs: cell?.discardBuffs,
       playerNames: names,
       dizzy: cell?.dizzy,
       environment: cell?.environment,
@@ -716,8 +754,35 @@ export default function App() {
       setDialog({ kind: "target", index, cardIndex: selected, targets: [] });
       return;
     }
-    setMatch(applyMove(match, index, selected));
-    setSelected(null);
+    commitMove(index, selected);
+  }
+  function commitMove(
+    index: number,
+    cardIndex: number,
+    targets: KeywordTarget[] = [],
+    choices: DiscardChoice[] = [],
+  ) {
+    try {
+      setMatch(applyMove(match, index, cardIndex, targets, choices, true));
+      setSelected(null);
+      setDialog(null);
+    } catch (error) {
+      if (error instanceof DiscardSelectionRequired)
+        setDialog({
+          kind: "discard",
+          index,
+          cardIndex,
+          targets,
+          choices,
+          pending: error.pending,
+        });
+      else
+        setToast(
+          error instanceof Error
+            ? error.message
+            : "That card could not be played.",
+        );
+    }
   }
   function chooseTarget(boardIndex: number, side?: Side) {
     if (dialog?.kind !== "target") return;
@@ -750,9 +815,7 @@ export default function App() {
     ) {
       setDialog({ ...dialog, targets });
     } else {
-      setMatch(applyMove(match, dialog.index, dialog.cardIndex, targets));
-      setSelected(null);
-      setDialog(null);
+      commitMove(dialog.index, dialog.cardIndex, targets);
     }
   }
   function toggleDeck(stone: Stone) {
@@ -968,6 +1031,7 @@ export default function App() {
         conjured: undefined,
         receivedKeywords: undefined,
         receivedElement: undefined,
+        discardBuffs: undefined,
       };
       if (!validateStone(stone))
         throw new Error(
@@ -2391,6 +2455,30 @@ export default function App() {
         <CardInspector inspection={inspection} />
       )}
 
+      {dialog?.kind === "discard" && (
+        <Dialog
+          title="Choose cards to discard"
+          onClose={() => setDialog(null)}
+          className="discard-dialog"
+        >
+          <DiscardPicker
+            key={`${dialog.pending.keywordIndex}-${dialog.pending.owner}`}
+            pending={dialog.pending}
+            names={names}
+            onCancel={() => setDialog(null)}
+            onConfirm={(cardIds) =>
+              commitMove(dialog.index, dialog.cardIndex, dialog.targets, [
+                ...dialog.choices,
+                {
+                  keywordIndex: dialog.pending.keywordIndex,
+                  owner: dialog.pending.owner,
+                  cardIds,
+                },
+              ])
+            }
+          />
+        </Dialog>
+      )}
       {dialog?.kind === "inspect" && (
         <Dialog
           title={`Inspect ${dialog.inspection.stone.name}`}
@@ -2618,6 +2706,19 @@ export default function App() {
               either player and stays on the tile through captures, Silence, and
               position swaps. Tile markers and the list below the board explain
               its current effects. All seven terrains can affect a chosen tribe.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Layers size={19} />
+            <p>
+              <strong>Discard</strong> removes chosen or random hand cards after
+              captures and Conjure. Each player keeps enough cards for all
+              remaining turns; unsafe discards are skipped.{" "}
+              <strong>Scavenge</strong> gains pips or Shield per actual discard.{" "}
+              <strong>Parting Gift</strong> grants buffs when discarded.{" "}
+              <strong>Discard Priority</strong> makes a card get selected first
+              by random discards, with higher ranks first. Discard buffs last
+              for this battle and are disabled by Silence on board cards.
             </p>
           </div>
           <div className="rule-line">

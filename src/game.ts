@@ -26,6 +26,8 @@ import {
 import type { Tribe, ComboCondition } from "./tribes.ts";
 import { validateConjure, MAX_HAND_CARDS } from "./conjure.ts";
 import type { ConjureKeyword, Conjuration } from "./conjure.ts";
+import { validDiscardKeyword, validDiscardBuffs } from "./discard.ts";
+import type { DiscardKeyword, DiscardBuffs, DiscardRecord } from "./discard.ts";
 export type Element =
   | "fire"
   | "life"
@@ -71,7 +73,11 @@ export type KeywordType =
   | "next-play"
   | "environment"
   | "conjure"
-  | "shift";
+  | "shift"
+  | "discard"
+  | "scavenge"
+  | "parting-gift"
+  | "discard-priority";
 export type ShiftKeyword = {
   type: "shift";
   side: Side;
@@ -98,6 +104,7 @@ export type BasicKeyword =
   | ShiftKeyword
   | { type: "environment"; environment: TileEnvironment }
   | ConjureKeyword
+  | DiscardKeyword
   | TargetKeyword;
 export type ComboKeyword = {
   type: "combo";
@@ -166,6 +173,16 @@ export const KEYWORD_RULES = {
   environment: { name: "Environment", condition: "choose any tile" },
   conjure: { name: "Conjure", condition: "add cards to a hand" },
   shift: { name: "Shift", condition: "move the printed-side neighbor" },
+  discard: { name: "Discard", condition: "after captures and Conjure" },
+  scavenge: { name: "Scavenge", condition: "gain buffs from discards" },
+  "parting-gift": {
+    name: "Parting Gift",
+    condition: "buff allies when discarded",
+  },
+  "discard-priority": {
+    name: "Discard Priority",
+    condition: "random discards select first",
+  },
 } as const;
 export const MAX_KEYWORDS = 24;
 export const MAX_KEYWORD_DEPTH = 3;
@@ -175,7 +192,11 @@ export function keywordKey(keyword: StoneKeyword): string {
     keyword.type === "dizzy" ||
     keyword.type === "combo" ||
     keyword.type === "environment" ||
-    keyword.type === "conjure"
+    keyword.type === "conjure" ||
+    keyword.type === "discard" ||
+    keyword.type === "scavenge" ||
+    keyword.type === "parting-gift" ||
+    keyword.type === "discard-priority"
     ? keyword.type
     : `${keyword.type}:${keyword.side}`;
 }
@@ -184,7 +205,8 @@ export function repeatableKeyword(type: KeywordType): boolean {
     type === "sunder" ||
     type === "next-play" ||
     type === "environment" ||
-    type === "conjure"
+    type === "conjure" ||
+    type === "discard"
   );
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
@@ -196,7 +218,11 @@ export function keywordGroups(keywords: StoneKeyword[]) {
       keyword.type === "next-play" ||
       keyword.type === "environment" ||
       keyword.type === "conjure" ||
-      keyword.type === "shift"
+      keyword.type === "shift" ||
+      keyword.type === "discard" ||
+      keyword.type === "scavenge" ||
+      keyword.type === "parting-gift" ||
+      keyword.type === "discard-priority"
     )
       return [
         {
@@ -242,6 +268,7 @@ export interface Stone {
   token?: true;
   receivedKeywords?: StoneKeyword[];
   receivedElement?: { before: Element; after: Element };
+  discardBuffs?: DiscardBuffs;
 }
 export interface PlacedStone {
   stone: Stone;
@@ -271,6 +298,8 @@ export interface PlacedStone {
   inheritedPips?: Edges;
   environment?: TileEnvironment;
   conjurations?: Conjuration[];
+  discards?: DiscardRecord[];
+  discardBuffs?: DiscardBuffs;
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
@@ -461,11 +490,14 @@ export function shieldEdges(
   granted: BasicKeyword[] = [],
 ): Edges {
   const shields: Edges = [0, 0, 0, 0];
-  if (!silenced)
+  if (!silenced) {
+    for (const side of [0, 1, 2, 3] as Side[])
+      shields[side] += stone.discardBuffs?.shields[side] || 0;
     for (const keyword of [...(stone.keywords || []), ...granted])
       if (keyword.type === "shield")
         shields[keyword.side] += keyword.amount ?? 1;
-  return shields;
+  }
+  return shields.map((n) => Math.min(198, n)) as Edges;
 }
 export function arenaEdges(
   edges: Edges,
@@ -509,7 +541,9 @@ export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
   const scores = score(board);
   const rival = player === 0 ? 1 : 0;
   const activeKeywords: ActiveKeyword[] = [];
-  const edges = [...stone.edges] as Edges;
+  const edges = stone.edges.map(
+    (edge, side) => edge + (stone.discardBuffs?.pips[side] || 0),
+  ) as Edges;
   const combo = comboKeywords(stone, board, player);
   if (combo.active)
     for (const pip of combo.combo!.pips || []) edges[pip.side] += pip.amount;
@@ -643,7 +677,10 @@ export function prepareTargeting(
             ? [{ keywordIndex, boardIndex }]
             : [];
       }
-      return !cell.silenced && cell.stone.keywords?.length
+      return !cell.silenced &&
+        (cell.stone.keywords?.length ||
+          cell.stone.discardBuffs ||
+          cell.discardBuffs)
         ? [{ keywordIndex, boardIndex }]
         : [];
     });
@@ -1224,6 +1261,7 @@ export function validateStone(value: unknown): value is Stone {
         validateKeywords(s.receivedKeywords))) &&
     (s.receivedElement === undefined ||
       validReceivedElement(s.receivedElement)) &&
+    (s.discardBuffs === undefined || validDiscardBuffs(s.discardBuffs)) &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
     (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
     (s.baseEdges === undefined ||
@@ -1274,7 +1312,11 @@ export function validateKeywords(
       keyword.type === "dizzy" ||
       keyword.type === "combo" ||
       keyword.type === "environment" ||
-      keyword.type === "conjure"
+      keyword.type === "conjure" ||
+      keyword.type === "discard" ||
+      keyword.type === "scavenge" ||
+      keyword.type === "parting-gift" ||
+      keyword.type === "discard-priority"
         ? keyword.side !== undefined
         : !(
             (keyword.type === "sunder" && keyword.side === "any") ||
@@ -1286,6 +1328,13 @@ export function validateKeywords(
     )
       return false;
     if (keyword.type === "conjure" && !validateConjure(keyword, depth))
+      return false;
+    if (
+      ["discard", "scavenge", "parting-gift", "discard-priority"].includes(
+        keyword.type,
+      ) &&
+      !validDiscardKeyword(keyword)
+    )
       return false;
     if (
       keyword.type === "shift" &&
@@ -1307,6 +1356,12 @@ export function validateKeywords(
           (!Array.isArray(keyword.keywords) ||
             keyword.keywords.length < 1 ||
             keyword.keywords.length > 5 ||
+            keyword.keywords.some(
+              (grant: StoneKeyword) =>
+                !grant ||
+                grant.type === "parting-gift" ||
+                grant.type === "discard-priority",
+            ) ||
             !validateKeywords(keyword.keywords, depth + 1))) ||
         !["self", "opponent"].includes(keyword.recipient) ||
         (keyword.element !== undefined &&
@@ -1383,7 +1438,11 @@ export function validateKeywords(
         (!Array.isArray(keyword.keywords) ||
           keyword.keywords.length > 5 ||
           keyword.keywords.some(
-            (grant: { type: string }) => !grant || grant.type === "combo",
+            (grant: { type: string }) =>
+              !grant ||
+              grant.type === "combo" ||
+              grant.type === "parting-gift" ||
+              grant.type === "discard-priority",
           ) ||
           !validateKeywords(keyword.keywords, depth + 1))
       )

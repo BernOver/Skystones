@@ -37,6 +37,7 @@ export function parseCharacterDefaults(value: unknown): CharacterDefaults {
       !entry.card.conjured &&
       !entry.card.receivedKeywords &&
       !entry.card.receivedElement &&
+      !entry.card.discardBuffs &&
       validateStone({ ...entry.card, id: "custom-default-validation" })
     )
       result[key] = structuredClone(entry);
@@ -82,6 +83,7 @@ export function editedCharacterDefault(
     defaultRevision: _revision,
     receivedKeywords: _received,
     receivedElement: _element,
+    discardBuffs: _discard,
     ...definition
   } = edited;
   const card: Stone = {

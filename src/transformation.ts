@@ -95,6 +95,14 @@ export function transformedCard(
         ),
       },
       { type: "sunder", side: "any", amount: 1 + Math.floor(rng() * 3) },
+      { type: "discard", mode: "random", recipient: "opponent", count: 1 },
+      { type: "scavenge", from: "self", pips: [{ side: 0, amount: 1 }] },
+      {
+        type: "parting-gift",
+        target: "allies",
+        pips: [{ side: 1, amount: 1 }],
+      },
+      { type: "discard-priority", priority: 1 },
     ];
   for (const side of [0, 1, 2, 3] as Side[])
     candidates.push(

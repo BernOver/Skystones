@@ -90,6 +90,7 @@ export function tokenDefinition(value: unknown): value is Stone {
     !value.conjured &&
     !value.receivedKeywords &&
     !value.receivedElement &&
+    !value.discardBuffs &&
     validTokenKey(value.id)
   );
 }

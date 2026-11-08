@@ -1,0 +1,116 @@
+.discard-dialog {
+  max-width: 720px;
+}
+.discard-picker h2 {
+  margin: 12px 0;
+}
+.discard-picker > p {
+  font-size: 12px;
+  color: #738174;
+  line-height: 1.7;
+}
+.discard-choice-count {
+  font-weight: 600;
+}
+.discard-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+  max-height: 48vh;
+  overflow-y: auto;
+  padding: 5px;
+}
+.discard-card-button {
+  min-width: 0;
+  align-self: start;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  text-align: left;
+}
+.discard-card-button .stone-card {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+}
+.discard-card-button.selected {
+  border-color: #7c9571;
+  background: #e7eddb;
+}
+.discard-card-button:disabled {
+  opacity: 0.5;
+}
+.discard-priority-note {
+  display: block;
+  font-size: 9px;
+  color: #987b5f;
+  margin-top: 5px;
+}
+.discard-selected-rules {
+  padding: 12px;
+  background: #f3f1e8;
+  border-radius: 8px;
+  margin: 14px 0;
+}
+.discard-picker .dialog-small-note {
+  margin: 14px 0 0;
+}
+.discard-buff-fields {
+  grid-column: 1/-1;
+  min-width: 0;
+  border: 1px solid #d6ddcc;
+  border-radius: 8px;
+  padding: 12px;
+}
+.discard-buff-fields legend {
+  font-size: 12px;
+  color: #72856b;
+}
+.discard-buff-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.discard-buff-fields small {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.keyword-discard {
+  color: #9e755e;
+}
+.keyword-scavenge {
+  color: #73894f;
+}
+.keyword-parting-gift {
+  color: #9179a0;
+}
+.keyword-discard-priority {
+  color: #ae8753;
+}
+.effect-editor-options input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #d6ddcc;
+  border-radius: 6px;
+  background: #fffdf7;
+  color: #647665;
+}
+@media (max-width: 600px) {
+  .discard-dialog {
+    padding: 28px 16px;
+  }
+  .discard-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .discard-buff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .discard-picker .detail-actions {
+    flex-wrap: wrap;
+  }
+}
