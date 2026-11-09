@@ -14,7 +14,7 @@ export interface Trap {
   }[];
 }
 export interface TrapState {
-  active?: { trap: Trap; owner: Owner };
+  active?: { trap: Trap; owner: Owner; source?: string; order?: number };
   lastPlayed: [number, number];
 }
 const elements = [
@@ -61,7 +61,7 @@ export const DEFAULT_TRAPS: Trap[] = [
     },
   ],
 }));
-export function validTrap(value: unknown): value is Trap {
+export function validTrap(value: unknown, runtime = false): value is Trap {
   if (!value || typeof value !== "object") return false;
   const t = value as Trap;
   return (
@@ -90,7 +90,7 @@ export function validTrap(value: unknown): value is Trap {
           (Number.isInteger(e.side) && e.side >= 0 && e.side <= 3)) &&
         Number.isInteger(e.amount) &&
         e.amount !== 0 &&
-        Math.abs(e.amount) <= 5,
+        Math.abs(e.amount) <= (runtime ? 99 : 5),
     )
   );
 }
@@ -101,7 +101,16 @@ export function validTrapState(value: unknown): value is TrapState {
     Array.isArray(s.lastPlayed) &&
     s.lastPlayed.length === 2 &&
     s.lastPlayed.every((n) => Number.isInteger(n) && n >= -1 && n <= 10000) &&
-    (!s.active || ([0, 1].includes(s.active.owner) && validTrap(s.active.trap)))
+    (!s.active ||
+      ([0, 1].includes(s.active.owner) &&
+        validTrap(s.active.trap, true) &&
+        (s.active.source === undefined ||
+          (typeof s.active.source === "string" &&
+            s.active.source.length <= 40)) &&
+        (s.active.order === undefined ||
+          (Number.isInteger(s.active.order) &&
+            s.active.order >= 1 &&
+            s.active.order <= 10000))))
   );
 }
 export function trapMatches(trap: Trap, stone: Stone) {
@@ -140,26 +149,6 @@ export function withTrap(board: Board, trap?: Trap): Board {
 export function boardTrap(board: Board): Trap | undefined {
   return board.find((cell) => cell?.trap)?.trap;
 }
-export function playTrap(
-  board: Board,
-  state: TrapState | undefined,
-  trap: Trap,
-  owner: Owner,
-  turn: number,
-) {
-  if (!validTrap(trap)) throw new Error("Choose a valid Trap.");
-  const current = state || { lastPlayed: [-1, -1] as [number, number] };
-  if (current.lastPlayed[owner] === turn)
-    throw new Error("You can activate one Trap per turn.");
-  if (current.active?.trap.id === trap.id)
-    throw new Error("That Trap is already active.");
-  const lastPlayed: [number, number] = [...current.lastPlayed];
-  lastPlayed[owner] = turn;
-  return {
-    board: withTrap(board, trap),
-    traps: { active: { trap: structuredClone(trap), owner }, lastPlayed },
-  };
-}
 export function trapText(trap: Trap): string {
   const who = [
     trap.affects?.element,
@@ -175,7 +164,9 @@ export function readTraps(): Trap[] {
     const saved = JSON.parse(localStorage.getItem(STORAGE) || "[]");
     return [
       ...DEFAULT_TRAPS,
-      ...(Array.isArray(saved) ? saved.filter(validTrap) : []),
+      ...(Array.isArray(saved)
+        ? saved.filter((t): t is Trap => validTrap(t))
+        : []),
     ];
   } catch {
     return DEFAULT_TRAPS;
@@ -189,41 +180,25 @@ export function saveTrap(trap: Trap) {
   localStorage.setItem(STORAGE, JSON.stringify([...custom, trap]));
   window.dispatchEvent(new Event(STORAGE));
 }
-export function trapResponse(
-  board: Board,
-  state: TrapState | undefined,
-  hand: Stone[],
-  owner: Owner,
-  turn: number,
-): Trap | undefined {
-  if (!state?.active || state.lastPlayed[owner] === turn) return;
-  const value = (trap: Trap) =>
-    board.reduce(
-      (sum, c) =>
-        !c
-          ? sum
-          : sum +
-            (c.owner === owner ? 1 : -1) *
-              ["pips", "attack", "defense"].reduce(
-                (n, k) =>
-                  n +
-                  trapBonus(trap, c.stone, k as "pips").reduce(
-                    (a, b) => a + b,
-                    0,
-                  ),
-                0,
-              ),
-      0,
-    ) +
-    hand.reduce(
-      (n, c) => n + trapBonus(trap, c, "pips").reduce((a, b) => a + b, 0) * 0.3,
-      0,
-    );
-  return readTraps()
-    .filter(
-      (t) =>
-        t.id !== state.active!.trap.id &&
-        value(t) > value(state.active!.trap) + 0.1,
-    )
-    .sort((a, b) => value(b) - value(a))[0];
+export function trapStateFromBoard(board: Board): TrapState | undefined {
+  // Derive the active crystal from resolved stone plays, including covered vehicles.
+  const plays = board
+    .flatMap((c) => (c ? [...(c.history || []), c] : []))
+    .filter((c) => !!c.placedTrap)
+    .sort((a, b) => (a.playedOrder || 0) - (b.playedOrder || 0));
+  const last = plays.at(-1);
+  return last?.placedTrap
+    ? {
+        active: {
+          trap: last.placedTrap,
+          owner: last.playedBy ?? last.owner,
+          source: last.stone.name,
+          order: last.playedOrder,
+        },
+        lastPlayed: [-1, -1],
+      }
+    : undefined;
+}
+export function trapKeywordText(trap: Trap): string {
+  return `On play, place ${trap.name} in the shared Trap slot before captures. ${trapText(trap)} The crystal remains after this stone is captured or silenced.`;
 }

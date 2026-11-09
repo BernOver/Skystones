@@ -1,3 +1,4 @@
+import { DEFAULT_TRAPS } from "../../src/traps.ts";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -42,6 +43,7 @@ const builder: Stone = {
   edges: [1, 1, 1, 1],
   keywords: [
     { type: "assemble", count: 2 },
+    { type: "trap", trap: DEFAULT_TRAPS[0] },
     { type: "amplify", effect: "shield", duration: "next", count: 1 },
   ],
   custom: true,
@@ -156,13 +158,16 @@ test("maker exposes Unique, Parts, Assemble and next-use Amplify, and all vehicl
   ).toBe(true);
 });
 
-test("custom Trap editor saves a shared effect and normal play replaces the active crystal", async ({
+test("custom Traps only activate when a stone carrying that crystal is played", async ({
   page,
 }) => {
   await local(page);
+  await expect(page.locator(".trap-panel")).toContainText("No active Trap");
+  await expect(
+    page.getByRole("button", { name: "Activate Trap", exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: /^Collection/ }).click();
   await page.getByRole("button", { name: "Traps", exact: true }).click();
-  await expect(page.locator(".trap-grid article")).toHaveCount(11);
   await page
     .getByRole("button", { name: "Create a Trap", exact: true })
     .click();
@@ -174,38 +179,33 @@ test("custom Trap editor saves a shared effect and normal play replaces the acti
     .selectOption("fire");
   await page.getByLabel("Trap pips 1", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Save Trap", exact: true }).click();
-  await expect(page.locator(".trap-grid article")).toHaveCount(12);
-  await page.getByRole("button", { name: "The table", exact: true }).click();
-  const custom = await page.evaluate(
+  const crystal = await page.evaluate(
     () => JSON.parse(localStorage.getItem("skystones-traps-v1")!)[0],
   );
-  await page.getByLabel("Choose Trap", { exact: true }).selectOption(custom.id);
+  await page.getByRole("button", { name: /^All stones/ }).click();
   await page
-    .getByRole("button", { name: "Activate Trap", exact: true })
+    .getByRole("button", { name: "View Workshop Builder", exact: true })
     .click();
+  await page.getByRole("button", { name: "Edit stone", exact: true }).click();
+  await page
+    .getByLabel("Trap crystal · Keyword 2", { exact: true })
+    .selectOption(crystal.id);
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page.getByRole("button", { name: "The table", exact: true }).click();
+  await page.getByRole("button", { name: "New match", exact: true }).click();
+  await page.getByRole("button", { name: /Bring a friend/ }).click();
+  await page
+    .getByRole("button", { name: "Find a little magic", exact: true })
+    .click();
+  await expect(page.locator(".trap-panel")).toContainText("No active Trap");
+  await page.getByRole("button", { name: /^Select Workshop Builder,/ }).click();
+  await page.locator("#board-0").click();
   await expect(page.locator(".trap-panel")).toContainText(
     "Shared Fire Crystal",
   );
-  await expect(
-    page.getByRole("button", {
-      name: /^Select Workshop Builder, current strengths north, east, south, west: 3, 3, 3, 3/,
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Activate Trap", exact: true }),
-  ).toBeDisabled();
-  await page.getByRole("button", { name: /^Select Workshop Builder,/ }).click();
-  await page.locator("#board-0").click();
-  await page
-    .getByLabel("Choose Trap", { exact: true })
-    .selectOption("trap-water");
-  await page
-    .getByRole("button", { name: "Activate Trap", exact: true })
-    .click();
-  await expect(page.locator(".trap-panel")).toContainText("Water Tiki");
   await expect(page.locator("#board-0")).toHaveAttribute(
     "aria-label",
-    /edges north 1, east 1, south 1, west 1/,
+    /edges north 3, east 3, south 3, west 3/,
   );
   await page.setViewportSize({ width: 390, height: 1000 });
   expect(
@@ -216,7 +216,7 @@ test("custom Trap editor saves a shared effect and normal play replaces the acti
 });
 
 for (const size of [3, 4] as const)
-  test(`${size}×${size} local Assemble creates a pictured Flash vehicle, keeps the turn and Trap allowance, and covering ends the turn`, async ({
+  test(`${size}×${size} local Assemble creates a pictured Flash vehicle, keeps the turn and the stone-placed Trap, and covering ends the turn`, async ({
     page,
   }) => {
     await local(page, size);
@@ -224,7 +224,7 @@ for (const size of [3, 4] as const)
       .getByRole("button", { name: /^Select Workshop Builder,/ })
       .click();
     await page.locator("#board-0").click();
-    await page.locator(".hand-card-button").first().click();
+    await page.locator(".hand-card-button").filter({hasNot:page.locator(".keyword-discard, .keyword-combo, .keyword-flash")}).first().click();
     await page.locator(`#board-${size * size - 1}`).click();
     await targets(page);
     const vehicle = page.locator(".hand-card-button").filter({
@@ -232,16 +232,13 @@ for (const size of [3, 4] as const)
     });
     await expect(vehicle).toHaveCount(1);
     await expect(vehicle.locator("img").first()).toBeVisible();
-    await page
-      .getByRole("button", { name: "Activate Trap", exact: true })
-      .click();
     await vehicle.click();
     await page.locator("#board-1").click();
     await targets(page);
     await expect(page.locator("#board-1")).toContainText("Supercharger");
     await expect(
       page.getByRole("button", { name: "Activate Trap", exact: true }),
-    ).toBeDisabled();
+    ).toHaveCount(0);
     await expect(page.locator(".hand-card-button").first()).toHaveAttribute(
       "aria-label",
       /^Select Workshop Filler/,
@@ -382,9 +379,6 @@ test("Adventure saves the shared Trap and pictured Supercharger through Flash, c
   await page.goto("/");
   await page.getByRole("button", { name: "Adventure", exact: true }).click();
   await page
-    .getByRole("button", { name: "Activate Trap", exact: true })
-    .click();
-  await page
     .getByRole("button", {
       name: new RegExp("^Select " + first.name + ", adventure card"),
     })
@@ -441,15 +435,13 @@ test("an imported Unique card can explicitly Conjure itself without losing its s
   };
   await page.goto("/");
   await page.getByRole("button", { name: /^Collection/ }).click();
-  await page
-    .getByLabel("Import card file")
-    .setInputFiles({
-      name: "unique-loop.skystone.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(
-        JSON.stringify({ format: "skystones-card", version: 1, card: unique }),
-      ),
-    });
+  await page.getByLabel("Import card file").setInputFiles({
+    name: "unique-loop.skystone.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({ format: "skystones-card", version: 1, card: unique }),
+    ),
+  });
   await expect(page.locator(".toast")).toContainText(
     "has joined your collection",
   );

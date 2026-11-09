@@ -1,3 +1,4 @@
+import { DEFAULT_TRAPS } from "./traps.ts";
 import { characterDefault, readCharacterDefaults } from "./cardDefaults.ts";
 import type { CharacterDefaults } from "./cardDefaults.ts";
 import { defaultEnvironment } from "./effects.ts";
@@ -29,6 +30,7 @@ export interface DraftState {
   rulesVersion?: 2;
   discardVersion?: 1;
   constructionVersion?: 1;
+  trapVersion?: 1;
   nominations: [string[], string[]];
   phase: "nominate" | "draft" | "ready";
   current: Owner;
@@ -71,6 +73,7 @@ export function draftCards(
   includeNewRules = includeConjure,
   includeDiscard = includeNewRules,
   includeConstruction = includeDiscard,
+  includeTraps = includeConstruction,
 ): Stone[] {
   const rng = random(seed),
     candidates: Edges[] = [];
@@ -264,6 +267,14 @@ export function draftCards(
       { type: "amplify", effect: "all", duration: "next", count: 1 },
     ];
   }
+  if (includeTraps)
+    cards[23].keywords = [
+      ...(cards[23].keywords || []),
+      {
+        type: "trap",
+        trap: structuredClone(DEFAULT_TRAPS[seed % DEFAULT_TRAPS.length]),
+      },
+    ];
   return cards.map((card) => characterDefault(card, defaults));
 }
 export function newDraft(
@@ -276,6 +287,7 @@ export function newDraft(
   includeNewRules = includeConjure,
   includeDiscard = includeNewRules,
   includeConstruction = includeDiscard,
+  includeTraps = includeConstruction,
 ): DraftState {
   return {
     version: 1,
@@ -290,10 +302,12 @@ export function newDraft(
       includeNewRules,
       includeDiscard,
       includeConstruction,
+      includeTraps,
     ),
     ...(includeNewRules ? { rulesVersion: 2 as const } : {}),
     ...(includeDiscard ? { discardVersion: 1 as const } : {}),
     ...(includeConstruction ? { constructionVersion: 1 as const } : {}),
+    ...(includeTraps ? { trapVersion: 1 as const } : {}),
     ...(includeConjure ? { conjureVersion: 1 as const } : {}),
     ...(includeTribes ? { tribesVersion: 1 as const } : {}),
     ...(includeEffects ? { effectsVersion: 1 as const } : {}),
@@ -404,6 +418,7 @@ export function restoreDraft(value: unknown): DraftState | null {
       return null;
     if (saved.rulesVersion !== undefined && saved.rulesVersion !== 2)
       return null;
+    if (saved.trapVersion !== undefined && saved.trapVersion !== 1) return null;
     if (
       saved.constructionVersion !== undefined &&
       saved.constructionVersion !== 1
@@ -423,6 +438,7 @@ export function restoreDraft(value: unknown): DraftState | null {
       saved.rulesVersion === 2,
       saved.discardVersion === 1,
       saved.constructionVersion === 1,
+      saved.trapVersion === 1,
     );
     // Older pools used whole-card Dizzy. Preserve their affected sides while
     // regenerating the remaining deterministic card definitions.

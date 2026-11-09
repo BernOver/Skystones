@@ -1,3 +1,5 @@
+import { readRecipes, matchingRecipe, partIdentity } from "./recipes.ts";
+import type { SuperchargerRecipe } from "./recipes.ts";
 import { SUPERCHARGER_VEHICLES } from "./superchargers.ts";
 import type { Board, Edges, Stone } from "./game.ts";
 import { placedKeywords } from "./game.ts";
@@ -74,15 +76,26 @@ export const DEFAULT_PARTS: Stone[] = [
       tribes: ["superchargers"],
     }) as Stone,
 );
-export function combineParts(hand: Stone[]): Stone[] {
+export function combineParts(
+  hand: Stone[],
+  recipes: readonly SuperchargerRecipe[] = readRecipes(),
+): Stone[] {
   const out = [...hand];
   while (out.filter((c) => c.part).length >= 2) {
-    const a = out.findIndex((c) => c.part),
-      first = out[a];
-    out.splice(a, 1);
-    const b = out.findIndex((c) => c.part),
-      second = out[b];
+    const indices = out.flatMap((c, i) => (c.part ? [i] : []));
+    let pair: [number, number] = [indices[0], indices[1]];
+    search: for (let i = 0; i < indices.length; i++)
+      for (let j = i + 1; j < indices.length; j++)
+        if (matchingRecipe(out[indices[i]], out[indices[j]], recipes)) {
+          pair = [indices[i], indices[j]];
+          break search;
+        }
+    const [a, b] = pair,
+      first = out[a],
+      second = out[b],
+      recipe = matchingRecipe(first, second, recipes);
     out.splice(b, 1);
+    out.splice(a, 1);
     const keywords = [
       ...(first.keywords || []),
       ...(second.keywords || []),
@@ -96,15 +109,15 @@ export function combineParts(hand: Stone[]): Stone[] {
       pool = vehicles.length ? vehicles : SUPERCHARGER_VEHICLES;
     const vehicle =
       pool[
-        Array.from(first.id + second.id).reduce(
-          (n, c) => (Math.imul(n, 31) + c.charCodeAt(0)) >>> 0,
-          0,
-        ) % pool.length
+        Array.from(
+          [partIdentity(first), partIdentity(second)].sort().join("|"),
+        ).reduce((n, c) => (Math.imul(n, 31) + c.charCodeAt(0)) >>> 0, 0) %
+          pool.length
       ];
     const charger: Stone = {
       id: `custom-supercharger-${first.id.slice(-35)}-${second.id.slice(-35)}`,
-      name: vehicle.name,
-      element: first.element,
+      name: recipe?.name || vehicle.name,
+      element: recipe?.element || first.element,
       creature: "robot",
       edges: first.edges.map((n, s) =>
         Math.min(99, n + second.edges[s]),
@@ -114,10 +127,13 @@ export function combineParts(hand: Stone[]): Stone[] {
       custom: true,
       conjured: true,
       runtimeEffects: true,
-      supercharger: { parts: [first.name, second.name] },
+      supercharger: {
+        parts: [first.name, second.name],
+        ...(recipe ? { recipe: structuredClone(recipe) } : {}),
+      },
       keywords,
       tribes: ["superchargers"],
-      portrait: vehicle.id,
+      portrait: recipe?.portrait || vehicle.id,
     };
     // Preserve buffs on both component cards, including gifts received while in hand.
     if (first.discardBuffs || second.discardBuffs)
@@ -137,7 +153,7 @@ export function combineParts(hand: Stone[]): Stone[] {
           ),
         ) as Edges,
       };
-    out.splice(Math.min(a, b), 0, charger);
+    out.splice(a, 0, charger);
   }
   return out;
 }
@@ -147,6 +163,7 @@ export function assembleParts(
   hands: [Stone[], Stone[]],
   seed: number,
   tokens = readTokens(),
+  recipes: readonly SuperchargerRecipe[] = readRecipes(),
 ): { board: Board; hands: [Stone[], Stone[]]; messages: string[] } {
   const cell = board[index];
   if (!cell) return { board, hands, messages: [] };
@@ -156,32 +173,40 @@ export function assembleParts(
     messages: string[] = [];
   let state = seed >>> 0 || 0x9e3779b9,
     serial = 0;
-  const count = placedKeywords(cell).reduce(
-    (n, k) => n + (k.type === "assemble" ? k.count : 0),
-    0,
-  );
-  for (let n = 0; n < count; n++) {
-    if (!pool.length) break;
-    // Combine each arrival before testing capacity for the next Part.
-    if (
-      next[owner].length >= MAX_HAND_CARDS &&
-      !next[owner].some((c) => c.part)
-    )
-      break;
-    state ^= state << 13;
-    state ^= state >>> 17;
-    state ^= state << 5;
-    const template = pool[(state >>> 0) % pool.length];
-    const part: Stone = {
-      ...structuredClone(template),
-      id: `custom-conjured-part-${(seed >>> 0).toString(36)}-${cell.playedOrder || index}-${serial++}`,
-      conjured: true,
-    };
-    next[owner].push(part);
-    messages.push(`Assemble: ${part.name}`);
-    next[owner] = combineParts(next[owner]);
+  for (const keyword of placedKeywords(cell)) {
+    if (keyword.type !== "assemble") continue;
+    const choices =
+      keyword.mode === "specific"
+        ? pool.filter((p) => p.id === keyword.part)
+        : pool;
+    for (let n = 0; n < keyword.count; n++) {
+      if (!choices.length) {
+        messages.push("Assemble: no matching Parts");
+        break;
+      }
+      if (
+        next[owner].length >= MAX_HAND_CARDS &&
+        !next[owner].some((c) => c.part)
+      ) {
+        messages.push("Assemble: hand full");
+        break;
+      }
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      const template = choices[(state >>> 0) % choices.length];
+      const part: Stone = {
+        ...structuredClone(template),
+        partKey: template.id,
+        id: `custom-conjured-part-${(seed >>> 0).toString(36)}-${cell.playedOrder || index}-${serial++}`,
+        conjured: true,
+      };
+      next[owner].push(part);
+      messages.push(`Assemble: ${part.name}`);
+      next[owner] = combineParts(next[owner], recipes);
+    }
   }
-  next[0] = combineParts(next[0]);
-  next[1] = combineParts(next[1]);
+  next[0] = combineParts(next[0], recipes);
+  next[1] = combineParts(next[1], recipes);
   return { board, hands: next, messages };
 }

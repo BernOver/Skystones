@@ -95,6 +95,12 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
           amount: Math.min(99, p.amount * times),
         }));
       break;
+    case "trap":
+      out.trap.effects = out.trap.effects.map((e) => ({
+        ...e,
+        amount: Math.max(-99, Math.min(99, e.amount * times)),
+      }));
+      break;
     case "environment":
       if ("amount" in out.environment)
         out.environment.amount = Math.min(99, out.environment.amount * times);
@@ -212,7 +218,16 @@ export function amplifyPlan(
       comboPips[p.side] +=
         p.amount * Math.min(32, queued * localMultiplier("combo"));
     for (const grant of k.keywords || [])
-      resolve(grant, Math.min(32, queued * localCombo), queued > 1);
+      resolve(
+        {
+          ...grant,
+          ...(k.half || hasTribe(stone, "swap-force")
+            ? { half: k.half || ("top" as const) }
+            : {}),
+        },
+        Math.min(32, queued * localCombo),
+        queued > 1,
+      );
   }
   const queues = all.flatMap((k) =>
     k.type === "amplify" && k.duration === "next"
@@ -296,6 +311,24 @@ export function validRuntimeEffects(value: unknown): value is BasicKeyword[] {
                 : NaN,
           }));
         }
+      if (k.type === "trap" && k.trap && typeof k.trap === "object") {
+        const trap = k.trap as { effects?: { amount: number }[] };
+        if (
+          !Array.isArray(trap.effects) ||
+          trap.effects.some(
+            (e) =>
+              !e ||
+              !Number.isInteger(e.amount) ||
+              Math.abs(e.amount) > 99 ||
+              e.amount === 0,
+          )
+        )
+          return null;
+        trap.effects = trap.effects.map((e) => ({
+          ...e,
+          amount: Math.max(-5, Math.min(5, e.amount)),
+        }));
+      }
       if (k.environment && typeof k.environment === "object") {
         const env = k.environment as Record<string, unknown>;
         if (env.amount !== undefined) {

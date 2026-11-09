@@ -95,8 +95,8 @@ Assignments work in character defaults and shared card files. Swap again with
 the same pair or a third card before placement. No keywords, Conjure, Dizzy,
 discards or Next Play effects trigger or get spent just by exchanging halves.
 Hand pip and Shield gifts follow their sides. Mixed cards can exceed the usual
-pip budget using the points already on those halves. Unique-keyword, 24-keyword
-and tribe limits remain; incompatible custom pairs cannot be confirmed and
+pip budget using the points already on those halves. Each half has its own unique-keyword slots; matching keywords can be on both.
+The 24-keyword card limit and tribe limits remain; oversized pairs are blocked and
 show an explanation. All 16 original SWAP Force characters can pair together.
 Portraits show diagonal halves by default. Toggle Show SWAP Force artwork as
 top and bottom in the swap dialog, SWAP Force card maker, or Board skins for a
@@ -262,15 +262,22 @@ base for that mode. They arrive after captures and can be played on later turns.
 Creating cards does not activate their keywords or spend Next Play bonuses.
 NEW: TRAPS, UNIQUE CARDS, PARTS AND AMPLIFY
 Collection > Traps: choose from 11 shared crystals or make your own. Only one
-is active, affecting both players. Activate one per turn; Flash keeps the turn
-and does not reset that allowance. A replacement removes the old bonus.
+is active, affecting both players. The slot starts empty. A stone with the
+Trap keyword places its crystal before captures. A later stone replaces it.
+There is no free Trap activation button.
 Card studio: Unique cards can enter decks but normal Conjure cannot create them.
 Use the explicit Unique Conjure source. Card exports bundle their dependencies.
-Assemble generates random Parts tokens. Two Parts automatically combine into a
+Assemble generates either random Parts or specified Part templates. Add multiple
+entries to generate a chosen pair. Two Parts automatically combine into a
 Supercharger with both sets of pips and effects plus Flash. Play it without
 ending your turn. Either player can cover it to inherit pips and effects except
 Flash; inherited effects trigger again. Vehicles must be covered to finish.
-Collection > Tokens includes six starter Parts and the custom Part checkbox.
+Collection > Parts & recipes: create Parts, edit the six starter Parts, and
+define fixed Superchargers for specific pairs (either order). Choose a vehicle
+portrait, name and element; both Parts still supply their pips and effects.
+Recipe changes apply to new battles; Adventure saves the battle recipe book.
+SWAP Force cards have Add top-half keyword and Add bottom-half keyword buttons.
+Matching keywords can be on both halves and travel with those halves.
 All 20 base vehicles and 16 vehicle variants have bundled offline pictures;
 four additional character variants also appear in the portrait picker.
 Amplify doubles one effect type or all effects, either always on its card or

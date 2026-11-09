@@ -105,6 +105,7 @@ export function tokenDefinition(value: unknown): value is Stone {
     !value.unique &&
     !value.runtimeEffects &&
     !value.supercharger &&
+    !value.partKey &&
     !value.conjured &&
     !value.encounterStart &&
     !value.swapParts &&

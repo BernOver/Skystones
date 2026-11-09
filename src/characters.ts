@@ -6547,6 +6547,7 @@ export const CHARACTER_STONES: Stone[] = [
     origin: "skylanders",
     portrait: "snap-shot",
     keywords: [
+      {type:"trap",trap:{id:"trap-water",name:"Water Tiki",element:"water",description:"A Traptanium crystal sharing water power across the battlefield.",affects:{element:"water"},effects:[{kind:"defense",side:"all",amount:1}]}},
       {
         type: "shield",
         side: 1,

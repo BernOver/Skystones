@@ -1,3 +1,5 @@
+import { readRecipes } from "./recipes.ts";
+import type { SuperchargerRecipe } from "./recipes.ts";
 import type { Stone, StoneKeyword } from "./game.ts";
 import { hasTribe } from "./tribes.ts";
 import { readTokens } from "./tokens.ts";
@@ -6,13 +8,28 @@ export function cardDependencies(
   card: Stone,
   tokens = readTokens(),
   uniques = readUniques(),
-): { tokens: Stone[]; uniques: Stone[] } {
+  recipes: readonly SuperchargerRecipe[] = readRecipes(),
+): { tokens: Stone[]; uniques: Stone[]; recipes: SuperchargerRecipe[] } {
   const found = new Map<string, Stone>(),
-    seen = new Set<string>();
+    seen = new Set<string>(),
+    foundRecipes = new Map<string, SuperchargerRecipe>();
   const add = (c: Stone) => {
     if (found.has(c.id)) return;
     found.set(c.id, c);
     visit(c);
+    if (c.part)
+      for (const recipe of recipes.filter((r) => r.parts.includes(c.id))) {
+        if (foundRecipes.has(recipe.id)) continue;
+        foundRecipes.set(recipe.id, recipe);
+        for (const key of recipe.parts) {
+          const part = tokens.find((t) => t.part && t.id === key);
+          if (!part)
+            throw new Error(
+              "A recipe Part is missing. Edit its recipe before exporting.",
+            );
+          add(part);
+        }
+      }
   };
   const keywords = (list: StoneKeyword[]): StoneKeyword[] =>
     list.flatMap((k) => [
@@ -24,7 +41,14 @@ export function cardDependencies(
     seen.add(c.id);
     for (const k of keywords(c.keywords || [])) {
       if (k.type === "assemble") {
-        tokens.filter((t) => t.part).forEach(add);
+        const parts = tokens.filter(
+          (t) => t.part && (k.mode !== "specific" || t.id === k.part),
+        );
+        if (k.mode === "specific" && !parts.length)
+          throw new Error(
+            "A referenced Part is missing. Choose another before exporting.",
+          );
+        parts.forEach(add);
         continue;
       }
       if (k.type !== "conjure") continue;
@@ -52,11 +76,13 @@ export function cardDependencies(
       }
     }
   };
-  visit(card);
+  if (card.part) add(card);
+  else visit(card);
   found.delete(card.id);
   return {
     tokens: [...found.values()].filter((c) => c.token),
     uniques: [...found.values()].filter((c) => c.unique),
+    recipes: [...foundRecipes.values()],
   };
 }
 export function mergeUniqueDefinitions(

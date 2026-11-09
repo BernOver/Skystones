@@ -1,4 +1,11 @@
-import { trapEdges, trapBonus, withTrap, boardTrap } from "./traps.ts";
+import { validRecipe } from "./recipes.ts";
+import {
+  trapEdges,
+  trapBonus,
+  withTrap,
+  boardTrap,
+  validTrap,
+} from "./traps.ts";
 import type { Trap } from "./traps.ts";
 import { amplifyPlan, validRuntimeEffects } from "./amplify.ts";
 import type { AmplifyKeyword, AmplifyQueue, AmplifySpent } from "./amplify.ts";
@@ -32,7 +39,7 @@ import { validateConjure, MAX_HAND_CARDS } from "./conjure.ts";
 import type { ConjureKeyword, Conjuration } from "./conjure.ts";
 import { validDiscardKeyword, validDiscardBuffs } from "./discard.ts";
 import type { DiscardKeyword, DiscardBuffs, DiscardRecord } from "./discard.ts";
-import { validSwapParts } from "./swapForce.ts";
+import { validSwapParts, keywordHalf } from "./swapForce.ts";
 import type { SwapHalf, SwapParts } from "./swapForce.ts";
 export type Element =
   | "fire"
@@ -86,7 +93,8 @@ export type KeywordType =
   | "discard-priority"
   | "assemble"
   | "flash"
-  | "amplify";
+  | "amplify"
+  | "trap";
 export type ShiftKeyword = {
   type: "shift";
   side: Side;
@@ -97,7 +105,11 @@ export type TargetKeyword =
   | { type: "sunder"; side: Side | "any"; amount?: number }
   | { type: "silence" };
 export type BasicKeyword =
-  | { type: "assemble"; count: number }
+  | ({ type: "assemble"; count: number } & (
+      | { mode?: "random"; part?: never }
+      | { mode: "specific"; part: string }
+    ))
+  | { type: "trap"; trap: Trap }
   | { type: "flash" }
   | AmplifyKeyword
   | { type: "head-start" | "comeback"; side: Side; amount?: number }
@@ -171,6 +183,7 @@ export type TargetEffect =
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
+  trap: { name: "Trap", condition: "place a shared crystal on play" },
   assemble: {
     name: "Assemble",
     condition: "generate Parts; pairs build a Supercharger",
@@ -211,7 +224,8 @@ export const MAX_RUNTIME_KEYWORDS = 128;
 export const MAX_KEYWORD_DEPTH = 3;
 export const DIZZY_EDGE_CAP = 5;
 export function keywordKey(keyword: StoneKeyword): string {
-  return keyword.type === "assemble" ||
+  return keyword.type === "trap" ||
+    keyword.type === "assemble" ||
     keyword.type === "flash" ||
     keyword.type === "amplify" ||
     keyword.type === "silence" ||
@@ -226,8 +240,12 @@ export function keywordKey(keyword: StoneKeyword): string {
     ? keyword.type
     : `${keyword.type}:${keyword.side}`;
 }
+export function keywordAssignmentKey(keyword: StoneKeyword): string {
+  return `${keywordKey(keyword)}:${keywordHalf(keyword)}`;
+}
 export function repeatableKeyword(type: KeywordType): boolean {
   return (
+    type === "trap" ||
     type === "assemble" ||
     type === "amplify" ||
     type === "sunder" ||
@@ -238,7 +256,10 @@ export function repeatableKeyword(type: KeywordType): boolean {
   );
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
-export function keywordGroups(keywords: StoneKeyword[]) {
+export function keywordGroups(keywords: StoneKeyword[], halfScoped = false) {
+  const scoped = halfScoped || keywords.some((k) => !!k.half);
+  const sameGroup = (a: StoneKeyword, b: StoneKeyword) =>
+    a.type === b.type && (!scoped || keywordHalf(a) === keywordHalf(b));
   return keywords.flatMap((keyword, index) => {
     if (
       keyword.type === "combo" ||
@@ -261,17 +282,14 @@ export function keywordGroups(keywords: StoneKeyword[]) {
         },
       ];
     if (
-      keywords.findIndex((candidate) => candidate.type === keyword.type) !==
-      index
+      keywords.findIndex((candidate) => sameGroup(candidate, keyword)) !== index
     )
       return [];
     return [
       {
         keywordIndex: index,
         type: keyword.type as KeywordType,
-        keywords: keywords.filter(
-          (candidate) => candidate.type === keyword.type,
-        ),
+        keywords: keywords.filter((candidate) => sameGroup(candidate, keyword)),
       },
     ];
   });
@@ -297,7 +315,11 @@ export interface Stone {
   token?: true;
   unique?: true;
   part?: true;
-  supercharger?: { parts: [string, string] };
+  partKey?: string;
+  supercharger?: {
+    parts: [string, string];
+    recipe?: import("./recipes.ts").SuperchargerRecipe;
+  };
   runtimeEffects?: true;
   encounterStart?: true;
   receivedKeywords?: StoneKeyword[];
@@ -306,6 +328,7 @@ export interface Stone {
   swapParts?: SwapParts;
 }
 export interface PlacedStone {
+  placedTrap?: Trap;
   trap?: Trap;
   history?: PlacedStone[];
   resolvedEffects?: BasicKeyword[];
@@ -453,7 +476,9 @@ export function mergeKeywordGrants(
     if (
       !runtime &&
       !repeatableKeyword(keyword.type) &&
-      keywords.some((old) => keywordKey(old) === keywordKey(keyword))
+      keywords.some(
+        (old) => keywordAssignmentKey(old) === keywordAssignmentKey(keyword),
+      )
     )
       continue;
     if (
@@ -547,23 +572,33 @@ export function effectiveKeywords(
   board: Board,
   player?: Owner,
 ): BasicKeyword[] {
-  const shifts = new Set<Side>();
+  const shifts = new Set<string>();
   const plan = effectPlan(stone, board, player);
   return plan.effects.filter((keyword) => {
     if (keyword.type !== "shift" || stone.runtimeEffects || plan.amplified)
       return true;
-    if (shifts.has(keyword.side)) return false;
-    shifts.add(keyword.side);
+    const key = keywordAssignmentKey(keyword);
+    if (shifts.has(key)) return false;
+    shifts.add(key);
     return true;
   });
 }
 export function placedKeywords(cell: PlacedStone): BasicKeyword[] {
   if (cell.silenced) return [];
-  return (
-    cell.resolvedEffects ||
-    (cell.stone.keywords || []).flatMap((k) =>
-      k.type === "combo" ? cell.grantedKeywords || [] : [k],
-    )
+  if (cell.resolvedEffects) return cell.resolvedEffects;
+  const keywords = cell.stone.keywords || [];
+  if (keywords.filter((k) => k.type === "combo").length > 1) {
+    let comboIndex = 0;
+    return keywords.flatMap((k) =>
+      k.type === "combo"
+        ? (cell.comboStates?.[comboIndex++] ?? cell.comboActive)
+          ? k.keywords || []
+          : []
+        : [k],
+    );
+  }
+  return keywords.flatMap((k) =>
+    k.type === "combo" ? cell.grantedKeywords || [] : [k],
   );
 }
 export function canPlace(board: Board, index: number): boolean {
@@ -752,13 +787,15 @@ export function prepareTargeting(
   const keywords = effectiveKeywords(stone, board, owner);
   // Repeated Sunder needs an occurrence index so inspection can distinguish
   // separate targets, including entries that had no valid target.
-  const repeatedSunder = keywords.some(
-    (keyword, index) =>
-      keyword.type === "sunder" &&
-      keywords
-        .slice(0, index)
-        .some((previous) => keywordKey(previous) === keywordKey(keyword)),
-  );
+  const repeatedSunder =
+    keywords.filter((k) => k.type === "silence").length > 1 ||
+    keywords.some(
+      (keyword, index) =>
+        keyword.type === "sunder" &&
+        keywords
+          .slice(0, index)
+          .some((previous) => keywordKey(previous) === keywordKey(keyword)),
+    );
   for (const [keywordIndex, keyword] of keywords.entries()) {
     if (keyword.type === "shift") {
       if (placementIndex === undefined || owner === undefined) continue;
@@ -1028,7 +1065,10 @@ export function chooseKeywordTargets(
         owner,
         edges,
         environment,
-        trap: boardTrap(board),
+        trap:
+          effectiveKeywords(stone, board, owner)
+            .filter((k) => k.type === "trap")
+            .at(-1)?.trap || boardTrap(board),
         arenaElement,
       };
       const value =
@@ -1195,6 +1235,13 @@ export function placeStone(
     ...(queuedPips.length ? { queuedPips } : {}),
     ...(options.arenaElement ? { arenaElement: options.arenaElement } : {}),
     ...(targeted.effects.length ? { effects: targeted.effects } : {}),
+    ...(plan.effects.some((k) => k.type === "trap")
+      ? {
+          placedTrap: structuredClone(
+            plan.effects.filter((k) => k.type === "trap").at(-1)!.trap,
+          ),
+        }
+      : {}),
   };
   if (
     effectiveKeywords(stone, board, owner).some(
@@ -1232,7 +1279,10 @@ export function placeStone(
       },
     };
   }
-  next = withTrap(withTileEnvironments(next), options.trap || boardTrap(board));
+  next = withTrap(
+    withTileEnvironments(next),
+    next[index]?.placedTrap || options.trap || boardTrap(board),
+  );
   const captured = capturesAt(next, index, owner, attackEdges(next[index]!));
   for (const neighbor of captured)
     next[neighbor] = { ...next[neighbor]!, owner };
@@ -1306,7 +1356,10 @@ export function chooseMove(
                   owner === 0 ? 1 : 0,
                   arena.next,
                 ),
-                { arenaElement: arena.next, trap: arena.trap },
+                {
+                  arenaElement: arena.next,
+                  trap: boardTrap(replyBoard) || arena.trap,
+                },
               ).captured.length,
             );
         }),
@@ -1445,6 +1498,10 @@ export function validateStone(value: unknown): value is Stone {
     (s.conjured === undefined || s.conjured === true) &&
     (s.token === undefined || s.token === true) &&
     (s.unique === undefined || (s.unique === true && !s.token)) &&
+    (s.partKey === undefined ||
+      (s.part === true &&
+        typeof s.partKey === "string" &&
+        /^custom-token-[a-zA-Z0-9_-]{1,100}$/.test(s.partKey))) &&
     (s.part === undefined ||
       (s.part === true && s.token === true && !s.unique)) &&
     (s.runtimeEffects === undefined || s.runtimeEffects === true) &&
@@ -1455,6 +1512,11 @@ export function validateStone(value: unknown): value is Stone {
         Array.isArray((s.supercharger as Stone["supercharger"])?.parts) &&
         (s.supercharger as NonNullable<Stone["supercharger"]>).parts.length ===
           2 &&
+        ((s.supercharger as NonNullable<Stone["supercharger"]>).recipe ===
+          undefined ||
+          validRecipe(
+            (s.supercharger as NonNullable<Stone["supercharger"]>).recipe,
+          )) &&
         (s.supercharger as NonNullable<Stone["supercharger"]>).parts.every(
           (n) => typeof n === "string" && n.length <= 40,
         ))) &&
@@ -1523,6 +1585,7 @@ export function validateKeywords(
     if (keyword.half !== undefined && !["top", "bottom"].includes(keyword.half))
       return false;
     if (
+      keyword.type === "trap" ||
       keyword.type === "assemble" ||
       keyword.type === "flash" ||
       keyword.type === "amplify" ||
@@ -1543,6 +1606,17 @@ export function validateKeywords(
           (!Number.isInteger(keyword.side) ||
             keyword.side < 0 ||
             keyword.side > 3)
+    )
+      return false;
+    if (keyword.type === "trap" && !validTrap(keyword.trap)) return false;
+    if (
+      keyword.type === "assemble" &&
+      ((keyword.mode !== undefined &&
+        !["random", "specific"].includes(keyword.mode)) ||
+        (keyword.mode === "specific"
+          ? typeof keyword.part !== "string" ||
+            !/^custom-token-[a-zA-Z0-9_-]{1,100}$/.test(keyword.part)
+          : keyword.part !== undefined))
     )
       return false;
     if (
@@ -1703,7 +1777,7 @@ export function validateKeywords(
           (!keyword.condition || keyword.condition === "element")))
     )
       return false;
-    const key = keywordKey(keyword);
+    const key = keywordAssignmentKey(keyword);
     if (!runtime && !repeatableKeyword(keyword.type) && seen.has(key))
       return false;
     seen.add(key);

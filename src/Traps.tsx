@@ -31,76 +31,13 @@ export function TrapCrystal({ trap }: { trap: Trap }) {
     </svg>
   );
 }
-export function TrapPanel({
-  state,
-  turn,
-  owner,
-  disabled,
-  onPlay,
-  board,
-}: {
-  state?: TrapState;
-  turn: number;
-  owner: Owner;
-  disabled?: boolean;
-  onPlay: (trap: Trap) => void;
-  board: Board;
-}) {
-  const catalogue = readTraps(),
-    [selected, setSelected] = useState(catalogue[0].id),
-    chosen = catalogue.find((t) => t.id === selected) || catalogue[0],
-    ready = state?.lastPlayed[owner] !== turn;
-  return (
-    <>
-      <section className="trap-panel" aria-label="Shared Trap slot">
-        <TrapCrystal trap={state?.active?.trap || chosen} />
-        <div>
-          <strong>
-            {state?.active ? state.active.trap.name : "No active Trap"}
-          </strong>
-          <p>
-            {state?.active
-              ? trapText(state.active.trap)
-              : "One shared crystal affects both players. Play a new Trap to replace it."}
-          </p>
-          <div className="trap-controls">
-            <label>
-              Trap
-              <select
-                aria-label="Choose Trap"
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-              >
-                {catalogue.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="button button-outline"
-              disabled={
-                disabled || !ready || state?.active?.trap.id === chosen.id
-              }
-              onClick={() => onPlay(chosen)}
-            >
-              Activate Trap
-            </button>
-          </div>
-          <small>
-            {ready
-              ? "One Trap activation per turn; does not spend a stone or end your turn."
-              : "Trap used this turn."}
-          </small>
-          {chosen.id !== state?.active?.trap.id && (
-            <p className="trap-preview">{trapText(chosen)}</p>
-          )}
-        </div>
-      </section>
-      <AmplifyStatus board={board} owner={owner} />
-    </>
-  );
+export function TrapPanel({state,board,owner}:{state?:TrapState;board:Board;owner:Owner}) {
+  return <><section className="trap-panel" aria-label="Shared Trap slot">
+    {state?.active&&<TrapCrystal trap={state.active.trap}/>}
+    <div><strong>{state?.active?.trap.name||'No active Trap'}</strong>
+      <p>{state?.active?trapText(state.active.trap):'Play a stone with a Trap keyword to place a crystal. Only one shared Trap can be active.'}</p>
+      {state?.active?.source&&<small>Placed by {state.active.source}. A new stone’s Trap replaces it.</small>}
+    </div></section><AmplifyStatus board={board} owner={owner}/></>;
 }
 export function AmplifyStatus({
   board,

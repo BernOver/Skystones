@@ -1,3 +1,4 @@
+import { readTraps, trapKeywordText } from "./traps";
 import { readUniques } from "./unique";
 import { amplifyText } from "./amplify";
 import { isSwapForce, keywordHalf } from "./swapForce";
@@ -13,6 +14,7 @@ import {
   dizzySides,
   SIDE_NAMES,
   keywordKey,
+  keywordAssignmentKey,
   validateKeywords,
   repeatableKeyword,
 } from "./game";
@@ -40,6 +42,7 @@ export function defaultKeyword(
   side: Side = 0,
   element: Element = "magic",
 ): StoneKeyword {
+  if (type === "trap") return { type, trap: structuredClone(readTraps()[0]) };
   if (type === "assemble") return { type, count: 2 };
   if (type === "flash") return { type };
   if (type === "amplify")
@@ -181,25 +184,109 @@ function Fields({
           </select>
         </label>
       </div>
-      {keyword.type === "assemble" && (
-        <label>
-          Parts generated
-          <select
-            aria-label={`Assemble count · ${label}`}
-            value={keyword.count}
-            onChange={(e) =>
-              onChange({ ...keyword, count: Number(e.target.value) })
-            }
-          >
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n}>{n}</option>
-            ))}
-          </select>
+      {keyword.type === "trap" && (
+        <div className="effect-editor-options">
+          <label>
+            Crystal placed
+            <select
+              aria-label={`Trap crystal · ${label}`}
+              value={keyword.trap.id}
+              onChange={(e) => {
+                const trap = readTraps().find((t) => t.id === e.target.value);
+                if (trap) onChange({ ...keyword, trap: structuredClone(trap) });
+              }}
+            >
+              {!readTraps().some((t) => t.id === keyword.trap.id) && (
+                <option value={keyword.trap.id}>
+                  {keyword.trap.name} · saved crystal
+                </option>
+              )}
+              {readTraps().map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <small>
-            Two Parts automatically combine into a Flash Supercharger. Edit the
-            Parts token pool in Collection → Tokens.
+            {trapKeywordText(keyword.trap)} Create and customize crystals in
+            Collection → Traps.
           </small>
-        </label>
+        </div>
+      )}
+      {keyword.type === "assemble" && (
+        <div className="effect-editor-options">
+          <label>
+            Parts generated
+            <select
+              aria-label={`Assemble count · ${label}`}
+              value={keyword.count}
+              onChange={(e) =>
+                onChange({ ...keyword, count: Number(e.target.value) })
+              }
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Part source
+            <select
+              aria-label={`Assemble source · ${label}`}
+              value={keyword.mode || "random"}
+              onChange={(e) =>
+                onChange(
+                  e.target.value === "specific"
+                    ? {
+                        ...keyword,
+                        mode: "specific",
+                        part:
+                          readTokens().find((c) => c.part)?.id ||
+                          "custom-token-part-missing",
+                      }
+                    : {
+                        type: "assemble",
+                        count: keyword.count,
+                        mode: "random",
+                        ...(keyword.half ? { half: keyword.half } : {}),
+                      },
+                )
+              }
+            >
+              <option value="random">Random Parts</option>
+              <option value="specific">Specified Part</option>
+            </select>
+          </label>
+          {keyword.mode === "specific" && (
+            <label>
+              Part template
+              <select
+                aria-label={`Assemble Part · ${label}`}
+                value={keyword.part}
+                onChange={(e) => onChange({ ...keyword, part: e.target.value })}
+              >
+                {!readTokens().some((c) => c.part && c.id === keyword.part) && (
+                  <option value={keyword.part}>
+                    Missing Part · choose another
+                  </option>
+                )}
+                {readTokens()
+                  .filter((c) => c.part)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          <small>
+            Parts & recipes in Collection lets you create and edit Parts and fix
+            the Supercharger a pair creates. Add multiple Assemble entries to
+            generate different specified Parts. Pairs combine immediately.
+          </small>
+        </div>
       )}
       {keyword.type === "flash" && (
         <p className="field-note">
@@ -1437,10 +1524,14 @@ export function KeywordEditor({
     if (
       !repeatableKeyword(value.type) &&
       keywords.some(
-        (old, i) => i !== index && keywordKey(old) === keywordKey(value),
+        (old, i) =>
+          i !== index &&
+          keywordAssignmentKey(old) === keywordAssignmentKey(value),
       )
     ) {
-      setError(`${KEYWORD_RULES[value.type].name} is already on this card.`);
+      setError(
+        `${KEYWORD_RULES[value.type].name} is already on this ${isSwapForce(stone) ? "half" : "card"}.`,
+      );
       return;
     }
     if (!validateKeywords(next)) {
@@ -1465,12 +1556,61 @@ export function KeywordEditor({
       {isSwapForce(stone) && (
         <>
           <p>
-            SWAP Force: assign each keyword to Top (North / West) or Bottom
-            (South / East). It travels with that half. The usual unique-keyword
-            and 24-keyword limits apply.
+            SWAP Force: Top (North / West) and Bottom (South / East) carry their
+            own keywords. The same keyword can appear once on each half,
+            including separate Combos. The total card limit is 24 keywords.
           </p>
           <SwapArtSettings />
         </>
+      )}
+      {isSwapForce(stone) && (
+        <div
+          className="swap-half-actions"
+          aria-label="SWAP Force keyword halves"
+        >
+          {(["top", "bottom"] as const).map((half) => (
+            <div key={half}>
+              <strong>
+                {half === "top"
+                  ? "Top half · North / West"
+                  : "Bottom half · South / East"}
+              </strong>
+              <span>
+                {keywords.filter((k) => keywordHalf(k) === half).length}{" "}
+                keywords
+              </span>
+              <button
+                type="button"
+                className="button button-outline"
+                disabled={keywords.length >= MAX_KEYWORDS}
+                onClick={() => {
+                  for (const type of Object.keys(
+                    KEYWORD_RULES,
+                  ) as KeywordType[])
+                    for (const side of [0, 1, 2, 3] as Side[]) {
+                      const value = {
+                        ...defaultKeyword(type, side, stone.element),
+                        half,
+                      };
+                      if (
+                        !keywords.some(
+                          (k) =>
+                            keywordAssignmentKey(k) ===
+                            keywordAssignmentKey(value),
+                        )
+                      ) {
+                        onChange([...keywords, value]);
+                        setError("");
+                        return;
+                      }
+                    }
+                }}
+              >
+                Add {half}-half keyword
+              </button>
+            </div>
+          ))}
+        </div>
       )}
       <div className="keyword-editor-list">
         {keywords.map((keyword, index) => (
@@ -1541,7 +1681,10 @@ export function KeywordEditor({
                 ? { ...initial, half: keywordHalf(initial) }
                 : initial;
               if (
-                !keywords.some((old) => keywordKey(old) === keywordKey(value))
+                !keywords.some(
+                  (old) =>
+                    keywordAssignmentKey(old) === keywordAssignmentKey(value),
+                )
               ) {
                 onChange([...keywords, value]);
                 setError("");

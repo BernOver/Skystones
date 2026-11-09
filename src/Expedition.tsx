@@ -1,5 +1,4 @@
 import { TrapPanel } from "./Traps";
-import { activateAdventureTrap } from "./adventure";
 import { canPlace } from "./game";
 import { isSwapForce } from "./swapForce";
 import { SwapPicker } from "./SwapPicker";
@@ -1044,18 +1043,8 @@ function ExpeditionView({
           )}
           <TrapPanel
             state={battle.traps}
-            turn={battle.turnNumber ?? battle.turns}
-            owner={battle.current}
             board={battle.board}
-            disabled={ai}
-            onPlay={(trap) => {
-              try {
-                setRun(activateAdventureTrap(run, trap));
-                setInspection(null);
-              } catch (e) {
-                setError((e as Error).message);
-              }
-            }}
+            owner={battle.current}
           />
           <div
             className={`adventure-board adventure-board-${run.size}`}

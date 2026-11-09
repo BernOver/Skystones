@@ -6,7 +6,7 @@ import {
 import {
   validateStone,
   validateKeywords,
-  keywordKey,
+  keywordAssignmentKey,
   MAX_KEYWORDS,
   repeatableKeyword,
 } from "./game.ts";
@@ -137,7 +137,7 @@ export function withAdditionalKeywords(
   const result = structuredClone(base);
   for (const keyword of additions) {
     const duplicate = result.findIndex(
-      (old) => keywordKey(old) === keywordKey(keyword),
+      (old) => keywordAssignmentKey(old) === keywordAssignmentKey(keyword),
     );
     if (!repeatableKeyword(keyword.type) && duplicate !== -1) continue;
     if (result.length < MAX_KEYWORDS && validateKeywords([...result, keyword]))

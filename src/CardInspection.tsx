@@ -1,5 +1,7 @@
+import { keywordHalf, isSwapForce } from "./swapForce";
+import { readTokens } from "./tokens";
 import { amplifyText } from "./amplify";
-import { trapText } from "./traps";
+import { trapText, trapKeywordText } from "./traps";
 import type { Trap } from "./traps";
 import { SwapDetails } from "./SwapDetails";
 import { TribeBadges } from "./TribeEditor";
@@ -164,12 +166,20 @@ export function KeywordDetails({
           </span>
         </p>
       )}
-      {keywordGroups(stone.keywords || []).map(
+      {keywordGroups(stone.keywords || [], isSwapForce(stone)).map(
         ({ type, keywords, keywordIndex }, groupIndex) => {
           if (!keywords.length) return null;
           if (type === "shift")
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <ArrowUpRight size={15} />
                   <strong>Shift</strong>
@@ -216,17 +226,32 @@ export function KeywordDetails({
                     )}
               </section>
             );
-          if (type === "assemble" || type === "flash" || type === "amplify")
+          if (
+            type === "trap" ||
+            type === "assemble" ||
+            type === "flash" ||
+            type === "amplify"
+          )
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <strong>{KEYWORD_RULES[type].name}</strong>
                 {keywords.map((k, i) => (
                   <p key={i}>
-                    {k.type === "amplify"
-                      ? amplifyText(k)
-                      : k.type === "assemble"
-                        ? `Generate ${k.count} random Parts tokens. Two Parts in hand immediately combine into a Supercharger with both Parts’ pips and effects plus Flash. Any player can cover it to inherit its pips and other effects, which trigger again. Flash is not inherited.`
-                        : "Play this card without ending your turn. A temporary Supercharger must be covered by a stone before the board is complete."}
+                    {k.type === "trap"
+                      ? trapKeywordText(k.trap)
+                      : k.type === "amplify"
+                        ? amplifyText(k)
+                        : k.type === "assemble"
+                          ? `Generate ${k.count} ${k.mode === "specific" ? `copies of ${readTokens().find((c) => c.id === k.part)?.name || "the specified Part"}` : "random Parts tokens"}. Two Parts in hand immediately combine into a Supercharger with both Parts’ pips and effects plus Flash. Any player can cover it to inherit its pips and other effects, which trigger again. Flash is not inherited.`
+                          : "Play this card without ending your turn. A temporary Supercharger must be covered by a stone before the board is complete."}
                   </p>
                 ))}
               </section>
@@ -238,7 +263,15 @@ export function KeywordDetails({
             type === "discard-priority"
           )
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Sparkles size={15} />
                   <strong>{KEYWORD_RULES[type].name}</strong>
@@ -289,7 +322,15 @@ export function KeywordDetails({
             );
           if (type === "conjure")
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Sparkles size={15} />
                   <strong>Conjure</strong>
@@ -345,7 +386,15 @@ export function KeywordDetails({
             );
           if (type === "next-play")
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Flag size={15} />
                   <strong>Next Play</strong>
@@ -391,7 +440,15 @@ export function KeywordDetails({
             );
           if (type === "environment")
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Waves size={15} />
                   <strong>Environment</strong>
@@ -433,7 +490,15 @@ export function KeywordDetails({
             );
           if (type === "shield")
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Shield size={15} />
                   <strong>Shield</strong>
@@ -471,7 +536,15 @@ export function KeywordDetails({
             const combo = keywords.find((keyword) => keyword.type === "combo");
             if (!combo || combo.type !== "combo") return null;
             return (
-              <section className="keyword-rule combo-rule" key={groupIndex}>
+              <section
+                className="keyword-rule combo-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Link size={15} />
                   <strong>Combo</strong>
@@ -545,7 +618,13 @@ export function KeywordDetails({
                   <div className="combo-granted-rules">
                     <strong>Granted keywords</strong>
                     <KeywordDetails
-                      stone={{ ...stone, keywords: combo.keywords }}
+                      stone={{
+                        ...stone,
+                        keywords: combo.keywords.map((k) => ({
+                          ...k,
+                          half: keywordHalf(combo),
+                        })),
+                      }}
                       played={played && !!activeCombo}
                       keywordOffset={effectIndexFor(keywordIndex)}
                       activeKeywords={activeCombo ? activeKeywords : undefined}
@@ -569,7 +648,15 @@ export function KeywordDetails({
           }
           if (type === "dizzy")
             return (
-              <section className="keyword-rule" key={groupIndex}>
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
                 <div className="keyword-rule-heading">
                   <Shuffle size={15} />
                   <strong>Dizzy</strong>
@@ -626,6 +713,11 @@ export function KeywordDetails({
             );
             return (
               <section
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
                 className="keyword-rule target-keyword-rule"
                 key={groupIndex}
               >
@@ -737,6 +829,11 @@ export function KeywordDetails({
             .join(", ");
           return (
             <section
+              data-half={
+                isSwapForce(stone)
+                  ? `${keywordHalf(keywords[0])} half`
+                  : undefined
+              }
               className={`keyword-rule ${active ? "keyword-active" : ""}`}
               key={groupIndex}
             >

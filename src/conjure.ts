@@ -1,3 +1,5 @@
+import { readRecipes } from "./recipes.ts";
+import type { SuperchargerRecipe } from "./recipes.ts";
 import { readUniques, validUniqueKey, uniqueName } from "./unique.ts";
 import { combineParts } from "./assemble.ts";
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
@@ -183,6 +185,7 @@ export function applyConjure(
   seed: number,
   tokens: readonly Stone[] | (() => readonly Stone[]) = readTokens,
   uniques: readonly Stone[] | (() => readonly Stone[]) = readUniques,
+  recipes: readonly SuperchargerRecipe[] = readRecipes(),
 ): { board: Board; hands: [Stone[], Stone[]]; conjurations: Conjuration[] } {
   const cell = board[index];
   if (!cell || cell.silenced || cell.conjurations)
@@ -280,6 +283,7 @@ export function applyConjure(
           id,
           custom: true,
           conjured: true,
+          ...(original.part ? { partKey: original.id } : {}),
         };
         if (keyword.pips?.length) {
           for (const pip of keyword.pips)
@@ -294,7 +298,7 @@ export function applyConjure(
             keyword.keywords,
           ).keywords;
         nextHands[recipient].push(card);
-        nextHands[recipient] = combineParts(nextHands[recipient]);
+        nextHands[recipient] = combineParts(nextHands[recipient], recipes);
         record.cards.push({ id, name: card.name });
       }
       records.push(record);

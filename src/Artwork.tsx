@@ -1,6 +1,7 @@
+import { readTokens } from "./tokens";
 import { trapBonus } from "./traps";
 import type { Trap } from "./traps";
-import { swapIdentity } from "./swapForce";
+import { swapIdentity, keywordHalf, isSwapForce } from "./swapForce";
 import { stoneTribes, tribeName } from "./tribes";
 import { memo, useId } from "react";
 import {
@@ -731,7 +732,7 @@ export const StoneCard = memo(
         {!!stone.keywords?.length && (
           <div className="stone-keywords">
             {silenced && <strong className="silenced-label">Silenced</strong>}
-            {keywordGroups(stone.keywords!).map(
+            {keywordGroups(stone.keywords!, isSwapForce(stone)).map(
               ({ type, keywords: matches }, groupIndex) => {
                 return matches.length ? (
                   <span
@@ -739,6 +740,11 @@ export const StoneCard = memo(
                     className={`stone-keyword keyword-${type}`}
                   >
                     {KEYWORD_RULES[type].name}
+                    {isSwapForce(stone) && (
+                      <small className="card-half-label">
+                        {keywordHalf(matches[0]) === "top" ? "TOP" : "BOTTOM"}
+                      </small>
+                    )}
                     {type === "sunder" &&
                     matches[0]?.type === "sunder" &&
                     (matches[0].amount ?? 1) > 1
@@ -764,45 +770,53 @@ export const StoneCard = memo(
                     <b>
                       {matches
                         .map((keyword) =>
-                          keyword.type === "assemble"
-                            ? `${keyword.count} PARTS`
-                            : keyword.type === "flash"
-                              ? "FREE PLAY"
-                              : keyword.type === "amplify"
-                                ? `${keyword.effect.toUpperCase()} · ${keyword.duration === "next" ? `NEXT ${keyword.count}` : "ALWAYS"}`
-                                : keyword.type === "conjure"
-                                  ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
-                                  : keyword.type === "next-play"
-                                    ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
-                                    : keyword.type === "shift"
-                                      ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
-                                      : keyword.type === "environment"
-                                        ? ENVIRONMENTS[keyword.environment.kind]
-                                            .name
-                                        : keyword.type === "silence" ||
-                                            keyword.type === "dizzy" ||
-                                            keyword.type === "combo"
-                                          ? keyword.type === "dizzy"
-                                            ? dizzySides(keyword)
-                                                .map(
-                                                  (side) => SIDE_LETTERS[side],
-                                                )
-                                                .join("/")
-                                            : keyword.type === "combo"
-                                              ? comboRequirement(stone, keyword)
-                                              : "ON PLAY"
-                                          : keyword.type === "discard"
-                                            ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
-                                            : keyword.type === "scavenge"
-                                              ? `${keyword.from} · ${buffText(keyword)}`
-                                              : keyword.type === "parting-gift"
-                                                ? `${keyword.target} · ${buffText(keyword)}`
+                          keyword.type === "trap"
+                            ? keyword.trap.name
+                            : keyword.type === "assemble"
+                              ? `${keyword.count} ${keyword.mode === "specific" ? readTokens().find((c) => c.id === keyword.part)?.name || "MISSING PART" : "RANDOM PARTS"}`
+                              : keyword.type === "flash"
+                                ? "FREE PLAY"
+                                : keyword.type === "amplify"
+                                  ? `${keyword.effect.toUpperCase()} · ${keyword.duration === "next" ? `NEXT ${keyword.count}` : "ALWAYS"}`
+                                  : keyword.type === "conjure"
+                                    ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
+                                    : keyword.type === "next-play"
+                                      ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
+                                      : keyword.type === "shift"
+                                        ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
+                                        : keyword.type === "environment"
+                                          ? ENVIRONMENTS[
+                                              keyword.environment.kind
+                                            ].name
+                                          : keyword.type === "silence" ||
+                                              keyword.type === "dizzy" ||
+                                              keyword.type === "combo"
+                                            ? keyword.type === "dizzy"
+                                              ? dizzySides(keyword)
+                                                  .map(
+                                                    (side) =>
+                                                      SIDE_LETTERS[side],
+                                                  )
+                                                  .join("/")
+                                              : keyword.type === "combo"
+                                                ? comboRequirement(
+                                                    stone,
+                                                    keyword,
+                                                  )
+                                                : "ON PLAY"
+                                            : keyword.type === "discard"
+                                              ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
+                                              : keyword.type === "scavenge"
+                                                ? `${keyword.from} · ${buffText(keyword)}`
                                                 : keyword.type ===
-                                                    "discard-priority"
-                                                  ? `${keyword.priority ?? 1}`
-                                                  : keyword.side === "any"
-                                                    ? "ANY EDGE"
-                                                    : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
+                                                    "parting-gift"
+                                                  ? `${keyword.target} · ${buffText(keyword)}`
+                                                  : keyword.type ===
+                                                      "discard-priority"
+                                                    ? `${keyword.priority ?? 1}`
+                                                    : keyword.side === "any"
+                                                      ? "ANY EDGE"
+                                                      : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
                         )
                         .join("/")}
                     </b>

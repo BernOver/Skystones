@@ -125,7 +125,7 @@ test("repeated exchanges move original parts without nested composites and can r
   );
   assert.ok(restored.every(validateStone));
 });
-test("conflicting or oversized keyword halves are rejected atomically without silently deleting effects", () => {
+test("matching keywords on different halves combine independently while oversized halves are rejected atomically", () => {
   const a = clean("Wash Buckler"),
     b = clean("Blast Zone");
   a.keywords = [{ type: "combo", half: "top", pips: [{ side: 0, amount: 1 }] }];
@@ -133,7 +133,9 @@ test("conflicting or oversized keyword halves are rejected atomically without si
     { type: "combo", half: "bottom", pips: [{ side: 1, amount: 1 }] },
   ];
   const before = structuredClone([a, b]);
-  assert.throws(() => swapCards(a, b), /unique keyword/);
+  const [mixed] = swapCards(a, b);
+  assert.equal(mixed.keywords!.filter((k) => k.type === "combo").length, 2);
+  assert.ok(validateStone(mixed));
   assert.deepEqual([a, b], before);
   const many = (half: "top" | "bottom"): StoneKeyword[] =>
     Array.from({ length: 24 }, () => ({ type: "sunder", side: 0, half }));

@@ -22,11 +22,10 @@ import {
 import type { Stone, StoneKeyword, Board, Owner } from "../src/game.ts";
 import {
   DEFAULT_TRAPS,
-  playTrap,
   withTrap,
   trapEdges,
   validTrapState,
-  trapResponse,
+  trapStateFromBoard,
 } from "../src/traps.ts";
 import type { Trap } from "../src/traps.ts";
 import { DEFAULT_PARTS, combineParts, assembleParts } from "../src/assemble.ts";
@@ -59,7 +58,6 @@ import {
   adventureEnemyMove,
   validateAdventure,
   restoreAdventure,
-  activateAdventureTrap,
 } from "../src/adventure.ts";
 import { newDraft, restoreDraft } from "../src/draft.ts";
 const card = (
@@ -115,18 +113,25 @@ test("Traps share one live slot, update both owners and all card types, and repl
       { kind: "defense", side: 3, amount: 3 },
     ],
   };
-  const first = playTrap(board, undefined, trap, 0, 0);
-  assert.ok(validTrapState(first.traps));
+  const first = cast(
+    board,
+    2,
+    card("trap-caster", [{ type: "trap", trap }]),
+    0,
+  );
+  assert.ok(validTrapState(trapStateFromBoard(first.board)));
   for (const cell of first.board.filter((c) => !!c)) {
     assert.deepEqual(cardEdges(cell), [3, 3, 3, 3]);
     assert.deepEqual(attackEdges(cell), [3, 4, 3, 3]);
     assert.deepEqual(defenseEdges(cell), [3, 3, 3, 6]);
     assert.deepEqual(cell.edges, [1, 1, 1, 1]);
   }
-  assert.throws(() =>
-    playTrap(first.board, first.traps, DEFAULT_TRAPS[4], 0, 0),
+  const replaced = cast(
+    first.board,
+    3,
+    card("water-trapper", [{ type: "trap", trap: DEFAULT_TRAPS[1] }]),
+    1,
   );
-  const replaced = playTrap(first.board, first.traps, DEFAULT_TRAPS[1], 1, 1);
   assert.deepEqual(cardEdges(replaced.board[0]!), [1, 1, 1, 1]);
   assert.equal(
     new Set(replaced.board.filter((c) => !!c).map((c) => c.trap!.id)).size,
@@ -155,7 +160,7 @@ test("Trap element/tribe filters affect both players and stay active through Sil
     }),
     [3, 1, 1, 1],
   );
-  assert.equal(trapResponse(placed, undefined, [], 1, 1), undefined);
+  assert.equal(trapStateFromBoard(EMPTY_BOARD()), undefined);
 });
 test("Unique is deck playable, mutually exclusive with tokens, and absent from every normal Conjure source", () => {
   const unique = {
@@ -534,6 +539,7 @@ for (const size of [3, 4] as const)
       ...run.battle!.hands[0][0],
       keywords: [
         { type: "assemble", count: 2 },
+        { type: "trap", trap: DEFAULT_TRAPS[0] },
         amp("shield", "next", 2),
       ] as StoneKeyword[],
     };
@@ -547,7 +553,6 @@ for (const size of [3, 4] as const)
         ],
       },
     };
-    run = activateAdventureTrap(run, DEFAULT_TRAPS[0]);
     run = playAdventureCard(run, 0, 0);
     assert.ok(run.battle!.hands[0].some((c) => c.supercharger));
     assert.ok(validateAdventure(run));

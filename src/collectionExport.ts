@@ -1,3 +1,4 @@
+import { readRecipes } from "./recipes.ts";
 import { readTraps } from "./traps.ts";
 import { DEFAULT_PARTS } from "./assemble.ts";
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
@@ -56,6 +57,7 @@ export function collectionExport(
     ),
     originalTokens: [...DEFAULT_TOKENS, ...DEFAULT_PARTS],
     traps: readTraps(),
+    recipes: readRecipes(),
     customTribes,
   });
 }

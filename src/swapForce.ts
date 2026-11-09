@@ -69,7 +69,7 @@ function mixedCard(topCard: Stone, bottomCard: Stone): Stone {
     );
   if (!validateKeywords(keywords))
     throw new Error(
-      "These halves would repeat a unique keyword. Choose another pair or change the keyword half assignments in Card studio.",
+      "A half repeats one of its own unique keywords. Edit that half in Card studio before swapping.",
     );
   const topWords = top.name.split(/\s+/),
     bottomWords = bottom.name.split(/\s+/);

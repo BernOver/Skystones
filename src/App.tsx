@@ -1,5 +1,15 @@
+import {
+  readRecipes,
+  mergeRecipes,
+  saveRecipes,
+  RECIPES_STORAGE,
+  validRecipes,
+} from "./recipes";
+import type { SuperchargerRecipe } from "./recipes";
+import { PartsWorkshop } from "./PartsWorkshop";
+import { DEFAULT_PARTS } from "./assemble";
 import { TrapPanel, TrapCollection } from "./Traps";
-import { playTrap, trapResponse, trapEdges } from "./traps";
+import { trapStateFromBoard, trapEdges } from "./traps";
 import type { TrapState } from "./traps";
 import { assembleParts } from "./assemble";
 import { uniqueCatalogue, uniqueDefinition } from "./unique";
@@ -178,6 +188,7 @@ interface JournalEntry {
 }
 interface Match {
   traps?: TrapState;
+  recipes?: SuperchargerRecipe[];
   turnNumber?: number;
   id: string;
   board: Board;
@@ -278,6 +289,7 @@ function createMatch(
   return {
     id: createId(),
     board: EMPTY_BOARD(library.boardSize),
+    recipes: readRecipes(),
     hands: [human, opponent],
     current: first,
     mode,
@@ -307,6 +319,7 @@ function applyMove(
     seed,
     trap: match.traps?.active?.trap,
   });
+  const recipes = match.recipes || readRecipes();
   const hands: [Stone[], Stone[]] = [[...match.hands[0]], [...match.hands[1]]];
   hands[match.current].splice(cardIndex, 1);
   const conjured = applyConjure(
@@ -315,12 +328,17 @@ function applyMove(
     hands,
     () => CONJURE_CARDS.map((card) => characterDefault(card)),
     seed ^ 0x27d4eb2d,
+    undefined,
+    undefined,
+    recipes,
   );
   const assembled = assembleParts(
     conjured.board,
     index,
     conjured.hands,
     seed ^ 0x71ab,
+    undefined,
+    recipes,
   );
   const discarded = resolveDiscards(
     assembled.board,
@@ -342,6 +360,10 @@ function applyMove(
   return {
     ...match,
     board: discarded.board,
+    ...(trapStateFromBoard(discarded.board)
+      ? { traps: trapStateFromBoard(discarded.board) }
+      : {}),
+    recipes,
     hands: discarded.hands,
     current: nextOwner,
     moves: match.moves + 1,
@@ -498,7 +520,9 @@ export default function App() {
   const [onlyCustom, setOnlyCustom] = useState(false);
   const [onlyGiants, setOnlyGiants] = useState(false);
   const [onlyTokens, setOnlyTokens] = useState(false);
-  const [extraTab, setExtraTab] = useState<"" | "traps" | "unique">("");
+  const [extraTab, setExtraTab] = useState<"" | "traps" | "unique" | "parts">(
+    "",
+  );
   const [draft, setDraft] = useState<Stone>(freshDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -539,7 +563,7 @@ export default function App() {
   const visible = collection.filter(
     (s) =>
       (extraTab !== "unique" || !!s.unique) &&
-      (onlyTokens ? !!s.token : !s.token) &&
+      (extraTab === "parts" ? !!s.part : onlyTokens ? !!s.token : !s.token) &&
       (!onlyCustom || s.custom) &&
       (!onlyGiants || onlyCustom || s.origin === "giants") &&
       (elementFilter === "all" || s.element === elementFilter) &&
@@ -588,24 +612,6 @@ export default function App() {
           boardFinished(current.board)
         )
           return current;
-        const response = trapResponse(
-          current.board,
-          current.traps,
-          current.hands[1],
-          1,
-          current.turnNumber ?? current.moves,
-        );
-        if (response)
-          current = {
-            ...current,
-            ...playTrap(
-              current.board,
-              current.traps,
-              response,
-              1,
-              current.turnNumber ?? current.moves,
-            ),
-          };
         const move = chooseMove(
           current.board,
           current.hands[1],
@@ -766,6 +772,16 @@ export default function App() {
     setEditingId(stone?.id || null);
     setDialog(null);
     navigate("studio");
+  }
+  function openPartStudio() {
+    openStudio();
+    setDraft({
+      ...freshDraft(),
+      name: "New Supercharger Part",
+      token: true,
+      part: true,
+      tribes: ["superchargers"],
+    });
   }
   function openTokenStudio() {
     openStudio();
@@ -1069,11 +1085,14 @@ export default function App() {
       id: stone.custom ? stone.id : `custom-${stone.id}`,
       custom: true,
     };
-    let dependencies: Stone[], uniqueDependencies: Stone[];
+    let dependencies: Stone[],
+      uniqueDependencies: Stone[],
+      recipeDependencies: SuperchargerRecipe[];
     try {
       const bundle = cardDependencies(card, tokens, uniques);
       dependencies = bundle.tokens;
       uniqueDependencies = bundle.uniques;
+      recipeDependencies = bundle.recipes;
     } catch (error) {
       setToast((error as Error).message);
       return;
@@ -1095,6 +1114,9 @@ export default function App() {
                 ? { uniques: uniqueDependencies }
                 : {}),
               ...(dependencies.length ? { tokens: dependencies } : {}),
+              ...(recipeDependencies.length
+                ? { recipes: recipeDependencies }
+                : {}),
             },
             null,
             2,
@@ -1167,6 +1189,18 @@ export default function App() {
       ]);
       if (stone.unique && !uniqueDefinition(stone))
         throw new Error("Invalid Unique card");
+      const importedRecipes = payload.recipes || [];
+      if (!validRecipes(importedRecipes)) throw new Error("Invalid recipes");
+      const recipes = mergeRecipes(readRecipes(), importedRecipes);
+      if (
+        importedRecipes.some((r) =>
+          r.parts.some(
+            (key) =>
+              !tokenCatalogue(custom).some((c) => c.part && c.id === key),
+          ),
+        )
+      )
+        throw new Error("A recipe Part is missing.");
       cardDependencies(
         stone,
         tokenCatalogue(custom),
@@ -1174,11 +1208,14 @@ export default function App() {
           custom,
           CONJURE_CARDS.map((c) => characterDefault(c)),
         ),
+        recipes,
       );
       rememberCustomTribes(
         [stone, ...importedTokens, ...importedUniques],
         payload.customTribes,
       );
+      const previousRecipes = localStorage.getItem(RECIPES_STORAGE);
+      if (importedRecipes.length) saveRecipes(recipes);
       if (
         saveLibrary({
           ...library,
@@ -1194,6 +1231,9 @@ export default function App() {
         setElementFilter("all");
         setTribeFilter("");
         navigate("collection");
+      } else if (importedRecipes.length) {
+        if (previousRecipes === null) localStorage.removeItem(RECIPES_STORAGE);
+        else localStorage.setItem(RECIPES_STORAGE, previousRecipes);
       }
     } catch {
       setToast(
@@ -1427,26 +1467,7 @@ export default function App() {
                   <TrapPanel
                     state={match.traps}
                     board={match.board}
-                    turn={match.turnNumber ?? match.moves}
                     owner={match.current}
-                    disabled={aiTurn || done}
-                    onPlay={(trap) => {
-                      try {
-                        setMatch({
-                          ...match,
-                          ...playTrap(
-                            match.board,
-                            match.traps,
-                            trap,
-                            match.current,
-                            match.turnNumber ?? match.moves,
-                          ),
-                        });
-                        hideInspection();
-                      } catch (error) {
-                        setToast((error as Error).message);
-                      }
-                    }}
                   />
                   <div className="board-wrap">
                     <span className="board-decoration decoration-one">✧</span>
@@ -1969,11 +1990,19 @@ export default function App() {
                 <button
                   className="button button-dark"
                   onClick={() =>
-                    onlyTokens ? openTokenStudio() : openStudio()
+                    extraTab === "parts"
+                      ? openPartStudio()
+                      : onlyTokens
+                        ? openTokenStudio()
+                        : openStudio()
                   }
                 >
                   <Plus size={17} />
-                  {onlyTokens ? "Create a token" : "Create a stone"}
+                  {extraTab === "parts"
+                    ? "Create a Part"
+                    : onlyTokens
+                      ? "Create a token"
+                      : "Create a stone"}
                 </button>
               </div>
             </div>
@@ -2112,6 +2141,18 @@ export default function App() {
                   Unique<span>{collection.filter((c) => c.unique).length}</span>
                 </button>
                 <button
+                  className={extraTab === "parts" ? "active" : ""}
+                  onClick={() => {
+                    setExtraTab("parts");
+                    setOnlyTokens(false);
+                    setOnlyGiants(false);
+                    setOnlyCustom(false);
+                  }}
+                >
+                  Parts & recipes
+                  <span>{tokens.filter((c) => c.part).length}</span>
+                </button>
+                <button
                   className={extraTab === "traps" ? "active" : ""}
                   onClick={() => {
                     setExtraTab("traps");
@@ -2186,6 +2227,13 @@ export default function App() {
                   Community card reference
                 </a>
               </p>
+            )}
+            {extraTab === "parts" && (
+              <PartsWorkshop
+                parts={tokens.filter((c) => c.part)}
+                onCreate={openPartStudio}
+                onEdit={openStudio}
+              />
             )}
             {extraTab === "traps" ? (
               <TrapCollection />
@@ -2841,19 +2889,21 @@ export default function App() {
           <div className="eyebrow">WELCOME TO THE TABLE</div>
           <p>
             <strong>Traps:</strong> one shared crystal affects both players’
-            matching cards. Activate one per turn without spending a stone;
-            another Trap replaces it. Collection → Traps lets you customize
-            crystals.
+            matching cards. The slot starts empty. Playing a stone with a Trap
+            keyword places its chosen crystal before captures; a later stone’s
+            Trap replaces it. Collection → Traps lets you customize crystals.
           </p>
           <p>
             <strong>Unique:</strong> a deck card type excluded from normal
             Conjure. Only an explicit Unique source can generate these cards.
           </p>
           <p>
-            <strong>Assemble:</strong> generate random Parts tokens. Two Parts
-            automatically build a pictured Supercharger with both sets of pips
-            and keywords. Its Flash play keeps your turn. Either player can
-            cover it to inherit its pips and other keywords, which trigger
+            <strong>Assemble:</strong> generate random Parts or specified Part
+            templates. Collection → Parts & recipes lets you create and edit
+            Parts and choose a fixed Supercharger for a pair in either order.
+            Two Parts automatically build a pictured Supercharger with both sets
+            of pips and keywords. Its Flash play keeps your turn. Either player
+            can cover it to inherit its pips and other keywords, which trigger
             again. Flash is not inherited; temporary vehicles must be covered to
             finish the board.
           </p>
@@ -3343,12 +3393,14 @@ export default function App() {
               </button>
             )}
             {dialog.stone.token &&
-              DEFAULT_TOKENS.some((token) => token.id === dialog.stone.id) &&
+              [...DEFAULT_TOKENS, ...DEFAULT_PARTS].some(
+                (token) => token.id === dialog.stone.id,
+              ) &&
               library.custom.some((card) => card.id === dialog.stone.id) && (
                 <button
                   className="text-button"
                   onClick={() => {
-                    const original = DEFAULT_TOKENS.find(
+                    const original = [...DEFAULT_TOKENS, ...DEFAULT_PARTS].find(
                       (token) => token.id === dialog.stone.id,
                     )!;
                     if (
@@ -3385,7 +3437,9 @@ export default function App() {
               {downloadBusy ? "Preparing…" : "Save image"}
             </button>
             {dialog.stone.custom &&
-              !DEFAULT_TOKENS.some((token) => token.id === dialog.stone.id) && (
+              ![...DEFAULT_TOKENS, ...DEFAULT_PARTS].some(
+                (token) => token.id === dialog.stone.id,
+              ) && (
                 <button
                   className="icon-button delete-card-button"
                   aria-label={`Delete ${dialog.stone.name}`}
