@@ -14,6 +14,8 @@ These rules work on both board sizes in normal, Draft, and Adventure games. Exis
 
 A browser game inspired by classic Skylanders Skystones, with a Giants card catalogue, sixteen illustrated creature presets, a custom card studio, a roguelike Adventure mode, and a two-player Draft mode. Built with React, TypeScript, and Vite. Everything runs in the browser; no account, API keys, or backend is needed.
 
+Hand cards use larger, wrapping rows in normal games, Adventure, and drafted hands. Keyword-heavy cards grow taller while keeping room for their artwork, including on phones and 4×4 boards.
+
 ## Download and play
 
 1. [Download Skystones.zip](https://github.com/BernOver/Skystones/raw/refs/heads/main/downloads/Skystones.zip).

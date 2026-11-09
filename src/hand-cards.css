@@ -1,0 +1,104 @@
+/* Hand cards keep their artwork space as the hand grows or the screen narrows. */
+.hand-cards,
+.run-hand,
+.draft-hands details > div {
+  --hand-card-min: 160px;
+  --hand-card-max: 188px;
+  --hand-card-height: 264px;
+  --hand-art-min: 164px;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--hand-card-min)), 1fr)
+  );
+  align-items: start;
+  justify-items: center;
+  gap: 20px 14px;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+}
+
+.hand-cards > .hand-card-button,
+.run-hand > .run-hand-card,
+.run-hand > .run-enemy-card,
+.draft-hands details > div > button {
+  width: 100%;
+  min-width: 0;
+  max-width: var(--hand-card-max);
+  height: auto;
+  margin: 0;
+  flex: none;
+  transform: none;
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button > .stone-card {
+  width: 100%;
+  height: auto;
+  min-height: var(--hand-card-height);
+  border-width: 3px;
+  border-radius: 7px;
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-art {
+  flex: 1 0 var(--hand-art-min);
+  min-height: var(--hand-art-min);
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-keywords {
+  gap: 3px;
+  padding: 5px 6px;
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-keyword,
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-keyword b {
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-card .stone-caption {
+  min-height: 30px;
+  padding: 5px 7px;
+  gap: 5px;
+  font-size: 12px;
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-caption > svg {
+  width: 14px;
+  height: 14px;
+}
+
+:is(.hand-cards, .run-hand, .draft-hands) button .stone-card .stone-tribes {
+  font-size: 8px;
+  line-height: 12px;
+  padding: 2px 6px;
+}
+
+.hand-cards .hand-card-button .edge {
+  transform: none;
+}
+
+.hand-cards > .hand-card-button:hover:not(:disabled),
+.hand-cards > .hand-card-button.is-selected {
+  transform: translateY(-6px);
+}
+
+.hand-cards > .hand-card-button[aria-disabled="true"] {
+  transform: none;
+}
+
+@media (max-width: 540px) {
+  .hand-cards,
+  .run-hand,
+  .draft-hands details > div {
+    --hand-card-min: 132px;
+    --hand-card-max: 176px;
+    --hand-card-height: 234px;
+    --hand-art-min: 146px;
+    gap: 18px 12px;
+  }
+
+  :is(.hand-cards, .run-hand, .draft-hands) button .stone-card .stone-caption {
+    font-size: 11px;
+  }
+}
