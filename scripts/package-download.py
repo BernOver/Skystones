@@ -12,6 +12,29 @@ instructions = """SKYSTONES — START HERE
 2. Double-click Skystones.html. Choose Chrome or Microsoft Edge if asked.
 3. Play! No installation, account, or server is required.
 
+Export everything at once: Collection > Export all cards downloads
+Skystones-all-cards.json. It includes every current built-in, edited character
+default, custom card, token template, uploaded image, custom tribe name, and
+original factory definitions for comparison, even when filters hide cards.
+Share this one JSON file for a review. It is a collection report; Import card
+continues to use individual .skystone.json exports. Exporting changes no saves.
+When updating this game, replace Skystones.html in its EXISTING folder and use
+the SAME browser to keep access to your existing card edits and saved games.
+
+Character balance: ordinary Skylander bases center on 5-8 pips, with some weaker
+and a few stronger cards (about 6.37 pips on average across Skylanders).
+Giants Skystones, Giant Skylanders, and Minis keep their exact existing pips
+and keywords, including their Adventure profiles. New character descriptions
+replace generic flavor. Authored descriptions and saved card edits stay yours.
+Old boilerplate flavor refreshes without changing saved stats or keywords.
+All 16 keywords appear across the roster. Fire uses discard fuel and Scavenge;
+Life grows with Resonance; Undead weakens enemies; Magic focuses on Conjure.
+Water defends and counters; Earth fortifies and breaks defenses; Air shifts
+positions; Tech chains Combo and prepared buffs; Light supports the next card;
+Dark disrupts and ambushes; Kaos brings unpredictable chaos. Select an element
+in Collection for its theme. Weak Adventure starts and gradual enemies remain.
+Rewards choose the nearest fixed pip budget before preferring keyword density.
+
 Choose Board skins (the palette button at the top) for six themed tables:
 Giants Table, Arkeyan Ruins, Sky Citadel, Lava Forge, Frozen Vault, Golden Court.
 Skins work on both board sizes in normal, Draft, and Adventure play, and your

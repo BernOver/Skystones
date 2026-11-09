@@ -97,6 +97,7 @@ test("a complete game places exactly nine unique stones and scores all of them",
       move.index,
       hands[owner][move.cardIndex],
       owner,
+      move.targets,
     ).board;
     hands[owner].splice(move.cardIndex, 1);
     assert.equal(board.filter(Boolean).length, turn + 1);

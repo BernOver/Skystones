@@ -3,7 +3,7 @@ import type { CharacterDefaults } from "./cardDefaults.ts";
 import { defaultEnvironment } from "./effects.ts";
 import type { EnvironmentKind } from "./effects.ts";
 import { stoneTribes, tribalKeyword } from "./tribes.ts";
-import { CHARACTER_STONES } from "./characters.ts";
+import { CHARACTER_STONES, refreshCharacterFlavor } from "./characters.ts";
 import { handSize, validateStone } from "./game.ts";
 import type {
   BoardSize,
@@ -134,7 +134,7 @@ export function draftCards(
         element,
         edges: base.map((_, side) => base[(side + rotation) % 4]) as Edges,
         keywords,
-        description: "A contender from the shared draft table.",
+        description: identity.description,
         custom: true,
       };
     });
@@ -441,7 +441,7 @@ export function restoreDraft(value: unknown): DraftState | null {
           snapshot.characterKey !== card.portrait
         )
           throw new Error("Invalid character default snapshot.");
-        return structuredClone(snapshot);
+        return refreshCharacterFlavor(structuredClone(snapshot));
       });
       draft = { ...draft, cards, defaultSnapshots: true };
     }

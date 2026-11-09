@@ -3161,15 +3161,23 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Spyro",
     element: "magic",
     creature: "dragon",
-    edges: [3, 2, 1, 2],
+    edges: [3, 1, 1, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A purple dragon with fiery breath, charging horns, and a talent for turning trouble into an adventure.",
     origin: "skylanders",
     portrait: "spyro",
     keywords: [
       {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
         type: "head-start",
-        side: 1,
+        side: 0,
+        amount: 1,
       },
     ],
   },
@@ -3178,15 +3186,21 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Stump Smash",
     element: "life",
     creature: "dragon",
-    edges: [1, 3, 3, 1],
+    edges: [1, 2, 2, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An awakened tree stump with wooden hammer fists and a very personal objection to forest destruction.",
     origin: "skylanders",
     portrait: "stump-smash",
     keywords: [
       {
-        type: "comeback",
-        side: 0,
+        type: "resonance",
+        side: 1,
+        element: "life",
+      },
+      {
+        type: "shield",
+        side: 3,
+        amount: 1,
       },
     ],
   },
@@ -3195,16 +3209,21 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Gill Grunt",
     element: "water",
     creature: "dragon",
-    edges: [2, 1, 2, 3],
+    edges: [2, 0, 2, 3],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A harpoon-wielding fish soldier whose water jetpack keeps him moving wherever the battle flows.",
     origin: "skylanders",
     portrait: "gill-grunt",
     keywords: [
       {
-        type: "resonance",
+        type: "shield",
         side: 3,
-        element: "water",
+        amount: 1,
+      },
+      {
+        type: "comeback",
+        side: 1,
+        amount: 1,
       },
     ],
   },
@@ -3213,15 +3232,34 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Double Trouble",
     element: "magic",
     creature: "dragon",
-    edges: [3, 1, 3, 1],
+    edges: [3, 0, 3, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A floating tiki spellcaster whose enchanted staff and tiny doubles make one opponent feel outnumbered.",
     origin: "skylanders",
     portrait: "double-trouble",
     keywords: [
       {
-        type: "comeback",
-        side: 3,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+        keywords: [
+          {
+            type: "shield",
+            side: 0,
+            amount: 1,
+          },
+        ],
       },
     ],
   },
@@ -3232,13 +3270,19 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 3, 1, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A rock-armored dragon who rolls through obstacles and delivers the finishing argument with his tail.",
     origin: "skylanders",
     portrait: "bash",
     keywords: [
       {
         type: "shield",
-        side: 2,
+        side: 1,
+        amount: 2,
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 2,
       },
     ],
   },
@@ -3247,27 +3291,47 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Prism Break",
     element: "earth",
     creature: "dragon",
-    edges: [2, 2, 3, 1],
+    edges: [2, 1, 2, 0],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A crystal golem who splits powerful light beams through the glittering prisms growing from his arms.",
     origin: "skylanders",
     portrait: "prism-break",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "cloudpaws",
     name: "Whirlwind",
     element: "air",
     creature: "dragon",
-    edges: [3, 2, 2, 1],
+    edges: [3, 1, 1, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A dragon-unicorn whose rainbows and storm clouds bring a surprisingly colorful kind of weather.",
     origin: "skylanders",
     portrait: "whirlwind",
     keywords: [
       {
-        type: "comeback",
+        type: "shift",
+        side: 0,
+        direction: 1,
+        affects: "enemies",
+      },
+      {
+        type: "head-start",
         side: 2,
+        amount: 1,
       },
     ],
   },
@@ -3276,16 +3340,25 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Shroomboom",
     element: "life",
     creature: "dragon",
-    edges: [1, 2, 2, 3],
+    edges: [1, 1, 2, 3],
     description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A one-eyed mushroom who launches fellow fungi from a slingshot and refuses to stay in the shade.",
     origin: "skylanders",
     portrait: "shroomboom",
     keywords: [
       {
         type: "resonance",
-        side: 0,
+        side: 3,
         element: "life",
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "elemental",
+          element: "life",
+          side: "all",
+          amount: 1,
+        },
       },
     ],
   },
@@ -3294,15 +3367,29 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Flameslinger",
     element: "fire",
     creature: "dragon",
-    edges: [1, 1, 3, 3],
+    edges: [1, 0, 3, 3],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A blindfolded elf archer whose blazing arrows and incredible speed make every shot feel like a trick shot.",
     origin: "skylanders",
     portrait: "flameslinger",
     keywords: [
       {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "opponent",
+        count: 1,
+      },
+      {
         type: "head-start",
-        side: 0,
+        side: 2,
+        amount: 1,
       },
     ],
   },
@@ -3313,25 +3400,45 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 3, 2, 1],
     description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A brave bird pilot who trades his natural flight for a vacuum blaster and a very dependable jetpack.",
     origin: "skylanders",
     portrait: "jet-vac",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "allies",
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "crosswind",
+        },
+      },
+    ],
   },
   {
     id: "seasprout",
     name: "Zap",
     element: "water",
     creature: "dragon",
-    edges: [3, 1, 1, 3],
+    edges: [2, 0, 0, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An electric sea dragon who lays down water trails and gives pursuers a shocking reason to stay back.",
     origin: "skylanders",
     portrait: "zap",
     keywords: [
       {
-        type: "comeback",
-        side: 1,
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "next-play",
+        side: 2,
+        amount: -1,
+        recipient: "opponent",
       },
     ],
   },
@@ -3340,26 +3447,22 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Stealth Elf",
     element: "life",
     creature: "dragon",
-    edges: [2, 2, 1, 3],
+    edges: [2, 1, 0, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An elusive elven ninja who leaves a decoy behind and lets her blades arrive from somewhere else.",
     origin: "skylanders",
     portrait: "stealth-elf",
     keywords: [
       {
-        type: "combo",
-        pips: [
-          {
-            side: 1,
-            amount: 2,
-          },
-        ],
-        keywords: [
-          {
-            type: "shield",
-            side: 3,
-          },
-        ],
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "shift",
+        side: 2,
+        direction: 3,
+        affects: "enemies",
       },
     ],
   },
@@ -3368,36 +3471,49 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Air Strike",
     element: "air",
     creature: "dragon",
-    edges: [3, 4, 3, 2],
+    edges: [2, 2, 1, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A swift martial artist who fights beside Birdie, turning teamwork into a perfectly timed aerial strike.",
     origin: "skylanders",
     portrait: "air-strike",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 0,
+        direction: 1,
+        affects: "enemies",
+      },
+      {
+        type: "next-play",
+        side: 2,
+        amount: 1,
+        recipient: "self",
+        element: "air",
+      },
+    ],
   },
   {
     id: "skylander-ambush",
     name: "Ambush",
     element: "life",
     creature: "dragon",
-    edges: [5, 2, 2, 3],
+    edges: [3, 1, 1, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A bamboo swordsman who guards the forest with the patience of a tree and the speed of a falling leaf.",
     origin: "skylanders",
     portrait: "ambush",
     keywords: [
       {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
         type: "combo",
         pips: [
           {
-            side: 0,
-            amount: 1,
-          },
-        ],
-        keywords: [
-          {
-            type: "shield",
             side: 2,
+            amount: 1,
           },
         ],
       },
@@ -3408,15 +3524,29 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Astroblast",
     element: "light",
     creature: "dragon",
-    edges: [2, 2, 3, 2],
+    edges: [1, 1, 3, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "A crystal-armored space ranger whose laser rifle and low-gravity leaps bring a cosmic edge to combat.",
     origin: "skylanders",
     portrait: "astroblast",
     keywords: [
       {
-        type: "comeback",
+        type: "next-play",
         side: 2,
+        amount: 1,
+        recipient: "self",
+        keywords: [
+          {
+            type: "shield",
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "shield",
+        side: 2,
+        amount: 1,
       },
     ],
   },
@@ -3425,40 +3555,81 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Aurora",
     element: "light",
     creature: "dragon",
-    edges: [2, 5, 2, 3],
+    edges: [1, 3, 1, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A lightning-fast light warrior whose twin blades turn a brilliant flash into a perfectly timed strike.",
     origin: "skylanders",
     portrait: "aurora",
-    keywords: [],
+    keywords: [
+      {
+        type: "next-play",
+        side: 1,
+        amount: 1,
+        recipient: "self",
+        keywords: [
+          {
+            type: "shield",
+            side: 3,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "shield",
+        side: 1,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-bad-juju",
     name: "Bad Juju",
     element: "air",
     creature: "dragon",
-    edges: [3, 4, 2, 2],
+    edges: [2, 4, 1, 1],
     description:
-      "Imaginators · Villain, Ally, Sensei. Pips adapt the character's strength and fighting style.",
+      "A storm spirit who brings a sharp blade, wild winds, and her devoted little partner Juju Junior.",
     origin: "skylanders",
     portrait: "bad-juju",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "allies",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 3,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-barbella",
     name: "Barbella",
     element: "earth",
     creature: "dragon",
-    edges: [3, 1, 5, 3],
+    edges: [2, 0, 3, 2],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A stone-powered weightlifter whose enormous barbell makes heavy lifting everyone else's problem.",
     origin: "skylanders",
     portrait: "barbella",
     keywords: [
       {
         type: "shield",
         side: 2,
-        amount: 2,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "equalizer",
+        },
       },
     ],
   },
@@ -3469,7 +3640,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Sidekick / Mini. Pips adapt the character's strength and fighting style.",
+      "A little sapling following in Tree Rex's enormous footsteps, one determined stomp at a time.",
     origin: "skylanders",
     portrait: "barkley",
     keywords: [],
@@ -3481,25 +3652,41 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 2, 2, 2],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A bat-summoning vampire who whirls her staff and takes wing when the fight needs a different perspective.",
     origin: "skylanders",
     portrait: "bat-spin",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+      {
+        type: "silence",
+      },
+    ],
   },
   {
     id: "skylander-big-bubble-pop-fizz",
     name: "Big Bubble Pop Fizz",
     element: "magic",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [2, 1, 2, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "An alchemist with an oversized bubble horn, a volatile potion supply, and very little concern for the mess.",
     origin: "skylanders",
     portrait: "big-bubble-pop-fizz",
     keywords: [
       {
-        type: "head-start",
-        side: 0,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "dizzy",
+        sides: [0, 1],
       },
     ],
   },
@@ -3508,39 +3695,82 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Blackout",
     element: "dark",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [0, 2, 2, 1],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A dark dragon who folds the battlefield into shadowy vortices and strikes from the edge of the darkness.",
     origin: "skylanders",
     portrait: "blackout",
-    keywords: [],
+    keywords: [
+      {
+        type: "silence",
+      },
+      {
+        type: "head-start",
+        side: 1,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-blades",
     name: "Blades",
     element: "air",
     creature: "dragon",
-    edges: [2, 2, 1, 3],
+    edges: [2, 1, 1, 3],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An armored dragon whose sweeping wings and sharp sword make even the air around him dangerous.",
     origin: "skylanders",
     portrait: "blades",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 3,
+        direction: 0,
+        affects: "enemies",
+      },
+      {
+        type: "head-start",
+        side: 1,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-blast-zone",
     name: "Blast Zone",
     element: "fire",
     creature: "dragon",
-    edges: [3, 3, 2, 1],
+    edges: [2, 2, 2, 1],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A bomb-throwing knight whose rocket legs keep the explosions moving in exactly the right direction.",
     origin: "skylanders",
     portrait: "blast-zone",
     keywords: [
       {
-        type: "head-start",
-        side: 1,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+        half: "top",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+        half: "bottom",
+      },
+      {
+        type: "scavenge",
+        from: "self",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+        half: "top",
       },
     ],
   },
@@ -3549,26 +3779,53 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Blaster-Tron",
     element: "light",
     creature: "dragon",
-    edges: [4, 2, 4, 2],
+    edges: [2, 1, 3, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A polished battle robot whose energy sword and jet-assisted strikes make precision look effortless.",
     origin: "skylanders",
     portrait: "blaster-tron",
-    keywords: [],
+    keywords: [
+      {
+        type: "next-play",
+        side: 2,
+        amount: 1,
+        recipient: "self",
+        keywords: [
+          {
+            type: "shield",
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "shield",
+        side: 2,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-blastermind",
     name: "Blastermind",
     element: "magic",
     creature: "dragon",
-    edges: [2, 3, 3, 3],
+    edges: [1, 2, 2, 2],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "Crystal-powered mind tricks let this small magician take control of a much bigger situation.",
     origin: "skylanders",
     portrait: "blastermind",
     keywords: [
       {
-        type: "silence",
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "dizzy",
+        sides: [3],
       },
     ],
   },
@@ -3577,15 +3834,17 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Bone Bash Roller Brawl",
     element: "undead",
     creature: "dragon",
-    edges: [3, 2, 3, 1],
+    edges: [2, 1, 3, 1],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "Roller Brawl straps on bone-covered wheels and brings even sharper moves to the derby.",
     origin: "skylanders",
     portrait: "bone-bash-roller-brawl",
     keywords: [
       {
-        type: "head-start",
-        side: 0,
+        type: "next-play",
+        side: "all",
+        amount: -1,
+        recipient: "opponent",
       },
     ],
   },
@@ -3594,15 +3853,25 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Boom Bloom",
     element: "life",
     creature: "dragon",
-    edges: [1, 3, 5, 3],
+    edges: [0, 1, 3, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A plant-powered fighter whose thorny whip and blooming traps make the ground itself an accomplice.",
     origin: "skylanders",
     portrait: "boom-bloom",
     keywords: [
       {
-        type: "head-start",
+        type: "resonance",
         side: 2,
+        element: "life",
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "elemental",
+          element: "life",
+          side: "all",
+          amount: 1,
+        },
       },
     ],
   },
@@ -3611,27 +3880,53 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Boom Jet",
     element: "air",
     creature: "dragon",
-    edges: [2, 2, 2, 3],
+    edges: [0, 2, 1, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A daredevil bomber who rides an airborne board and delivers surprises from directly overhead.",
     origin: "skylanders",
     portrait: "boom-jet",
-    keywords: [],
+    keywords: [
+      {
+        type: "next-play",
+        side: 0,
+        amount: 1,
+        recipient: "self",
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 2,
+        direction: 3,
+        affects: "both",
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-boomer",
     name: "Boomer",
     element: "tech",
     creature: "dragon",
-    edges: [1, 2, 2, 3],
+    edges: [1, 1, 1, 3],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A demolition-loving troll who prefers to solve problems with dynamite and a pair of heavy fists.",
     origin: "skylanders",
     portrait: "boomer",
     keywords: [
       {
-        type: "head-start",
-        side: 3,
+        type: "combo",
+        pips: [
+          {
+            side: 3,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "next-play",
+        side: 1,
+        amount: 1,
+        recipient: "self",
       },
     ],
   },
@@ -3642,7 +3937,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A tiny armored dragon who follows Bash's example: curl up, roll forward, and let the rocks do the talking.",
     origin: "skylanders",
     portrait: "bop",
     keywords: [],
@@ -3654,7 +3949,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 3, 2, 3],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "A towering robot who fires from his fingers, watches with laser eyes, and never lets a good target escape.",
     origin: "skylanders",
     portrait: "bouncer",
     keywords: [
@@ -3672,7 +3967,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A little dragon-unicorn who packs a full rainbow and a stubborn gust into a very small storm.",
     origin: "skylanders",
     portrait: "breeze",
     keywords: [],
@@ -3682,27 +3977,49 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Buckshot",
     element: "magic",
     creature: "dragon",
-    edges: [5, 4, 1, 2],
+    edges: [3, 3, 0, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A faun archer whose magical arrows and portals make a straight shot the least predictable option.",
     origin: "skylanders",
     portrait: "buckshot",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "shift",
+        side: 2,
+        direction: 3,
+        affects: "both",
+      },
+    ],
   },
   {
     id: "skylander-bumble-blast",
     name: "Bumble Blast",
     element: "life",
     creature: "dragon",
-    edges: [3, 1, 2, 3],
+    edges: [2, 1, 2, 3],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A walking beehive who coats foes in honey and lets his buzzing friends finish the introductions.",
     origin: "skylanders",
     portrait: "bumble-blast",
     keywords: [
       {
-        type: "head-start",
+        type: "resonance",
         side: 3,
+        element: "life",
+      },
+      {
+        type: "next-play",
+        side: "all",
+        amount: 1,
+        recipient: "self",
+        element: "life",
       },
     ],
   },
@@ -3711,28 +4028,48 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Bushwhack",
     element: "life",
     creature: "dragon",
-    edges: [5, 5, 1, 1],
+    edges: [3, 3, 0, 0],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A forest guardian with a huge Traptanium axe and an excellent understanding of where to make the cut.",
     origin: "skylanders",
     portrait: "bushwhack",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-camo",
     name: "Camo",
     element: "life",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A leafy dragon whose vines and explosive fruit turn an innocent-looking garden into an ambush.",
     origin: "skylanders",
     portrait: "camo",
     keywords: [
       {
         type: "resonance",
-        side: 1,
+        side: 0,
         element: "life",
+      },
+      {
+        type: "shield",
+        side: 2,
+        amount: 1,
       },
     ],
   },
@@ -3741,16 +4078,27 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Chain Reaction",
     element: "tech",
     creature: "dragon",
-    edges: [5, 1, 4, 2],
+    edges: [3, 0, 3, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A roaring biker who brings twin chainsaw swords and an engine that sounds like trouble arriving.",
     origin: "skylanders",
     portrait: "chain-reaction",
     keywords: [
       {
-        type: "sunder",
-        side: 0,
-        amount: 2,
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-arkeyan-drone",
+        count: 1,
+        recipient: "self",
       },
     ],
   },
@@ -3759,39 +4107,69 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Chill",
     element: "water",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A resolute ice guard whose javelin and frozen walls keep danger at a very chilly distance.",
     origin: "skylanders",
     portrait: "chill",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "mirror-pool",
+        },
+      },
+    ],
   },
   {
     id: "skylander-chompy-mage",
     name: "Chompy Mage",
     element: "life",
     creature: "dragon",
-    edges: [4, 3, 3, 2],
+    edges: [2, 2, 2, 1],
     description:
-      "Imaginators · Doom Raider, Ally, Sensei. Pips adapt the character's strength and fighting style.",
+      "A very enthusiastic friend of Chompies who can summon a crowd or become its biggest member.",
     origin: "skylanders",
     portrait: "chompy-mage",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-chompy-seedling",
+        count: 2,
+        recipient: "self",
+      },
+    ],
   },
   {
     id: "skylander-chop-chop",
     name: "Chop Chop",
     element: "undead",
     creature: "dragon",
-    edges: [2, 1, 2, 3],
+    edges: [2, 0, 1, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An ancient armored skeleton who pairs a trusty sword with the stubborn defense of his shield.",
     origin: "skylanders",
     portrait: "chop-chop",
     keywords: [
       {
         type: "shield",
-        side: 2,
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "sunder",
+        side: 1,
         amount: 1,
       },
     ],
@@ -3801,28 +4179,42 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Chopper",
     element: "tech",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [0, 2, 1, 1],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A little dinosaur who straps on a helicopter pack and answers bigger enemies with rockets from above.",
     origin: "skylanders",
     portrait: "chopper",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-chopscotch",
     name: "Chopscotch",
     element: "undead",
     creature: "dragon",
-    edges: [4, 5, 2, 1],
+    edges: [3, 4, 1, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "An undead girl whose enormous axe turns a game of hopscotch into a battlefield nobody wants to cross.",
     origin: "skylanders",
     portrait: "chopscotch",
     keywords: [
       {
-        type: "sunder",
+        type: "silence",
+      },
+      {
+        type: "next-play",
         side: 1,
-        amount: 2,
+        amount: -1,
+        recipient: "opponent",
       },
     ],
   },
@@ -3831,27 +4223,46 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Cobra Cadabra",
     element: "magic",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A flute-playing cobra who charms serpents from his basket and turns every duel into a magical performance.",
     origin: "skylanders",
     portrait: "cobra-cadabra",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "random",
+        count: 1,
+        recipient: "self",
+        element: "magic",
+      },
+    ],
   },
   {
     id: "skylander-countdown",
     name: "Countdown",
     element: "tech",
     creature: "dragon",
-    edges: [3, 2, 3, 1],
+    edges: [2, 1, 2, 0],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A walking bomb who sends out explosive little friends and refuses to let a missing head slow him down.",
     origin: "skylanders",
     portrait: "countdown",
     keywords: [
       {
-        type: "comeback",
-        side: 0,
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "next-play",
+        side: 2,
+        amount: 1,
+        recipient: "self",
       },
     ],
   },
@@ -3862,10 +4273,23 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 3, 3, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "An orange whirlwind of spinning kicks, bouncing crates, and cheerful disregard for anyone else's plans.",
     origin: "skylanders",
     portrait: "crash-bandicoot",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 1,
+        element: "life",
+      },
+      {
+        type: "next-play",
+        side: "all",
+        amount: 1,
+        recipient: "self",
+        element: "life",
+      },
+    ],
   },
   {
     id: "skylander-crusher",
@@ -3874,7 +4298,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 2, 3, 3],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "A towering stone giant whose enormous hammer can shatter rock or turn an enemy to stone.",
     origin: "skylanders",
     portrait: "crusher",
     keywords: [
@@ -3890,27 +4314,44 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Cynder",
     element: "undead",
     creature: "dragon",
-    edges: [3, 1, 2, 2],
+    edges: [3, 0, 1, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A spectral dragon who slips through danger as a shadow and answers with a crackling breath of lightning.",
     origin: "skylanders",
     portrait: "cynder",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+      {
+        type: "silence",
+      },
+    ],
   },
   {
     id: "skylander-deep-dive-gill-grunt",
     name: "Deep Dive Gill Grunt",
     element: "water",
     creature: "dragon",
-    edges: [2, 2, 3, 2],
+    edges: [0, 2, 2, 1],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "Gill Grunt dives deeper with a powerful trident and enough water pressure to move the fight his way.",
     origin: "skylanders",
     portrait: "deep-dive-gill-grunt",
     keywords: [
       {
-        type: "comeback",
-        side: 2,
+        type: "shield",
+        side: 1,
+        amount: 1,
+      },
+      {
+        type: "next-play",
+        side: 3,
+        amount: 1,
+        recipient: "self",
+        element: "water",
       },
     ],
   },
@@ -3919,26 +4360,43 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Dino-Rang",
     element: "earth",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 2, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A stone-scaled dinosaur whose returning boomerangs make cover feel temporary.",
     origin: "skylanders",
     portrait: "dino-rang",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "equalizer",
+        },
+      },
+    ],
   },
   {
     id: "skylander-dive-clops",
     name: "Dive-Clops",
     element: "water",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [2, 2, 2, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "An armored underwater cyclops who answers approaching trouble with torpedoes and depth charges.",
     origin: "skylanders",
     portrait: "dive-clops",
     keywords: [
       {
         type: "shield",
+        side: 0,
+        amount: 2,
+      },
+      {
+        type: "comeback",
         side: 2,
         amount: 1,
       },
@@ -3949,51 +4407,106 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Doom Stone",
     element: "earth",
     creature: "dragon",
-    edges: [2, 3, 2, 2],
+    edges: [0, 3, 1, 1],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A stone-armored SWAP Force guardian who turns a swirling shield into a crushing counterattack.",
     origin: "skylanders",
     portrait: "doom-stone",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 2,
+        half: "top",
+      },
+      {
+        type: "sunder",
+        side: 1,
+        amount: 1,
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-double-dare-trigger-happy",
     name: "Double Dare Trigger Happy",
     element: "tech",
     creature: "dragon",
-    edges: [2, 2, 2, 3],
+    edges: [1, 2, 2, 3],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "Trigger Happy turns his golden firepower into a daredevil act with a cannon and a spectacular finish.",
     origin: "skylanders",
     portrait: "double-dare-trigger-happy",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 3,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "shield",
+        side: 1,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-dr-krankcase",
     name: "Dr. Krankcase",
     element: "tech",
     creature: "dragon",
-    edges: [3, 3, 3, 3],
+    edges: [2, 1, 1, 2],
     description:
-      "Imaginators · Doom Raider / Ally / Sensei. Pips adapt the character's strength and fighting style.",
+      "A mad inventor whose mechanical legs and goo-powered weapons make every duel another experiment.",
     origin: "skylanders",
     portrait: "dr-krankcase",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-arkeyan-drone",
+        count: 1,
+        recipient: "self",
+      },
+    ],
   },
   {
     id: "skylander-dr-neo-cortex",
     name: "Dr. Neo Cortex",
     element: "tech",
     creature: "dragon",
-    edges: [4, 3, 2, 3],
+    edges: [2, 2, 1, 2],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A scheming scientist who brings a ray gun, a hoverboard, and very little patience for his opponents.",
     origin: "skylanders",
     portrait: "dr-neo-cortex",
     keywords: [
       {
-        type: "comeback",
-        side: 0,
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
       },
     ],
   },
@@ -4002,36 +4515,19 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Drill Sergeant",
     element: "tech",
     creature: "dragon",
-    edges: [3, 2, 2, 1],
+    edges: [3, 1, 2, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An ancient Arkeyan machine who bores through obstacles with powered drills and rocket-assisted determination.",
     origin: "skylanders",
     portrait: "drill-sergeant",
-    keywords: [],
-  },
-  {
-    id: "skylander-drobit",
-    name: "Drobit",
-    element: "tech",
-    creature: "dragon",
-    edges: [1, 1, 1, 1],
-    description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "drobit",
-    keywords: [],
-  },
-  {
-    id: "skylander-drobot",
-    name: "Drobot",
-    element: "tech",
-    creature: "dragon",
-    edges: [1, 2, 3, 1],
-    description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "drobot",
     keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-arkeyan-drone",
+        count: 1,
+        recipient: "self",
+      },
       {
         type: "combo",
         pips: [
@@ -4044,16 +4540,71 @@ export const CHARACTER_STONES: Stone[] = [
     ],
   },
   {
+    id: "skylander-drobit",
+    name: "Drobit",
+    element: "tech",
+    creature: "dragon",
+    edges: [1, 1, 1, 1],
+    description:
+      "A tiny armored dragon who takes to the air with Drobot's mechanical wings and a bright burst of laser fire.",
+    origin: "skylanders",
+    portrait: "drobit",
+    keywords: [],
+  },
+  {
+    id: "skylander-drobot",
+    name: "Drobot",
+    element: "tech",
+    creature: "dragon",
+    edges: [1, 2, 2, 1],
+    description:
+      "A dragon in a mechanical suit whose laser eyes, spinning gears, and powered wings keep every angle covered.",
+    origin: "skylanders",
+    portrait: "drobot",
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-arkeyan-drone",
+        count: 1,
+        recipient: "self",
+      },
+    ],
+  },
+  {
     id: "skylander-dune-bug",
     name: "Dune Bug",
     element: "magic",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [0, 2, 2, 1],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A scarab sorcerer who rolls trouble into a magic ball and carries it away on shimmering wings.",
     origin: "skylanders",
     portrait: "dune-bug",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "mirror-pool",
+        },
+      },
+    ],
   },
   {
     id: "skylander-deja-vu",
@@ -4062,12 +4613,20 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 3, 2, 1],
     description:
-      "Trap Team · Core Slylander. Pips adapt the character's strength and fighting style.",
+      "A time-traveling sorceress who sends echoes of herself into danger and lets history repeat in her favor.",
     origin: "skylanders",
     portrait: "deja-vu",
     keywords: [
       {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
         type: "dizzy",
+        sides: [3],
       },
     ],
   },
@@ -4076,36 +4635,80 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Echo",
     element: "water",
     creature: "dragon",
-    edges: [3, 2, 2, 1],
+    edges: [3, 1, 1, 0],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A musical sea dragon whose powerful voice sends sound waves rolling through anyone in her way.",
     origin: "skylanders",
     portrait: "echo",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-ember",
     name: "Ember",
     element: "fire",
     creature: "dragon",
-    edges: [5, 3, 1, 3],
+    edges: [3, 1, 0, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A fiery swordswoman whose twin blades and blazing discipline make every strike burn bright.",
     origin: "skylanders",
     portrait: "ember",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "parting-gift",
+        target: "hand",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-enigma",
     name: "Enigma",
     element: "magic",
     creature: "dragon",
-    edges: [4, 2, 2, 3],
+    edges: [2, 0, 1, 2],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A mysterious cloaked guardian whose staff and vanishing tricks keep his next move hidden.",
     origin: "skylanders",
     portrait: "enigma",
     keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-shadow-decoy",
+        count: 1,
+        recipient: "self",
+      },
       {
         type: "silence",
       },
@@ -4116,12 +4719,40 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Eruptor",
     element: "fire",
     creature: "dragon",
-    edges: [3, 1, 3, 1],
+    edges: [3, 0, 2, 0],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A walking volcano with a molten temper and a habit of letting the lava do the talking.",
     origin: "skylanders",
     portrait: "eruptor",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "discard-priority",
+        priority: 3,
+      },
+      {
+        type: "parting-gift",
+        target: "allies",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-eye-brawl",
@@ -4130,7 +4761,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 4, 2, 2],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "A headless giant and a flying eyeball who divide the work between heavy punches and a very intense stare.",
     origin: "skylanders",
     portrait: "eye-brawl",
     keywords: [
@@ -4148,7 +4779,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A little floating eye and its tiny armored partner, keeping a very close watch on the next opening.",
     origin: "skylanders",
     portrait: "eye-small",
     keywords: [],
@@ -4158,27 +4789,57 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Fiesta",
     element: "undead",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [2, 2, 2, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "A skeletal mariachi who brings a trumpet, a loyal band, and a celebration loud enough to wake the dead.",
     origin: "skylanders",
     portrait: "fiesta",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-shadow-decoy",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "sunder",
+        side: 0,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-fire-kraken",
     name: "Fire Kraken",
     element: "fire",
     creature: "dragon",
-    edges: [2, 3, 2, 2],
+    edges: [1, 2, 2, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A fireworks-loving dragon who brings a spinning staff and a spectacularly explosive celebration.",
     origin: "skylanders",
     portrait: "fire-kraken",
     keywords: [
       {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+        half: "top",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+        half: "bottom",
+      },
+      {
         type: "head-start",
         side: 1,
+        amount: 1,
+        half: "bottom",
       },
     ],
   },
@@ -4187,39 +4848,71 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Fist Bump",
     element: "earth",
     creature: "dragon",
-    edges: [2, 2, 3, 1],
+    edges: [2, 1, 3, 1],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A rocky panda whose punches send earthquakes rumbling beneath an opponent's feet.",
     origin: "skylanders",
     portrait: "fist-bump",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 2,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-flare-wolf",
     name: "Flare Wolf",
     element: "fire",
     creature: "dragon",
-    edges: [2, 5, 2, 3],
+    edges: [1, 3, 1, 2],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A rocket-wielding wolf who lights the fuse, takes aim, and lets the fireworks finish the conversation.",
     origin: "skylanders",
     portrait: "flare-wolf",
-    keywords: [],
+    keywords: [
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "opponent",
+        count: 1,
+      },
+      {
+        type: "head-start",
+        side: 1,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-flashwing",
     name: "Flashwing",
     element: "earth",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 2, 2],
     description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A dazzling crystal dragon who sheds razor-sharp gems and leaves a glittering trail through battle.",
     origin: "skylanders",
     portrait: "flashwing",
     keywords: [
       {
-        type: "head-start",
-        side: 2,
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "equalizer",
+        },
       },
     ],
   },
@@ -4228,45 +4921,79 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Fling Kong",
     element: "air",
     creature: "dragon",
-    edges: [2, 5, 1, 3],
+    edges: [1, 3, 0, 2],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A flying-carpet rider who fans out spinning discs and turns monkeying around into an aerial art.",
     origin: "skylanders",
     portrait: "fling-kong",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "allies",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 3,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-flip-wreck",
     name: "Flip Wreck",
     element: "water",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A dolphin swordsman who fights with shipwreck salvage and keeps a trusty wheel close at hand.",
     origin: "skylanders",
     portrait: "flip-wreck",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "mirror-pool",
+        },
+      },
+    ],
   },
   {
     id: "skylander-food-fight",
     name: "Food Fight",
     element: "life",
     creature: "dragon",
-    edges: [2, 3, 2, 1],
+    edges: [1, 2, 1, 0],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An artichoke marksman who brings a tomato launcher to battle and never wastes a good food fight.",
     origin: "skylanders",
     portrait: "food-fight",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 1,
+        element: "life",
+      },
+    ],
   },
   {
     id: "skylander-free-ranger",
     name: "Free Ranger",
     element: "air",
     creature: "dragon",
-    edges: [2, 3, 2, 2],
+    edges: [1, 3, 2, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A storm-chasing bird who spins his bladed fans into a lightning-filled whirlwind.",
     origin: "skylanders",
     portrait: "free-ranger",
     keywords: [
@@ -4274,10 +5001,18 @@ export const CHARACTER_STONES: Stone[] = [
         type: "combo",
         pips: [
           {
-            side: 1,
+            side: 0,
             amount: 1,
           },
         ],
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "both",
+        half: "bottom",
       },
     ],
   },
@@ -4286,27 +5021,45 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Freeze Blade",
     element: "water",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A catlike ice skater whose sharp disc and sharper turns leave opponents slipping behind.",
     origin: "skylanders",
     portrait: "freeze-blade",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "enemies",
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-fright-rider",
     name: "Fright Rider",
     element: "undead",
     creature: "dragon",
-    edges: [1, 2, 2, 3],
+    edges: [0, 2, 1, 2],
     description:
-      "Giants · Core Skylanders. Pips adapt the character's strength and fighting style.",
+      "An elven lancer and his skeletal ostrich who charge together and never leave their partner behind.",
     origin: "skylanders",
     portrait: "fright-rider",
     keywords: [
       {
-        type: "head-start",
-        side: 3,
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+      {
+        type: "silence",
       },
     ],
   },
@@ -4317,25 +5070,51 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 2, 3, 1],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A hot-tempered rhino whose punches get bigger and whose motorcycle gets faster as the heat builds.",
     origin: "skylanders",
     portrait: "fryno",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "parting-gift",
+        target: "hand",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-funny-bone",
     name: "Funny Bone",
     element: "undead",
     creature: "dragon",
-    edges: [2, 5, 3, 0],
+    edges: [1, 3, 1, 0],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A cheerful skeleton dog who digs up bones, chases trouble, and always has room for one more game.",
     origin: "skylanders",
     portrait: "funny-bone",
     keywords: [
       {
-        type: "comeback",
-        side: 1,
+        type: "next-play",
+        side: "all",
+        amount: -1,
+        recipient: "opponent",
       },
     ],
   },
@@ -4344,12 +5123,27 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Gearshift",
     element: "tech",
     creature: "dragon",
-    edges: [2, 5, 2, 2],
+    edges: [1, 4, 1, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A robot warrior who turns a giant gear into a spinning blade and makes every part of the machine count.",
     origin: "skylanders",
     portrait: "gearshift",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-ghost-roaster",
@@ -4358,10 +5152,24 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 2, 2, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A hungry spectral menace whose rattling chain and enormous jaws make ghosts wish they could hide.",
     origin: "skylanders",
     portrait: "ghost-roaster",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: 0,
+        amount: 2,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "blight",
+          side: 2,
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-gill-runt",
@@ -4370,7 +5178,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 0, 1, 1],
     description:
-      "Trap Team · Sidekick / Mini. Pips adapt the character's strength and fighting style.",
+      "A little harpoon soldier who brings Gill Grunt's courage in a much smaller, splashier package.",
     origin: "skylanders",
     portrait: "gill-runt",
     keywords: [],
@@ -4380,75 +5188,169 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Golden Queen",
     element: "earth",
     creature: "dragon",
-    edges: [1, 3, 3, 5],
+    edges: [0, 3, 2, 4],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A gilded sorceress who turns foes and furnishings into gold, then commands her treasures to fight.",
     origin: "skylanders",
     portrait: "golden-queen",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 3,
+        amount: 2,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+      {
+        type: "next-play",
+        side: 1,
+        amount: 1,
+        recipient: "self",
+        changeElement: "earth",
+      },
+    ],
   },
   {
     id: "skylander-grave-clobber",
     name: "Grave Clobber",
     element: "water",
     creature: "dragon",
-    edges: [4, 1, 5, 2],
+    edges: [2, 0, 2, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "An ancient mummy with enormous fists who rises from the earth to make a crushing comeback.",
     origin: "skylanders",
     portrait: "grave-clobber",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-grilla-drilla",
     name: "Grilla Drilla",
     element: "life",
     creature: "dragon",
-    edges: [2, 2, 2, 3],
+    edges: [1, 1, 1, 3],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A drilling gorilla who digs into the action with mechanical arms and a troop of helpful monkeys.",
     origin: "skylanders",
     portrait: "grilla-drilla",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-chompy-seedling",
+        count: 1,
+        recipient: "self",
+        half: "top",
+      },
+      {
+        type: "resonance",
+        side: 1,
+        element: "life",
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-grim-creeper",
     name: "Grim Creeper",
     element: "undead",
     creature: "dragon",
-    edges: [3, 3, 2, 1],
+    edges: [2, 2, 1, 1],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A spectral reaper who leaves his armor behind and lets his scythe sweep through the unsuspecting.",
     origin: "skylanders",
     portrait: "grim-creeper",
-    keywords: [],
+    keywords: [
+      {
+        type: "silence",
+      },
+      {
+        type: "next-play",
+        side: 0,
+        amount: -1,
+        recipient: "opponent",
+      },
+    ],
   },
   {
     id: "skylander-gusto",
     name: "Gusto",
     element: "air",
     creature: "dragon",
-    edges: [3, 2, 3, 4],
+    edges: [2, 1, 2, 3],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A big-hearted wind warrior whose mighty boomerang and powerful breath send trouble flying.",
     origin: "skylanders",
     portrait: "gusto",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 3,
+        direction: 0,
+        affects: "allies",
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "crosswind",
+        },
+      },
+    ],
   },
   {
     id: "skylander-hammer-slam-bowser",
     name: "Hammer Slam Bowser",
     element: "fire",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [3, 0, 1, 1],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "The Koopa king brings a huge hammer, fire breath, and the threat of an even bigger transformation.",
     origin: "skylanders",
     portrait: "hammer-slam-bowser",
     keywords: [
       {
-        type: "comeback",
-        side: 0,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "discard-priority",
+        priority: 3,
+      },
+      {
+        type: "parting-gift",
+        target: "allies",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
       },
     ],
   },
@@ -4457,16 +5359,23 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Head Rush",
     element: "earth",
     creature: "dragon",
-    edges: [2, 4, 2, 3],
+    edges: [0, 2, 1, 2],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A powerful horned warrior whose charge and booming yodel leave very little room for resistance.",
     origin: "skylanders",
     portrait: "head-rush",
     keywords: [
       {
         type: "shield",
-        side: 2,
-        amount: 2,
+        side: 1,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
       },
     ],
   },
@@ -4477,10 +5386,15 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 1, 2, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A dark elven sorceress who raises walls of bone and sends ghostly orbs floating after her enemies.",
     origin: "skylanders",
     portrait: "hex",
     keywords: [
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
       {
         type: "silence",
       },
@@ -4491,15 +5405,25 @@ export const CHARACTER_STONES: Stone[] = [
     name: "High Five",
     element: "life",
     creature: "dragon",
-    edges: [3, 1, 2, 2],
+    edges: [3, 0, 1, 1],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A young dragonfly who darts through danger, leaving poisonous clouds for anyone trying to follow.",
     origin: "skylanders",
     portrait: "high-five",
     keywords: [
       {
-        type: "head-start",
+        type: "resonance",
         side: 0,
+        element: "life",
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "elemental",
+          element: "life",
+          side: "all",
+          amount: 1,
+        },
       },
     ],
   },
@@ -4508,12 +5432,28 @@ export const CHARACTER_STONES: Stone[] = [
     name: "High Volt",
     element: "tech",
     creature: "dragon",
-    edges: [2, 3, 2, 2],
+    edges: [1, 3, 2, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "An electrical defender whose shock lance and sturdy shield make crossing his line a dangerous idea.",
     origin: "skylanders",
     portrait: "high-volt",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "next-play",
+        side: 3,
+        amount: 1,
+        recipient: "self",
+      },
+    ],
   },
   {
     id: "skylander-hijinx",
@@ -4522,7 +5462,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A miniature sorceress who follows Hex's example, proving that a small spell can still raise big trouble.",
     origin: "skylanders",
     portrait: "hijinx",
     keywords: [],
@@ -4532,39 +5472,84 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Hood Sickle",
     element: "dark",
     creature: "dragon",
-    edges: [5, 2, 4, 1],
+    edges: [4, 1, 3, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A silent reaper who steps through shadow portals and lets his great scythe speak for him.",
     origin: "skylanders",
     portrait: "hood-sickle",
-    keywords: [],
+    keywords: [
+      {
+        type: "silence",
+      },
+      {
+        type: "shift",
+        side: 0,
+        direction: 1,
+        affects: "enemies",
+      },
+    ],
   },
   {
     id: "skylander-hoot-loop",
     name: "Hoot Loop",
     element: "magic",
     creature: "dragon",
-    edges: [2, 2, 2, 3],
+    edges: [0, 2, 1, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A hypnotic owl whose top half casts spells while his bottom half hops through magical portals.",
     origin: "skylanders",
     portrait: "hoot-loop",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 2,
+        direction: 3,
+        affects: "allies",
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-hot-dog",
     name: "Hot Dog",
     element: "fire",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [2, 2, 2, 2],
     description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A flame-tailed dog who bounds into battle with burning bones and a bark that comes with extra heat.",
     origin: "skylanders",
     portrait: "hot-dog",
     keywords: [
       {
-        type: "head-start",
-        side: 0,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "scavenge",
+        from: "self",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
       },
     ],
   },
@@ -4575,7 +5560,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 2, 3, 3],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "A giant of molten rock who breathes burning oil and can turn himself into a roaring fire motorcycle.",
     origin: "skylanders",
     portrait: "hot-head",
     keywords: [
@@ -4591,15 +5576,24 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Hurricane Jet-Vac",
     element: "air",
     creature: "dragon",
-    edges: [2, 2, 3, 2],
+    edges: [1, 1, 2, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "Jet-Vac turns up the pressure, drawing enemies close before blasting them into a very different forecast.",
     origin: "skylanders",
     portrait: "hurricane-jet-vac",
     keywords: [
       {
-        type: "head-start",
+        type: "shift",
         side: 2,
+        direction: 3,
+        affects: "enemies",
+      },
+      {
+        type: "next-play",
+        side: 0,
+        amount: 1,
+        recipient: "self",
+        element: "air",
       },
     ],
   },
@@ -4608,16 +5602,34 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Ignitor",
     element: "fire",
     creature: "dragon",
-    edges: [1, 3, 2, 2],
+    edges: [1, 2, 1, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A knight bound to living flame who sends his fiery spirit out of its armor to scorch the battlefield.",
     origin: "skylanders",
     portrait: "ignitor",
     keywords: [
       {
-        type: "sunder",
-        side: 1,
-        amount: 1,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "scavenge",
+        from: "self",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
       },
     ],
   },
@@ -4626,16 +5638,25 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Jawbreaker",
     element: "tech",
     creature: "dragon",
-    edges: [3, 3, 2, 3],
+    edges: [2, 3, 1, 2],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A boxing robot whose Traptanium fists turn a steady rhythm of punches into an electrifying finish.",
     origin: "skylanders",
     portrait: "jawbreaker",
     keywords: [
       {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+      {
         type: "shield",
-        side: 2,
-        amount: 2,
+        side: 3,
+        amount: 1,
       },
     ],
   },
@@ -4644,16 +5665,38 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Ka-Boom",
     element: "fire",
     creature: "dragon",
-    edges: [4, 2, 3, 2],
+    edges: [3, 2, 2, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A cannon-carrying demolitions expert who launches explosive power straight through stubborn defenses.",
     origin: "skylanders",
     portrait: "ka-boom",
     keywords: [
       {
-        type: "sunder",
-        side: 0,
-        amount: 2,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "discard-priority",
+        priority: 3,
+      },
+      {
+        type: "parting-gift",
+        target: "allies",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
       },
     ],
   },
@@ -4662,30 +5705,26 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Kaos",
     element: "neutral",
     creature: "dragon",
-    edges: [5, 3, 4, 0],
+    edges: [4, 3, 3, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A would-be ruler of Skylands whose grand plans, summoned minions, and magnificent tantrums rarely stay small.",
     origin: "skylanders",
     portrait: "kaos",
     keywords: [
       {
-        type: "sunder",
-        side: "any",
-        amount: 2,
+        type: "dizzy",
+        sides: [0, 1, 2, 3],
       },
       {
-        type: "combo",
-        pips: [
-          {
-            side: 0,
-            amount: 2,
-          },
-        ],
-        keywords: [
-          {
-            type: "silence",
-          },
-        ],
+        type: "conjure",
+        mode: "random",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
       },
     ],
   },
@@ -4694,16 +5733,22 @@ export const CHARACTER_STONES: Stone[] = [
     name: "King Pen",
     element: "water",
     creature: "dragon",
-    edges: [5, 2, 4, 1],
+    edges: [2, 1, 2, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A penguin master whose icy gauntlets turn disciplined martial arts into a freezing counterattack.",
     origin: "skylanders",
     portrait: "king-pen",
     keywords: [
       {
         type: "shield",
-        side: 2,
-        amount: 2,
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "mirror-pool",
+        },
       },
     ],
   },
@@ -4712,40 +5757,67 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Knight Light",
     element: "light",
     creature: "dragon",
-    edges: [2, 4, 2, 3],
+    edges: [1, 2, 1, 2],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A winged knight who carries a radiant Traptanium blade into the darkest corners of Skylands.",
     origin: "skylanders",
     portrait: "knight-light",
-    keywords: [],
+    keywords: [
+      {
+        type: "next-play",
+        side: "all",
+        amount: 1,
+        recipient: "self",
+      },
+      {
+        type: "silence",
+      },
+    ],
   },
   {
     id: "skylander-knight-mare",
     name: "Knight Mare",
     element: "dark",
     creature: "dragon",
-    edges: [3, 3, 2, 3],
+    edges: [2, 2, 0, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A centaur knight whose enormous Traptanium blade cuts a clear path through the darkness.",
     origin: "skylanders",
     portrait: "knight-mare",
-    keywords: [],
+    keywords: [
+      {
+        type: "silence",
+      },
+      {
+        type: "head-start",
+        side: 0,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-krypt-king",
     name: "Krypt King",
     element: "undead",
     creature: "dragon",
-    edges: [5, 2, 4, 1],
+    edges: [3, 1, 2, 0],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "An armored undead knight whose great Traptanium sword and ghostly swarm make ancient power feel very present.",
     origin: "skylanders",
     portrait: "krypt-king",
     keywords: [
       {
-        type: "shield",
-        side: 2,
+        type: "sunder",
+        side: 0,
         amount: 2,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "blight",
+          side: 2,
+          amount: 1,
+        },
       },
     ],
   },
@@ -4754,15 +5826,34 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Lava Lance Eruptor",
     element: "fire",
     creature: "dragon",
-    edges: [3, 2, 3, 1],
+    edges: [2, 2, 3, 1],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "Eruptor arms his volcanic temper with a blazing lance and charges into a whole new kind of eruption.",
     origin: "skylanders",
     portrait: "lava-lance-eruptor",
     keywords: [
       {
-        type: "head-start",
-        side: 2,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "scavenge",
+        from: "self",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
       },
     ],
   },
@@ -4771,46 +5862,18 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Lightning Rod",
     element: "air",
     creature: "dragon",
-    edges: [2, 2, 1, 2],
+    edges: [2, 2, 0, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A swaggering storm giant who rides a cloud and throws lightning as if the sky belongs to him.",
     origin: "skylanders",
     portrait: "lightning-rod",
     keywords: [
       {
-        type: "comeback",
+        type: "shift",
         side: 0,
+        direction: 1,
+        affects: "allies",
       },
-    ],
-  },
-  {
-    id: "skylander-lob-star",
-    name: "Lob-Star",
-    element: "water",
-    creature: "dragon",
-    edges: [3, 2, 3, 3],
-    description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "lob-star",
-    keywords: [
-      {
-        type: "head-start",
-        side: 0,
-      },
-    ],
-  },
-  {
-    id: "skylander-magna-charge",
-    name: "Magna Charge",
-    element: "tech",
-    creature: "dragon",
-    edges: [2, 2, 3, 2],
-    description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "magna-charge",
-    keywords: [
       {
         type: "combo",
         pips: [
@@ -4823,13 +5886,68 @@ export const CHARACTER_STONES: Stone[] = [
     ],
   },
   {
+    id: "skylander-lob-star",
+    name: "Lob-Star",
+    element: "water",
+    creature: "dragon",
+    edges: [2, 1, 1, 2],
+    description:
+      "A lobster ninja who hurls throwing stars and builds up enough steam to really lose his cool.",
+    origin: "skylanders",
+    portrait: "lob-star",
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "next-play",
+        side: 2,
+        amount: 1,
+        recipient: "self",
+        element: "water",
+      },
+    ],
+  },
+  {
+    id: "skylander-magna-charge",
+    name: "Magna Charge",
+    element: "tech",
+    creature: "dragon",
+    edges: [0, 2, 2, 1],
+    description:
+      "A magnetic robot who rides a powered wheel, lifts his targets, and lets his cannon handle the follow-through.",
+    origin: "skylanders",
+    portrait: "magna-charge",
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "enemies",
+        half: "bottom",
+      },
+    ],
+  },
+  {
     id: "skylander-mini-jini",
     name: "Mini-Jini",
     element: "magic",
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Sidekick, Mini. Pips adapt the character's strength and fighting style.",
+      "A tiny genie with twin blades and a bottle big enough to hide a surprising amount of magic.",
     origin: "skylanders",
     portrait: "mini-jini",
     keywords: [],
@@ -4839,15 +5957,22 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Mysticat",
     element: "magic",
     creature: "dragon",
-    edges: [2, 4, 2, 3],
+    edges: [1, 2, 1, 2],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A feline illusionist who distracts foes with magical doubles before pouncing on the real opening.",
     origin: "skylanders",
     portrait: "mysticat",
     keywords: [
       {
-        type: "comeback",
-        side: 1,
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "dizzy",
+        sides: [3],
       },
     ],
   },
@@ -4856,20 +5981,23 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Night Shift",
     element: "undead",
     creature: "dragon",
-    edges: [2, 2, 2, 3],
+    edges: [0, 2, 1, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A vampire boxer who teleports between punches and always seems ready for one more round.",
     origin: "skylanders",
     portrait: "night-shift",
     keywords: [
       {
-        type: "combo",
-        pips: [
-          {
-            side: 3,
-            amount: 1,
-          },
-        ],
+        type: "comeback",
+        side: 0,
+        amount: 1,
+        half: "top",
+      },
+      {
+        type: "sunder",
+        side: 1,
+        amount: 1,
+        half: "bottom",
       },
     ],
   },
@@ -4878,12 +6006,22 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Nightfall",
     element: "dark",
     creature: "dragon",
-    edges: [2, 3, 2, 2],
+    edges: [0, 3, 1, 1],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "A deep-sea raider whose hooks and clouds of black mist keep her enemies guessing where she will strike.",
     origin: "skylanders",
     portrait: "nightfall",
-    keywords: [],
+    keywords: [
+      {
+        type: "silence",
+      },
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "enemies",
+      },
+    ],
   },
   {
     id: "skylander-ninjini",
@@ -4892,7 +6030,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 2, 2, 4],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "An ancient genie warrior who pairs enormous twin blades with the clever escape of a magic bottle.",
     origin: "skylanders",
     portrait: "ninjini",
     keywords: [
@@ -4908,12 +6046,20 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Pain-Yatta",
     element: "magic",
     creature: "dragon",
-    edges: [3, 2, 2, 5],
+    edges: [1, 1, 1, 3],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A living piñata with a giant candy club and a spectacularly poor tolerance for being hit.",
     origin: "skylanders",
     portrait: "pain-yatta",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "random",
+        count: 1,
+        recipient: "self",
+        element: "magic",
+      },
+    ],
   },
   {
     id: "skylander-pet-vac",
@@ -4922,7 +6068,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A miniature bird hero with a little vacuum blaster and a surprisingly powerful set of lungs.",
     origin: "skylanders",
     portrait: "pet-vac",
     keywords: [],
@@ -4932,26 +6078,43 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Pit Boss",
     element: "undead",
     creature: "dragon",
-    edges: [3, 3, 3, 3],
+    edges: [0, 2, 2, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A serpent sorcerer whose staff commands ghostly snakes and opens dangerous pits beneath his enemies.",
     origin: "skylanders",
     portrait: "pit-boss",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+      {
+        type: "silence",
+      },
+    ],
   },
   {
     id: "skylander-pop-fizz",
     name: "Pop Fizz",
     element: "magic",
     creature: "dragon",
-    edges: [2, 1, 2, 3],
+    edges: [2, 0, 2, 3],
     description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "One potion makes him fizz. Another brings out the beast. He rarely waits to read the label.",
     origin: "skylanders",
     portrait: "pop-fizz",
     keywords: [
       {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
         type: "dizzy",
+        sides: [0, 1],
       },
     ],
   },
@@ -4960,39 +6123,68 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Pop Thorn",
     element: "air",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [0, 2, 1, 1],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A little flying creature who puffs into a bristling ball when being adorable stops working.",
     origin: "skylanders",
     portrait: "pop-thorn",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 1,
+        amount: 1,
+      },
+      {
+        type: "shift",
+        side: 3,
+        direction: 0,
+        affects: "allies",
+      },
+    ],
   },
   {
     id: "skylander-punk-shock",
     name: "Punk Shock",
     element: "water",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 2, 2],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An electric eel archer who drenches her targets before sending a charge straight through the water.",
     origin: "skylanders",
     portrait: "punk-shock",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 2,
+      },
+      {
+        type: "comeback",
+        side: 2,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-rattle-shake",
     name: "Rattle Shake",
     element: "undead",
     creature: "dragon",
-    edges: [2, 3, 2, 2],
+    edges: [0, 3, 1, 1],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "An undead snake gunslinger who calls ghostly helpers and keeps his pistols pointed toward the next ambush.",
     origin: "skylanders",
     portrait: "rattle-shake",
     keywords: [
       {
-        type: "comeback",
-        side: 1,
+        type: "silence",
+        half: "top",
+      },
+      {
+        type: "sunder",
+        side: 2,
+        amount: 1,
+        half: "bottom",
       },
     ],
   },
@@ -5001,21 +6193,34 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Rip Tide",
     element: "water",
     creature: "dragon",
-    edges: [4, 2, 2, 1],
+    edges: [3, 2, 2, 1],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A fish fighter who uses the catch of the day as a sword and a hammerhead as a very convincing hammer.",
     origin: "skylanders",
     portrait: "rip-tide",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-ro-bow",
     name: "Ro-Bow",
     element: "tech",
     creature: "dragon",
-    edges: [4, 2, 2, 4],
+    edges: [3, 2, 1, 3],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A robotic archer whose precise shots and rolling laser attacks make nowhere feel safely out of range.",
     origin: "skylanders",
     portrait: "ro-bow",
     keywords: [
@@ -5031,8 +6236,14 @@ export const CHARACTER_STONES: Stone[] = [
           {
             type: "shield",
             side: 2,
+            amount: 1,
           },
         ],
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 2,
       },
     ],
   },
@@ -5041,63 +6252,118 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Rocky Roll",
     element: "earth",
     creature: "dragon",
-    edges: [2, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Trap Team · Core Skylanders. Pips adapt the character's strength and fighting style.",
+      "Rocky rides his round companion Roll into battle, proving that a good friendship can move mountains.",
     origin: "skylanders",
     portrait: "rocky-roll",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "equalizer",
+        },
+      },
+    ],
   },
   {
     id: "skylander-roller-brawl",
     name: "Roller Brawl",
     element: "undead",
     creature: "dragon",
-    edges: [3, 2, 1, 2],
+    edges: [3, 1, 0, 1],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A vampire derby champion whose claws and skating speed turn a close pass into a vicious strike.",
     origin: "skylanders",
     portrait: "roller-brawl",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: 0,
+        amount: 2,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "blight",
+          side: 2,
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-rubble-rouser",
     name: "Rubble Rouser",
     element: "earth",
     creature: "dragon",
-    edges: [2, 2, 2, 3],
+    edges: [1, 1, 2, 3],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A burrowing miner who breaks the surface with a drill hammer and a crew of underground helpers.",
     origin: "skylanders",
     portrait: "rubble-rouser",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 2,
+        direction: 3,
+        affects: "allies",
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-scorp",
     name: "Scorp",
     element: "earth",
     creature: "dragon",
-    edges: [3, 2, 2, 1],
+    edges: [2, 1, 1, 0],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A crystal-tailed scorpion who marks his quarry with venom and keeps the dangerous end pointed forward.",
     origin: "skylanders",
     portrait: "scorp",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: 0,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-scratch",
     name: "Scratch",
     element: "air",
     creature: "dragon",
-    edges: [3, 1, 2, 2],
+    edges: [3, 0, 1, 2],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A winged feline whose sharp claws and love of shiny gems make every treasure hunt a flying pounce.",
     origin: "skylanders",
     portrait: "scratch",
     keywords: [
       {
-        type: "head-start",
+        type: "shift",
         side: 0,
+        direction: 1,
+        affects: "enemies",
+      },
+      {
+        type: "next-play",
+        side: 2,
+        amount: 1,
+        recipient: "self",
+        element: "air",
       },
     ],
   },
@@ -5106,27 +6372,44 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Shark Shooter Terrafin",
     element: "earth",
     creature: "dragon",
-    edges: [3, 1, 2, 3],
+    edges: [2, 0, 1, 3],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "Terrafin brings a missile launcher to the surface while keeping his underground escape route open.",
     origin: "skylanders",
     portrait: "shark-shooter-terrafin",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 3,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "equalizer",
+        },
+      },
+    ],
   },
   {
     id: "skylander-short-cut",
     name: "Short Cut",
     element: "undead",
     creature: "dragon",
-    edges: [3, 3, 3, 2],
+    edges: [2, 2, 1, 0],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "An undead tailor whose giant scissors and animated helpers make short work of anything in their path.",
     origin: "skylanders",
     portrait: "short-cut",
     keywords: [
       {
-        type: "comeback",
-        side: 2,
+        type: "silence",
+      },
+      {
+        type: "next-play",
+        side: 0,
+        amount: -1,
+        recipient: "opponent",
       },
     ],
   },
@@ -5135,12 +6418,24 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Slam Bam",
     element: "water",
     creature: "dragon",
-    edges: [3, 2, 2, 1],
+    edges: [3, 1, 1, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A four-armed yeti who builds icy defenses and settles disagreements with an avalanche of punches.",
     origin: "skylanders",
     portrait: "slam-bam",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "mirror-pool",
+        },
+      },
+    ],
   },
   {
     id: "skylander-slobber-tooth",
@@ -5149,14 +6444,19 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 2, 2, 2],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A hungry, armored beast who solves smaller problems by swallowing them and larger ones by charging.",
     origin: "skylanders",
     portrait: "slobber-tooth",
     keywords: [
       {
         type: "shield",
-        side: 2,
-        amount: 1,
+        side: 0,
+        amount: 2,
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 2,
       },
     ],
   },
@@ -5167,7 +6467,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A pint-sized rhino with Fryno's fiery temper and a determination to keep the heat turned up.",
     origin: "skylanders",
     portrait: "small-fry",
     keywords: [],
@@ -5177,15 +6477,23 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Smash Hit",
     element: "earth",
     creature: "dragon",
-    edges: [3, 3, 1, 2],
+    edges: [2, 3, 1, 2],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "A fearless wrecking-ball fighter who swings a boulder hard enough to make the scenery reconsider its position.",
     origin: "skylanders",
     portrait: "smash-hit",
     keywords: [
       {
-        type: "head-start",
+        type: "shield",
         side: 1,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
       },
     ],
   },
@@ -5194,27 +6502,59 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Smolderdash",
     element: "fire",
     creature: "dragon",
-    edges: [4, 2, 1, 2],
+    edges: [3, 1, 0, 2],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A graceful fire acrobat who whirls a blazing staff and draws power from a brilliant eclipse.",
     origin: "skylanders",
     portrait: "smolderdash",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "parting-gift",
+        target: "hand",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-snap-shot",
     name: "Snap Shot",
     element: "water",
     creature: "dragon",
-    edges: [2, 4, 3, 2],
+    edges: [0, 2, 2, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A crocodilian ranger whose Traptanium bow brings large targets to a very abrupt stop.",
     origin: "skylanders",
     portrait: "snap-shot",
     keywords: [
       {
-        type: "comeback",
+        type: "shield",
         side: 1,
+        amount: 1,
+      },
+      {
+        type: "next-play",
+        side: 3,
+        amount: 1,
+        recipient: "self",
+        element: "water",
       },
     ],
   },
@@ -5223,162 +6563,18 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Sonic Boom",
     element: "air",
     creature: "dragon",
-    edges: [1, 2, 2, 2],
+    edges: [1, 2, 1, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A protective griffin mother whose sonic cries and determined hatchlings keep the whole flock fighting.",
     origin: "skylanders",
     portrait: "sonic-boom",
-    keywords: [],
-  },
-  {
-    id: "skylander-spitfire",
-    name: "Spitfire",
-    element: "fire",
-    creature: "dragon",
-    edges: [3, 5, 3, 1],
-    description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "spitfire",
     keywords: [
       {
-        type: "combo",
-        pips: [
-          {
-            side: 1,
-            amount: 1,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "skylander-splat",
-    name: "Splat",
-    element: "magic",
-    creature: "dragon",
-    edges: [2, 2, 2, 3],
-    description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "splat",
-    keywords: [
-      {
-        type: "comeback",
-        side: 3,
-      },
-    ],
-  },
-  {
-    id: "skylander-spotlight",
-    name: "Spotlight",
-    element: "light",
-    creature: "dragon",
-    edges: [2, 2, 2, 2],
-    description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "spotlight",
-    keywords: [
-      {
-        type: "head-start",
+        type: "shift",
         side: 1,
+        direction: 2,
+        affects: "allies",
       },
-    ],
-  },
-  {
-    id: "skylander-sprocket",
-    name: "Sprocket",
-    element: "tech",
-    creature: "dragon",
-    edges: [3, 2, 2, 1],
-    description:
-      "Giants · Core Skylander. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "sprocket",
-    keywords: [],
-  },
-  {
-    id: "skylander-spry",
-    name: "Spry",
-    element: "magic",
-    creature: "dragon",
-    edges: [1, 1, 1, 1],
-    description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "spry",
-    keywords: [],
-  },
-  {
-    id: "skylander-spy-rise",
-    name: "Spy Rise",
-    element: "tech",
-    creature: "dragon",
-    edges: [3, 2, 2, 2],
-    description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "spy-rise",
-    keywords: [],
-  },
-  {
-    id: "skylander-star-strike",
-    name: "Star Strike",
-    element: "magic",
-    creature: "dragon",
-    edges: [2, 1, 3, 2],
-    description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "star-strike",
-    keywords: [],
-  },
-  {
-    id: "skylander-starcast",
-    name: "Starcast",
-    element: "dark",
-    creature: "dragon",
-    edges: [5, 4, 1, 2],
-    description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "starcast",
-    keywords: [
-      {
-        type: "head-start",
-        side: 0,
-      },
-    ],
-  },
-  {
-    id: "skylander-stink-bomb",
-    name: "Stink Bomb",
-    element: "life",
-    creature: "dragon",
-    edges: [2, 2, 2, 3],
-    description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "stink-bomb",
-    keywords: [
-      {
-        type: "comeback",
-        side: 3,
-      },
-    ],
-  },
-  {
-    id: "skylander-stormblade",
-    name: "Stormblade",
-    element: "air",
-    creature: "dragon",
-    edges: [1, 3, 2, 3],
-    description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "stormblade",
-    keywords: [
       {
         type: "combo",
         pips: [
@@ -5391,30 +6587,36 @@ export const CHARACTER_STONES: Stone[] = [
     ],
   },
   {
-    id: "skylander-sunburn",
-    name: "Sunburn",
+    id: "skylander-spitfire",
+    name: "Spitfire",
     element: "fire",
     creature: "dragon",
-    edges: [2, 1, 2, 3],
+    edges: [2, 4, 2, 0],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A living streak of flame whose speed and twisting firestorms leave a blazing trail through the race.",
     origin: "skylanders",
-    portrait: "sunburn",
-    keywords: [],
-  },
-  {
-    id: "skylander-super-shot-stealth-elf",
-    name: "Super Shot Stealth Elf",
-    element: "life",
-    creature: "dragon",
-    edges: [3, 2, 2, 0],
-    description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
-    origin: "skylanders",
-    portrait: "super-shot-stealth-elf",
+    portrait: "spitfire",
     keywords: [
       {
-        type: "combo",
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "discard-priority",
+        priority: 3,
+      },
+      {
+        type: "parting-gift",
+        target: "allies",
         pips: [
           {
             side: 0,
@@ -5425,13 +6627,281 @@ export const CHARACTER_STONES: Stone[] = [
     ],
   },
   {
+    id: "skylander-splat",
+    name: "Splat",
+    element: "magic",
+    creature: "dragon",
+    edges: [1, 2, 2, 3],
+    description:
+      "A magical artist who paints creatures into battle and treats the whole arena as her next canvas.",
+    origin: "skylanders",
+    portrait: "splat",
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "dizzy",
+        sides: [1],
+      },
+    ],
+  },
+  {
+    id: "skylander-spotlight",
+    name: "Spotlight",
+    element: "light",
+    creature: "dragon",
+    edges: [2, 2, 2, 2],
+    description:
+      "A luminous dragon whose brilliant beams and floating halos leave the shadows nowhere to hide.",
+    origin: "skylanders",
+    portrait: "spotlight",
+    keywords: [
+      {
+        type: "next-play",
+        side: "all",
+        amount: 1,
+        recipient: "self",
+        changeElement: "light",
+      },
+      {
+        type: "shield",
+        side: 2,
+        amount: 1,
+      },
+    ],
+  },
+  {
+    id: "skylander-sprocket",
+    name: "Sprocket",
+    element: "tech",
+    creature: "dragon",
+    edges: [3, 1, 2, 1],
+    description:
+      "A resourceful engineer who builds turrets, plants mines, and turns a wrench into a convincing last resort.",
+    origin: "skylanders",
+    portrait: "sprocket",
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-arkeyan-drone",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "skylander-spry",
+    name: "Spry",
+    element: "magic",
+    creature: "dragon",
+    edges: [1, 1, 1, 1],
+    description:
+      "A pocket-sized purple dragon with a full-sized appetite for charging headfirst into adventure.",
+    origin: "skylanders",
+    portrait: "spry",
+    keywords: [],
+  },
+  {
+    id: "skylander-spy-rise",
+    name: "Spy Rise",
+    element: "tech",
+    creature: "dragon",
+    edges: [2, 1, 1, 2],
+    description:
+      "A spider-legged secret agent who climbs out of reach and collects information before choosing where to strike.",
+    origin: "skylanders",
+    portrait: "spy-rise",
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+        half: "top",
+      },
+      {
+        type: "sunder",
+        side: 2,
+        amount: 1,
+        half: "bottom",
+      },
+    ],
+  },
+  {
+    id: "skylander-star-strike",
+    name: "Star Strike",
+    element: "magic",
+    creature: "dragon",
+    edges: [2, 0, 3, 2],
+    description:
+      "A celestial spellcaster who keeps a powerful star in motion and sends enemy shots back where they came from.",
+    origin: "skylanders",
+    portrait: "star-strike",
+    keywords: [
+      {
+        type: "conjure",
+        mode: "random",
+        count: 1,
+        recipient: "self",
+        element: "magic",
+      },
+    ],
+  },
+  {
+    id: "skylander-starcast",
+    name: "Starcast",
+    element: "dark",
+    creature: "dragon",
+    edges: [3, 3, 0, 1],
+    description:
+      "A four-armed celestial ninja who sends spinning stars through the shadows with uncanny precision.",
+    origin: "skylanders",
+    portrait: "starcast",
+    keywords: [
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "war-banner",
+          amount: 1,
+        },
+      },
+    ],
+  },
+  {
+    id: "skylander-stink-bomb",
+    name: "Stink Bomb",
+    element: "life",
+    creature: "dragon",
+    edges: [1, 1, 1, 3],
+    description:
+      "A skunk ninja who uses smoke, stealth, and an unforgettable smell to make every escape an ambush.",
+    origin: "skylanders",
+    portrait: "stink-bomb",
+    keywords: [
+      {
+        type: "silence",
+        half: "top",
+      },
+      {
+        type: "resonance",
+        side: 2,
+        element: "life",
+        half: "bottom",
+      },
+    ],
+  },
+  {
+    id: "skylander-stormblade",
+    name: "Stormblade",
+    element: "air",
+    creature: "dragon",
+    edges: [0, 2, 1, 2],
+    description:
+      "A quick-winged warrior who sends feather-shaped blades slicing through the air around her.",
+    origin: "skylanders",
+    portrait: "stormblade",
+    keywords: [
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "enemies",
+      },
+      {
+        type: "head-start",
+        side: 3,
+        amount: 1,
+      },
+    ],
+  },
+  {
+    id: "skylander-sunburn",
+    name: "Sunburn",
+    element: "fire",
+    creature: "dragon",
+    edges: [2, 0, 1, 2],
+    description:
+      "A dragon-phoenix who vanishes in flame and reappears wherever his next burst of fire is needed.",
+    origin: "skylanders",
+    portrait: "sunburn",
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "next-play",
+        side: 0,
+        amount: 1,
+        recipient: "self",
+        element: "fire",
+      },
+    ],
+  },
+  {
+    id: "skylander-super-shot-stealth-elf",
+    name: "Super Shot Stealth Elf",
+    element: "life",
+    creature: "dragon",
+    edges: [3, 2, 1, 0],
+    description:
+      "Stealth Elf trades quiet blades for a spinning weapon, then uses camouflage to keep the surprise.",
+    origin: "skylanders",
+    portrait: "super-shot-stealth-elf",
+    keywords: [
+      {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "shift",
+        side: 2,
+        direction: 3,
+        affects: "enemies",
+      },
+    ],
+  },
+  {
     id: "skylander-swarm",
     name: "Swarm",
     element: "air",
     creature: "dragon",
     edges: [2, 3, 3, 3],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "An enormous insect warrior who can become a cloud of smaller stinging attackers in the blink of an eye.",
     origin: "skylanders",
     portrait: "swarm",
     keywords: [
@@ -5447,15 +6917,22 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Tae Kwon Crow",
     element: "fire",
     creature: "dragon",
-    edges: [2, 3, 2, 0],
+    edges: [2, 3, 1, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A fiery raven martial artist whose kicks and throwing stars make his dojo a very hot place to train.",
     origin: "skylanders",
     portrait: "tae-kwon-crow",
     keywords: [
       {
+        type: "discard",
+        mode: "random",
+        recipient: "opponent",
+        count: 1,
+      },
+      {
         type: "head-start",
         side: 1,
+        amount: 1,
       },
     ],
   },
@@ -5466,7 +6943,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [0, 1, 1, 2],
     description:
-      "Trap Team · Sidekick / Mini. Pips adapt the character's strength and fighting style.",
+      "A little land shark who dives beneath the dirt and pops up wherever the next punch is needed.",
     origin: "skylanders",
     portrait: "terrabite",
     keywords: [],
@@ -5476,16 +6953,21 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Terrafin",
     element: "earth",
     creature: "dragon",
-    edges: [2, 1, 3, 2],
+    edges: [2, 0, 3, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A bare-knuckled land shark who tunnels beneath his rivals and surfaces with a knockout punch.",
     origin: "skylanders",
     portrait: "terrafin",
     keywords: [
       {
-        type: "sunder",
+        type: "shield",
         side: 2,
-        amount: 1,
+        amount: 2,
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 2,
       },
     ],
   },
@@ -5494,15 +6976,21 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Thrillipede",
     element: "life",
     creature: "dragon",
-    edges: [2, 1, 3, 3],
+    edges: [1, 1, 3, 3],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "A four-armed insect ace whose acrobatics and grenades make landing the least interesting part of a flight.",
     origin: "skylanders",
     portrait: "thrillipede",
     keywords: [
       {
-        type: "head-start",
-        side: 3,
+        type: "resonance",
+        side: 2,
+        element: "life",
+      },
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
       },
     ],
   },
@@ -5513,7 +7001,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 3, 3, 3],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "A gigantic whale warrior who swings an anchor and makes every belly flop feel like a tidal wave.",
     origin: "skylanders",
     portrait: "thumpback",
     keywords: [
@@ -5531,7 +7019,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A miniature whale with a trusty anchor and absolutely no intention of making a small splash.",
     origin: "skylanders",
     portrait: "thumpling",
     keywords: [],
@@ -5541,38 +7029,48 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Thunderbolt",
     element: "air",
     creature: "dragon",
-    edges: [4, 2, 3, 2],
+    edges: [3, 1, 2, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A storm warrior whose great sword gathers lightning and sends thunder rolling across the battlefield.",
     origin: "skylanders",
     portrait: "thunderbolt",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 0,
+        direction: 1,
+        affects: "enemies",
+      },
+      {
+        type: "next-play",
+        side: 2,
+        amount: 1,
+        recipient: "self",
+        element: "air",
+      },
+    ],
   },
   {
     id: "skylander-tidepool",
     name: "Tidepool",
     element: "water",
     creature: "dragon",
-    edges: [2, 5, 2, 3],
+    edges: [1, 4, 1, 2],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A many-armed gunslinger whose squid pistols make graceful footwork and rapid fire look effortless.",
     origin: "skylanders",
     portrait: "tidepool",
     keywords: [
       {
-        type: "combo",
-        pips: [
-          {
-            side: 1,
-            amount: 1,
-          },
-        ],
-        keywords: [
-          {
-            type: "shield",
-            side: 3,
-          },
-        ],
+        type: "shield",
+        side: 1,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "mirror-pool",
+        },
       },
     ],
   },
@@ -5581,36 +7079,93 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Trail Blazer",
     element: "fire",
     creature: "dragon",
-    edges: [3, 4, 3, 1],
+    edges: [2, 2, 1, 0],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A blazing unicorn who charges through obstacles and leaves a trail of fire beneath his hooves.",
     origin: "skylanders",
     portrait: "trail-blazer",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-fire-spark",
+        count: 2,
+        recipient: "self",
+      },
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "self",
+        count: 1,
+      },
+      {
+        type: "parting-gift",
+        target: "hand",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-trap-shadow",
     name: "Trap Shadow",
     element: "magic",
     creature: "dragon",
-    edges: [2, 3, 3, 1],
+    edges: [1, 2, 2, 1],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "A shadowy feline hunter who sets the trap, disappears, and lets the quarry discover the rest.",
     origin: "skylanders",
     portrait: "trap-shadow",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-shadow-decoy",
+        count: 1,
+        recipient: "self",
+        half: "top",
+      },
+      {
+        type: "shift",
+        side: 1,
+        direction: 2,
+        affects: "enemies",
+        half: "bottom",
+      },
+    ],
   },
   {
     id: "skylander-tread-head",
     name: "Tread Head",
     element: "tech",
     creature: "dragon",
-    edges: [2, 1, 2, 3],
+    edges: [2, 0, 1, 2],
     description:
-      "Trap Team · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A daredevil driver who rolls into danger on a powerful tracked machine and accelerates through the hard part.",
     origin: "skylanders",
     portrait: "tread-head",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 0,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-arkeyan-drone",
+        count: 1,
+        recipient: "self",
+      },
+    ],
   },
   {
     id: "skylander-tree-rex",
@@ -5619,7 +7174,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [3, 4, 2, 2],
     description:
-      "Giants · Giant. Pips adapt the character's strength and fighting style.",
+      "An ancient tree giant with a thunderous stomp and a powerful cannon hidden in his mighty arm.",
     origin: "skylanders",
     portrait: "tree-rex",
     keywords: [
@@ -5635,21 +7190,34 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Tri-Tip",
     element: "earth",
     creature: "dragon",
-    edges: [4, 1, 5, 2],
+    edges: [3, 0, 3, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A triceratops warrior whose massive mace sends waves of ancient bone surging from the ground.",
     origin: "skylanders",
     portrait: "tri-tip",
-    keywords: [],
+    keywords: [
+      {
+        type: "shield",
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "bastion",
+          amount: 1,
+        },
+      },
+    ],
   },
   {
     id: "skylander-trigger-happy",
     name: "Trigger Happy",
     element: "tech",
     creature: "dragon",
-    edges: [2, 2, 1, 3],
+    edges: [2, 1, 0, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A gleeful gunslinger who spends golden firepower as freely as he laughs at the chaos it causes.",
     origin: "skylanders",
     portrait: "trigger-happy",
     keywords: [
@@ -5657,10 +7225,15 @@ export const CHARACTER_STONES: Stone[] = [
         type: "combo",
         pips: [
           {
-            side: 3,
+            side: 0,
             amount: 1,
           },
         ],
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
       },
     ],
   },
@@ -5671,7 +7244,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A tiny golden gunslinger with Trigger Happy's enormous grin and an equally enthusiastic trigger finger.",
     origin: "skylanders",
     portrait: "trigger-snappy",
     keywords: [],
@@ -5681,52 +7254,97 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Tuff Luck",
     element: "life",
     creature: "dragon",
-    edges: [3, 3, 2, 3],
+    edges: [2, 2, 0, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A lucky feline warrior whose twin blades make sure fortune favors more than just the bold.",
     origin: "skylanders",
     portrait: "tuff-luck",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "comeback",
+        side: 2,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-turbo-charge-donkey-kong",
     name: "Turbo Charge Donkey Kong",
     element: "life",
     creature: "dragon",
-    edges: [2, 2, 3, 0],
+    edges: [2, 2, 2, 0],
     description:
-      "SuperChargers · SuperCharger. Pips adapt the character's strength and fighting style.",
+      "A barrel-launching powerhouse who brings jungle strength and thunderous bongo beats to the race.",
     origin: "skylanders",
     portrait: "turbo-charge-donkey-kong",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 2,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-voodood",
     name: "Voodood",
     element: "magic",
     creature: "dragon",
-    edges: [3, 2, 1, 1],
+    edges: [3, 2, 0, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An orc shaman whose axe and enchanted zipline pull him straight into the heart of the fight.",
     origin: "skylanders",
     portrait: "voodood",
-    keywords: [],
+    keywords: [
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-wallop",
     name: "Wallop",
     element: "earth",
     creature: "dragon",
-    edges: [3, 3, 3, 2],
+    edges: [2, 2, 2, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A heavily armored fighter who carries two Traptanium hammers because one good wallop deserves another.",
     origin: "skylanders",
     portrait: "wallop",
     keywords: [
       {
         type: "shield",
-        side: 2,
-        amount: 2,
+        side: 0,
+        amount: 1,
+      },
+      {
+        type: "environment",
+        environment: {
+          kind: "equalizer",
+        },
       },
     ],
   },
@@ -5735,21 +7353,37 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Warnado",
     element: "air",
     creature: "dragon",
-    edges: [2, 2, 1, 3],
+    edges: [2, 1, 0, 3],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A spiked turtle who spins himself into a tornado and lets the wind handle the introductions.",
     origin: "skylanders",
     portrait: "warnado",
-    keywords: [],
+    keywords: [
+      {
+        type: "shift",
+        side: 3,
+        direction: 0,
+        affects: "allies",
+      },
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "skylander-wash-buckler",
     name: "Wash Buckler",
     element: "water",
     creature: "dragon",
-    edges: [3, 2, 2, 2],
+    edges: [2, 1, 1, 2],
     description:
-      "Swap Force · SWAP Force. Pips adapt the character's strength and fighting style.",
+      "An octopus pirate who pairs a cutlass and bubble blaster with eight very useful sea legs.",
     origin: "skylanders",
     portrait: "wash-buckler",
     keywords: [
@@ -5761,6 +7395,13 @@ export const CHARACTER_STONES: Stone[] = [
             amount: 1,
           },
         ],
+        half: "top",
+      },
+      {
+        type: "shield",
+        side: 1,
+        amount: 2,
+        half: "bottom",
       },
     ],
   },
@@ -5771,7 +7412,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 1, 1, 1],
     description:
-      "Trap Team · Mini. Pips adapt the character's strength and fighting style.",
+      "A tiny lava creature with Eruptor's molten heart and more than enough heat to make a mess.",
     origin: "skylanders",
     portrait: "weeruptor",
     keywords: [],
@@ -5781,15 +7422,21 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Wham-Shell",
     element: "water",
     creature: "dragon",
-    edges: [3, 0, 4, 3],
+    edges: [2, 0, 4, 2],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "An armored crab who swings a mighty mace and sends electric pulses through the ground beneath his foes.",
     origin: "skylanders",
     portrait: "wham-shell",
     keywords: [
       {
-        type: "comeback",
+        type: "shield",
         side: 2,
+        amount: 2,
+      },
+      {
+        type: "comeback",
+        side: 0,
+        amount: 1,
       },
     ],
   },
@@ -5800,7 +7447,7 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [0, 3, 0, 1],
     description:
-      "Trap Team · Sidekick / Mini. Pips adapt the character's strength and fighting style.",
+      "A small, silent ninja whose quick blades prove that being overlooked can be a useful advantage.",
     origin: "skylanders",
     portrait: "whisper-elf",
     keywords: [],
@@ -5810,15 +7457,22 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Wild Storm",
     element: "air",
     creature: "dragon",
-    edges: [3, 4, 4, 1],
+    edges: [2, 3, 3, 1],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A fierce swordsman whose control of lightning gives way to an even more ferocious storm-beast form.",
     origin: "skylanders",
     portrait: "wild-storm",
     keywords: [
       {
-        type: "comeback",
+        type: "shift",
         side: 1,
+        direction: 2,
+        affects: "enemies",
+      },
+      {
+        type: "head-start",
+        side: 3,
+        amount: 1,
       },
     ],
   },
@@ -5827,12 +7481,18 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Wildfire",
     element: "fire",
     creature: "dragon",
-    edges: [3, 2, 5, 2],
+    edges: [1, 1, 3, 1],
     description:
-      "Trap Team · Trap Master. Pips adapt the character's strength and fighting style.",
+      "A golden lion warrior who catches attacks on his blazing Traptanium shield and answers with a fiery roar.",
     origin: "skylanders",
     portrait: "wildfire",
     keywords: [
+      {
+        type: "discard",
+        mode: "random",
+        recipient: "opponent",
+        count: 1,
+      },
       {
         type: "shield",
         side: 2,
@@ -5847,36 +7507,68 @@ export const CHARACTER_STONES: Stone[] = [
     creature: "dragon",
     edges: [2, 3, 1, 2],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A clockwork fighter who winds himself tight, then lets loose with spinning gears and spring-loaded punches.",
     origin: "skylanders",
     portrait: "wind-up",
-    keywords: [],
+    keywords: [
+      {
+        type: "combo",
+        pips: [
+          {
+            side: 1,
+            amount: 1,
+          },
+        ],
+      },
+      {
+        type: "shield",
+        side: 3,
+        amount: 1,
+      },
+    ],
   },
   {
     id: "skylander-wolfgang",
     name: "Wolfgang",
     element: "undead",
     creature: "dragon",
-    edges: [3, 5, 3, 1],
+    edges: [2, 3, 2, 0],
     description:
-      "Imaginators · Sensei. Pips adapt the character's strength and fighting style.",
+      "A werewolf musician who turns his bone harp and thunderous howls into a very unfriendly concert.",
     origin: "skylanders",
     portrait: "wolfgang",
-    keywords: [],
+    keywords: [
+      {
+        type: "sunder",
+        side: "any",
+        amount: 1,
+      },
+      {
+        type: "silence",
+      },
+    ],
   },
   {
     id: "skylander-wrecking-ball",
     name: "Wrecking Ball",
     element: "magic",
     creature: "dragon",
-    edges: [1, 1, 3, 2],
+    edges: [0, 1, 2, 1],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A hungry little creature whose tongue and rolling body make a remarkably effective wrecking crew.",
     origin: "skylanders",
     portrait: "wrecking-ball",
     keywords: [
       {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-magic-echo",
+        count: 1,
+        recipient: "self",
+      },
+      {
         type: "dizzy",
+        sides: [2],
       },
     ],
   },
@@ -5885,15 +7577,23 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Zoo Lou",
     element: "life",
     creature: "dragon",
-    edges: [3, 2, 1, 2],
+    edges: [3, 1, 1, 2],
     description:
-      "Swap Force · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A spirit-calling shaman who sends a hawk, a wolf, and a charging boar to speak on his behalf.",
     origin: "skylanders",
     portrait: "zoo-lou",
     keywords: [
       {
-        type: "head-start",
+        type: "resonance",
         side: 0,
+        element: "life",
+      },
+      {
+        type: "conjure",
+        mode: "token",
+        token: "custom-token-chompy-seedling",
+        count: 1,
+        recipient: "self",
       },
     ],
   },
@@ -5902,12 +7602,25 @@ export const CHARACTER_STONES: Stone[] = [
     name: "Zook",
     element: "life",
     creature: "dragon",
-    edges: [2, 3, 2, 1],
+    edges: [2, 2, 1, 0],
     description:
-      "Spyro's Adventure · Core Skylander. Pips adapt the character's strength and fighting style.",
+      "A bamboo bazooka expert who can raise a protective grove almost as quickly as he fires a rocket.",
     origin: "skylanders",
     portrait: "zook",
-    keywords: [],
+    keywords: [
+      {
+        type: "resonance",
+        side: 0,
+        element: "life",
+      },
+      {
+        type: "next-play",
+        side: "all",
+        amount: 1,
+        recipient: "self",
+        element: "life",
+      },
+    ],
   },
 ];
 export const ENEMY_STONES: Stone[] = [
@@ -5918,7 +7631,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 0, 0, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A disciplined Drow spearman who keeps his lance ready for anyone who steps too close.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-drow-lance-master",
@@ -5930,7 +7643,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 2, 0, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A scrappy cyclops whose bright mohawk and heavy swings make subtlety somebody else's job.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-mohawk-cyclops",
@@ -5942,7 +7655,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [0, 0, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A heavily armed Drow who believes a large mace is the best argument in any disagreement.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-mace-major",
@@ -5954,7 +7667,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 0, 2, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A watchful Drow bowman who prefers to keep his enemies on the far side of a flying arrow.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-drow-archer",
@@ -5966,7 +7679,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [0, 2, 0, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A trigger-happy troll who trusts a noisy blaster to settle the fight before anyone gets close.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-blaster-troll",
@@ -5978,7 +7691,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [1, 0, 1, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A mechanical Chompy whose metal teeth make up for a noticeable lack of plant-like charm.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-chompy-bot",
@@ -5990,7 +7703,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [2, 2, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An oversized Chompy machine built to deliver far more metal mayhem than its little cousins.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-chompy-bot-9000",
@@ -6002,7 +7715,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [3, 2, 0, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An ancient Arkeyan lancer who meets approaching foes with a spear and a relentless mechanical charge.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-arkeyan-jouster",
@@ -6014,7 +7727,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [0, 2, 3, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A stubborn defender who hides behind an enormous shield and waits for his enemy to make a mistake.",
     origin: "giants",
     keywords: [
       {
@@ -6035,7 +7748,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [2, 0, 2, 3],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A mechanical bruiser whose industrial tools are every bit as effective at breaking things as building them.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-d-riveter",
@@ -6047,7 +7760,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 3, 2, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A brawling troll who lets his enormous fists do all the explaining.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-jawbreaker",
@@ -6059,7 +7772,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "slime",
     edges: [2, 0, 0, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A fiery little biter who proves that a Chompy can be both small and uncomfortably hot-headed.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-enfuego-chompy",
@@ -6071,7 +7784,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "slime",
     edges: [0, 0, 2, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An icy Chompy whose chilly bite makes even the smallest ambush worth watching.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-frigid-chompy",
@@ -6083,7 +7796,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "spider",
     edges: [0, 2, 0, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A skittering brood of small spiders who make up for their size by arriving together.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-spiderlings",
@@ -6095,7 +7808,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "slime",
     edges: [0, 0, 0, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A tiny plant monster with an oversized mouth and a fearless devotion to biting the nearest hero.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-chompy",
@@ -6107,7 +7820,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [3, 3, 3, 3],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An ancient axe-bearing machine whose heavy chopping blows make short work of an unwary challenger.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-axecutioner",
@@ -6119,7 +7832,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [4, 0, 0, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An Arkeyan sword fighter built to keep an opponent busy with one blade while the other finds an opening.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-arkeyan-duelist",
@@ -6131,7 +7844,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [0, 4, 0, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A demolition-happy troublemaker whose bag always seems to contain one more explosive surprise.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-bag-o-boom",
@@ -6143,7 +7856,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [0, 0, 4, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A sinister commander who favors dark corners and the moment an opponent stops watching them.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-shadow-duke",
@@ -6155,7 +7868,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [0, 0, 0, 4],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A patient Arkeyan marksman whose precise fire makes an exposed position a very bad place to stand.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-arkeyan-sniper",
@@ -6167,7 +7880,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [4, 4, 4, 4],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A colossal Arkeyan war machine built to make its arrival feel less like a duel and more like a siege.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-conquertron",
@@ -6179,7 +7892,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [2, 3, 1, 0],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An ancient mechanical bombardier who lobs explosive trouble into anything standing in its way.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-arkeyan-bomber",
@@ -6191,7 +7904,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 2, 0, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A hulking bowler who sends great rolling rocks down the lane and expects every opponent to be a pin.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-boulder-bowler",
@@ -6203,7 +7916,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 1, 2, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An explosive little menace who considers the blast radius an important part of his personal space.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-boom-fiend",
@@ -6215,7 +7928,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "slime",
     edges: [1, 1, 3, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A hungry Chompy in protective armor, determined to get one more bite before the fight is over.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-armored-chompy",
@@ -6227,7 +7940,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [2, 1, 0, 3],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A Life spellcaster whose green magic makes nearby allies much harder to overlook.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-life-spell-punk",
@@ -6239,7 +7952,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [0, 3, 2, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A battlefield commander who issues his strongest orders one flying grenade at a time.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-grenade-general",
@@ -6251,7 +7964,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "serpent",
     edges: [2, 1, 2, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A quick-moving plant creature whose reaching roots turn a forest path into a sudden obstacle.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-root-runner",
@@ -6263,7 +7976,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [1, 2, 1, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A roaming Trog who brings a rough weapon and a very direct approach to unwanted visitors.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-trog-wanderer",
@@ -6275,7 +7988,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 3, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A small dragon whose wings and fiery breath make size a poor measure of the trouble it can cause.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-dragonet",
@@ -6287,7 +8000,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "golem",
     edges: [2, 2, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A hulking crystal creature whose glittering shell hides a thoroughly unyielding attitude.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-crystal-golem",
@@ -6299,7 +8012,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [3, 1, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A dangerous brewer whose fiery mixtures tend to make a dramatic impression on the first sip.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-blazer-brewer",
@@ -6311,7 +8024,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [1, 3, 3, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A drooling, sharp-toothed brute whose enthusiasm for a fight is matched only by his appetite.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-slobbering-mutticus",
@@ -6323,7 +8036,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [2, 3, 2, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An ancient machine that crackles with power before sending a dangerous charge toward its target.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-arkeyan-crackler",
@@ -6335,7 +8048,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [0, 1, 3, 3],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A heavy Arkeyan guardian whose massive shield turns a direct assault into a very long afternoon.",
     origin: "giants",
     keywords: [
       {
@@ -6357,7 +8070,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "fox",
     edges: [4, 1, 0, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "An enormous Drow fighter who makes the rest of the war band look almost reasonable.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-goliath-drow",
@@ -6369,7 +8082,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "spider",
     edges: [0, 1, 4, 1],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A huge spider whose long legs and reaching webs make the whole battlefield feel like its hunting ground.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-gargantula",
@@ -6381,7 +8094,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "dragon",
     edges: [1, 2, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A commanding Trog who leads from the front and expects the rest of the band to follow his example.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-trogmander",
@@ -6393,7 +8106,7 @@ export const ENEMY_STONES: Stone[] = [
     creature: "robot",
     edges: [2, 2, 2, 2],
     description:
-      "A Skylanders Giants enemy. A single balanced edition replaces its numbered Skystone ranks.",
+      "A formidable Arkeyan construct whose ancient weapons still have plenty of power left in them.",
     origin: "giants",
     keywords: [],
     portrait: "enemy-arkeyan-ultron",
@@ -6452,6 +8165,19 @@ export function characterIdentity(stone: Stone): string {
     stone.name.trim().toLowerCase().replace(/\s+/g, " ")
   );
 }
+export function refreshCharacterFlavor(stone: Stone): Stone {
+  if (
+    !/Pips adapt the character|A single balanced edition replaces|^A Skylanders stone found during the adventure\.$|^A contender from the shared draft table\.$/.test(
+      stone.description,
+    )
+  )
+    return stone;
+  const cards = [...CHARACTER_STONES, ...ENEMY_STONES];
+  const source =
+    cards.find((card) => card.portrait === stone.portrait) ||
+    cards.find((card) => card.portrait === stone.characterKey);
+  return source ? { ...stone, description: source.description } : stone;
+}
 // Adventure difficulty selects stronger characters, rather than rerolling the
 // stats or abilities of a character that the player already knows.
 export const ADVENTURE_CHARACTERS: Stone[] = [
@@ -6465,17 +8191,15 @@ export const ADVENTURE_CHARACTERS: Stone[] = [
     CHARACTER_PORTRAITS.find(
       (portrait) => portrait.id === stone.portrait,
     )?.role.toLowerCase() || "";
-  const budget = /mini|sidekick/.test(role)
-    ? 1 + (hash % 3)
-    : role.includes("sensei")
-      ? 10 + (hash % 3)
-      : role.includes("giant")
-        ? 8 + (hash % 3)
-        : role.includes("trap master")
-          ? 7 + (hash % 3)
-          : /swap|supercharger/.test(role)
-            ? 6 + (hash % 3)
-            : 4 + (hash % 3);
+  // Protected Giants and Minis retain their existing Adventure profiles.
+  // Other characters use the same authored base as the normal collection.
+  if (!/mini|sidekick|giant/.test(role))
+    return {
+      ...stone,
+      edges: [...stone.edges],
+      keywords: structuredClone(stone.keywords || []),
+    };
+  const budget = /mini|sidekick/.test(role) ? 1 + (hash % 3) : 8 + (hash % 3);
   const edges: [number, number, number, number] = [0, 0, 0, 0];
   for (let pip = 0; pip < budget; pip++) {
     const side = [0, 1, 2, 3]
@@ -6498,21 +8222,23 @@ export function adventureCharacter(
   const available = definitions.filter(
     (stone) => !excluded.includes(characterIdentity(stone)),
   );
-  const preferred = available.filter(
-    (stone) => !!stone.keywords?.length === keywords,
-  );
-  const pool = preferred.length ? preferred : available;
-  if (!pool.length)
+  if (!available.length)
     throw new Error("No unused Adventure character is available.");
+  // Prefer the requested strength before considering keyword density, so a
+  // keyword preference cannot turn a later reward into a weaker character.
   const distance = Math.min(
-    ...pool.map((stone) =>
+    ...available.map((stone) =>
       Math.abs(stone.edges.reduce((a, b) => a + b, 0) - budget),
     ),
   );
-  const candidates = pool.filter(
+  const closest = available.filter(
     (stone) =>
       Math.abs(stone.edges.reduce((a, b) => a + b, 0) - budget) === distance,
   );
+  const preferred = closest.filter(
+    (stone) => !!stone.keywords?.length === keywords,
+  );
+  const candidates = preferred.length ? preferred : closest;
   return candidates[(seed >>> 0) % candidates.length];
 }
 export function skystonesPicture(stone: Stone): Stone | undefined {
@@ -6551,6 +8277,7 @@ export function uniqueCharacters(
     return {
       ...stone,
       name: identity.name,
+      description: identity.description,
       portrait: identity.portrait,
       ...(stone.tribes !== undefined ? { tribes: undefined } : {}),
       characterKey: undefined,

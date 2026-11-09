@@ -141,11 +141,17 @@ test("Runesmith's Quill improves keyword odds including early rewards without ch
     early = 0;
   for (let seed = 0; seed < 80; seed++) {
     const run = { ...newAdventure(3, seed), floor: 3 };
-    base += rewardCards(run).filter((card) => card.keywords?.length).length;
     const boosted = { ...run, relics: ["runesmiths-quill"] as RelicId[] };
-    enhanced += rewardCards(boosted).filter(
-      (card) => card.keywords?.length,
-    ).length;
+    // Some authored pip tiers already have keywords on every character.
+    // Compare the journey, including tiers with both plain and keyword cards.
+    for (const floor of [0, 3, 5, 8]) {
+      base += rewardCards({ ...run, floor }).filter(
+        (card) => card.keywords?.length,
+      ).length;
+      enhanced += rewardCards({ ...boosted, floor }).filter(
+        (card) => card.keywords?.length,
+      ).length;
+    }
     early += rewardCards({ ...boosted, floor: 0 }).filter(
       (card) => card.keywords?.length,
     ).length;
@@ -341,8 +347,12 @@ test("Haggler's Coin discounts every shop category consistently without double p
     ),
     id = shop.inventory[0].id;
   assert.equal(shopPrice(shop, 35), 28);
-  assert.equal(cardPrice(shop.shopCards[0], shop), 28);
-  assert.equal(buyAdventureCard(shop, shop.shopCards[0].id).gold, 472);
+  const discountedCardPrice = Math.ceil(cardPrice(shop.shopCards[0]) * 0.8);
+  assert.equal(cardPrice(shop.shopCards[0], shop), discountedCardPrice);
+  assert.equal(
+    buyAdventureCard(shop, shop.shopCards[0].id).gold,
+    500 - discountedCardPrice,
+  );
   assert.equal(
     buyAdventurePotion(shop, shop.shopPotions[0].id).gold,
     500 - Math.ceil(POTIONS[shop.shopPotions[0].type].price * 0.8),

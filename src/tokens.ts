@@ -72,8 +72,22 @@ export const DEFAULT_TOKENS: Stone[] = [
       token: true,
       custom: true,
       origin: "skylanders",
-      description:
-        "A token for Conjure or custom enemy hands. Lasts for the current battle.",
+      description: (
+        {
+          "custom-token-chompy-seedling":
+            "A little Chompy sprout with eager teeth, ready to grow into somebody else's problem.",
+          "custom-token-arkeyan-drone":
+            "A small Arkeyan automaton built to stand guard and keep its maker's machinery moving.",
+          "custom-token-fire-spark":
+            "A flicker of Hot Head's volcanic heat, small enough to spend and bright enough to matter.",
+          "custom-token-water-wisp":
+            "A little splash of Gill Runt's courage, drifting into the fight on a friendly current.",
+          "custom-token-shadow-decoy":
+            "A borrowed silhouette left in Hood Sickle's wake, ready to take the blow meant for someone else.",
+          "custom-token-magic-echo":
+            "A shimmering afterimage from Pop Fizz's bubbling magic, eager to repeat the last clever trick.",
+        } as Record<string, string>
+      )[stone.id],
     }) as Stone,
 );
 

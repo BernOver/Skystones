@@ -304,6 +304,23 @@ button:disabled:hover {
   gap: 20px;
   padding-bottom: 4px;
 }
+.page-collection .page-heading {
+  flex-wrap: wrap;
+}
+.element-card-theme {
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  border: 1px solid #dbe3ce;
+  border-radius: 9px;
+  background: #f3f5e9;
+  color: #657e58;
+  font-size: 12px;
+}
+.element-card-theme p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+}
 .local-label {
   display: inline-flex;
   align-items: center;

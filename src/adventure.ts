@@ -36,6 +36,7 @@ import {
   characterIdentity,
   uniqueCharacters,
   ENEMY_STONES,
+  refreshCharacterFlavor,
 } from "./characters.ts";
 import {
   ELEMENTS,
@@ -532,9 +533,7 @@ export function makeRunCard(
     keywords: structuredClone(identity.keywords || []),
     baseEdges: [...identity.edges],
     baseKeywords: structuredClone(identity.keywords || []),
-    description: identity.defaultRevision
-      ? identity.description
-      : "A Skylanders stone found during the adventure.",
+    description: identity.description,
     custom: true,
   };
 }
@@ -852,7 +851,9 @@ function beginBattle(
         run.seed + run.floor * 131 + i * 19,
         budget,
         `${run.seed}-enemy-${run.floor}-${i}`,
-        run.floor >= 6 ? Math.min(5, Math.floor(run.floor / 3)) : 0,
+        budget >= 4 && run.floor >= 6
+          ? Math.min(5, Math.floor(run.floor / 3))
+          : 0,
         0,
         enemyIdentities,
       );
@@ -2594,6 +2595,7 @@ function spireServices(): SpireServices {
 function repairAdventureCards(run: Adventure): Adventure {
   const plain = (stone: Stone): Stone => {
     if (stone.swapParts) return stone;
+    stone = refreshCharacterFlavor(stone);
     const base = ADVENTURE_CHARACTERS.find(
       (base) => base.portrait === stone.portrait,
     );

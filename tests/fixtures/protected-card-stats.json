@@ -1,0 +1,1381 @@
+{
+  "base": [
+    {
+      "id": "giants-drow-lance-master",
+      "edges": [
+        2,
+        0,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-mohawk-cyclops",
+      "edges": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-mace-major",
+      "edges": [
+        0,
+        0,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-drow-archer",
+      "edges": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-blaster-troll",
+      "edges": [
+        0,
+        2,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-chompy-bot",
+      "edges": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-chompy-bot-9000",
+      "edges": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-jouster",
+      "edges": [
+        3,
+        2,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-inhuman-shield",
+      "edges": [
+        0,
+        2,
+        3,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "shield",
+          "side": 0
+        },
+        {
+          "type": "shield",
+          "side": 2
+        }
+      ]
+    },
+    {
+      "id": "giants-d-riveter",
+      "edges": [
+        2,
+        0,
+        2,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-jawbreaker",
+      "edges": [
+        2,
+        3,
+        2,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-enfuego-chompy",
+      "edges": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-frigid-chompy",
+      "edges": [
+        0,
+        0,
+        2,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-spiderlings",
+      "edges": [
+        0,
+        2,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-chompy",
+      "edges": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-axecutioner",
+      "edges": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-duelist",
+      "edges": [
+        4,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-bag-o-boom",
+      "edges": [
+        0,
+        4,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-shadow-duke",
+      "edges": [
+        0,
+        0,
+        4,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-sniper",
+      "edges": [
+        0,
+        0,
+        0,
+        4
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-conquertron",
+      "edges": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-bomber",
+      "edges": [
+        2,
+        3,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-boulder-bowler",
+      "edges": [
+        2,
+        2,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-boom-fiend",
+      "edges": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-armored-chompy",
+      "edges": [
+        1,
+        1,
+        3,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-life-spell-punk",
+      "edges": [
+        2,
+        1,
+        0,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-grenade-general",
+      "edges": [
+        0,
+        3,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-root-runner",
+      "edges": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-trog-wanderer",
+      "edges": [
+        1,
+        2,
+        1,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-dragonet",
+      "edges": [
+        1,
+        3,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-crystal-golem",
+      "edges": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-blazer-brewer",
+      "edges": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-slobbering-mutticus",
+      "edges": [
+        1,
+        3,
+        3,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-crackler",
+      "edges": [
+        2,
+        3,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-shield-juggernaut",
+      "edges": [
+        0,
+        1,
+        3,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "shield",
+          "side": 1,
+          "amount": 2
+        },
+        {
+          "type": "shield",
+          "side": 3
+        }
+      ]
+    },
+    {
+      "id": "giants-goliath-drow",
+      "edges": [
+        4,
+        1,
+        0,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-gargantula",
+      "edges": [
+        0,
+        1,
+        4,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-trogmander",
+      "edges": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-ultron",
+      "edges": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-barkley",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-bop",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-bouncer",
+      "edges": [
+        3,
+        3,
+        2,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "shield",
+          "side": 2,
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "skylander-breeze",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-crusher",
+      "edges": [
+        3,
+        2,
+        3,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "shield",
+          "side": 2,
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "skylander-drobit",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-eye-brawl",
+      "edges": [
+        3,
+        4,
+        2,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 1,
+          "element": "undead"
+        }
+      ]
+    },
+    {
+      "id": "skylander-eye-small",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-gill-runt",
+      "edges": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-hijinx",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-hot-head",
+      "edges": [
+        3,
+        2,
+        3,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 0,
+          "element": "fire"
+        }
+      ]
+    },
+    {
+      "id": "skylander-mini-jini",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-ninjini",
+      "edges": [
+        3,
+        2,
+        2,
+        4
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 3,
+          "element": "magic"
+        }
+      ]
+    },
+    {
+      "id": "skylander-pet-vac",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-small-fry",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-spry",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-swarm",
+      "edges": [
+        2,
+        3,
+        3,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 2,
+          "element": "air"
+        }
+      ]
+    },
+    {
+      "id": "skylander-terrabite",
+      "edges": [
+        0,
+        1,
+        1,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-thumpback",
+      "edges": [
+        2,
+        3,
+        3,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 2,
+          "element": "water"
+        }
+      ]
+    },
+    {
+      "id": "skylander-thumpling",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-tree-rex",
+      "edges": [
+        3,
+        4,
+        2,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 1,
+          "element": "life"
+        }
+      ]
+    },
+    {
+      "id": "skylander-trigger-snappy",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-weeruptor",
+      "edges": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-whisper-elf",
+      "edges": [
+        0,
+        3,
+        0,
+        1
+      ],
+      "keywords": []
+    }
+  ],
+  "adventure": [
+    {
+      "id": "skylander-barkley",
+      "edges": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-bop",
+      "edges": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-bouncer",
+      "edges": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "shield",
+          "side": 2,
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "skylander-breeze",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-crusher",
+      "edges": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "shield",
+          "side": 2,
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "skylander-drobit",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-eye-brawl",
+      "edges": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 1,
+          "element": "undead"
+        }
+      ]
+    },
+    {
+      "id": "skylander-eye-small",
+      "edges": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-gill-runt",
+      "edges": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-hijinx",
+      "edges": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-hot-head",
+      "edges": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 0,
+          "element": "fire"
+        }
+      ]
+    },
+    {
+      "id": "skylander-mini-jini",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-ninjini",
+      "edges": [
+        3,
+        2,
+        2,
+        3
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 3,
+          "element": "magic"
+        }
+      ]
+    },
+    {
+      "id": "skylander-pet-vac",
+      "edges": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-small-fry",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-spry",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-swarm",
+      "edges": [
+        2,
+        3,
+        3,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 2,
+          "element": "air"
+        }
+      ]
+    },
+    {
+      "id": "skylander-terrabite",
+      "edges": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-thumpback",
+      "edges": [
+        2,
+        3,
+        2,
+        2
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 2,
+          "element": "water"
+        }
+      ]
+    },
+    {
+      "id": "skylander-thumpling",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-tree-rex",
+      "edges": [
+        3,
+        4,
+        2,
+        1
+      ],
+      "keywords": [
+        {
+          "type": "resonance",
+          "side": 1,
+          "element": "life"
+        }
+      ]
+    },
+    {
+      "id": "skylander-trigger-snappy",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-weeruptor",
+      "edges": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "skylander-whisper-elf",
+      "edges": [
+        0,
+        2,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-drow-lance-master",
+      "edges": [
+        2,
+        0,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-mohawk-cyclops",
+      "edges": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-mace-major",
+      "edges": [
+        0,
+        0,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-drow-archer",
+      "edges": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-blaster-troll",
+      "edges": [
+        0,
+        2,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-chompy-bot",
+      "edges": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-chompy-bot-9000",
+      "edges": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-jouster",
+      "edges": [
+        3,
+        2,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-inhuman-shield",
+      "edges": [
+        0,
+        2,
+        3,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-d-riveter",
+      "edges": [
+        2,
+        0,
+        2,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-jawbreaker",
+      "edges": [
+        2,
+        3,
+        2,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-enfuego-chompy",
+      "edges": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-frigid-chompy",
+      "edges": [
+        0,
+        0,
+        2,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-spiderlings",
+      "edges": [
+        0,
+        2,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-chompy",
+      "edges": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-axecutioner",
+      "edges": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-duelist",
+      "edges": [
+        4,
+        0,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-bag-o-boom",
+      "edges": [
+        0,
+        4,
+        0,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-shadow-duke",
+      "edges": [
+        0,
+        0,
+        4,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-sniper",
+      "edges": [
+        0,
+        0,
+        0,
+        4
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-conquertron",
+      "edges": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-bomber",
+      "edges": [
+        2,
+        3,
+        1,
+        0
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-boulder-bowler",
+      "edges": [
+        2,
+        2,
+        0,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-boom-fiend",
+      "edges": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-armored-chompy",
+      "edges": [
+        1,
+        1,
+        3,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-life-spell-punk",
+      "edges": [
+        2,
+        1,
+        0,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-grenade-general",
+      "edges": [
+        0,
+        3,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-root-runner",
+      "edges": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-trog-wanderer",
+      "edges": [
+        1,
+        2,
+        1,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-dragonet",
+      "edges": [
+        1,
+        3,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-crystal-golem",
+      "edges": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-blazer-brewer",
+      "edges": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-slobbering-mutticus",
+      "edges": [
+        1,
+        3,
+        3,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-crackler",
+      "edges": [
+        2,
+        3,
+        2,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-shield-juggernaut",
+      "edges": [
+        0,
+        1,
+        3,
+        3
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-goliath-drow",
+      "edges": [
+        4,
+        1,
+        0,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-gargantula",
+      "edges": [
+        0,
+        1,
+        4,
+        1
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-trogmander",
+      "edges": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    },
+    {
+      "id": "giants-arkeyan-ultron",
+      "edges": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "keywords": []
+    }
+  ]
+}

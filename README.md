@@ -10,6 +10,34 @@ A browser game inspired by classic Skylanders Skystones, with a Giants card cata
 
 The download contains the whole game. No installation, terminal, or server is required. Use **Card studio** to make cards, then add them to your deck in **Collection**. Choose **Adventure** to start or resume a roguelike run, or **Draft** to draft a shared pool with another player.
 
+## Export every card for review
+
+Choose **Collection → Export all cards** to download **Skystones-all-cards.json**. One file contains every current built-in card, your edited character defaults, custom cards, all token templates, uploaded artwork, custom tribe names, and original factory definitions for comparison. It includes cards hidden by the current tab, search, and element filters. Exporting keeps the collection and saved games unchanged. Attach this JSON file when asking for a review of your card changes.
+
+This is a collection report; the existing **Import card** button still accepts individual `.skystone.json` card exports. When updating the downloaded game, replace **Skystones.html in its existing folder** and use the **same browser** so the new version reads your existing cards and edits.
+
+## Character balance and element identities
+
+Ordinary Skylander base cards now center on **5–8 pips**, with a few weaker and stronger cards. Across the 182 Skylander cards, the average is about **6.37 pips**. The **39 original Giants Skystones, eight Giant Skylanders, and 16 Minis keep their exact existing pips and keywords**, including their existing Adventure profiles. All built-in descriptions now describe the character's weapons, abilities, personality, or companions.
+
+The revised character cards use all **16 available keywords**, with these main themes:
+
+| Element | Main identity |
+| --- | --- |
+| Fire | Create expendable sparks, Discard, Scavenge, and Parting Gift. |
+| Life | Resonance, growing Life terrain, and follow-up growth. |
+| Undead | Sunder, Silence, Blight, and negative Next Play effects. |
+| Magic | Conjure, magical copies, Combo, and occasional Dizzy effects. |
+| Water | Shield, Bastion, Mirror Pool, and Comeback. |
+| Earth | Durable defenses, terrain, and heavy Sunder. |
+| Air | Shift, Crosswind, speed, and positioning. |
+| Tech | Combo chains, prepared Next Play buffs, and mechanical helpers. |
+| Light | Positive Next Play effects and protective keyword gifts. |
+| Dark | Ambushes, Silence, disruptive movement, and opening strikes. |
+| Neutral | Kaos mixes Dizzy, summoned minions, and disruption. |
+
+Choose an element in Collection to see its deck-building theme. Character flavor follows cards into Draft and Adventure. Adventure starters stay weak and enemies still grow gradually; reward selection prioritizes the closest authored pip budget before keyword preference. Base stats stay fixed across runs. Existing saved character edits take priority over the new bases; authored flavor is kept, while old generic boilerplate descriptions refresh without changing saved stats or keywords.
+
 ## Run
 
 For a version that runs without Node or a server, build it once with `npm run build:standalone`, then open `standalone/Skystones.html` in a modern browser. The single HTML file includes the game, artwork, fonts, card studio, and image exporter. You can copy it to another computer and open it there directly. Keep the file in the same location to retain browser-local card saves, and export card files to back them up.

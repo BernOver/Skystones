@@ -1,4 +1,8 @@
-import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
+import {
+  CHARACTER_STONES,
+  ENEMY_STONES,
+  refreshCharacterFlavor,
+} from "./characters.ts";
 import {
   validateStone,
   validateKeywords,
@@ -114,14 +118,14 @@ export function characterDefault(
   const key = stone.characterKey || stone.portrait;
   const entry = key ? defaults[key] : undefined;
   if (!entry) return stone;
-  return {
+  return refreshCharacterFlavor({
     ...stone,
     ...structuredClone(entry.card),
     id: stone.id,
     custom: stone.custom,
     characterKey: key,
     defaultRevision: entry.revision,
-  };
+  });
 }
 
 export function withAdditionalKeywords(

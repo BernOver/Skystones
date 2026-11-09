@@ -1,3 +1,4 @@
+import { ADVENTURE_CHARACTERS } from "../src/characters.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
@@ -138,7 +139,13 @@ test("adventures start with modest two-to-three-pip cards, weak early enemies, c
       const offers = rewardCards({ ...run, floor });
       const budget = offers[0].edges.reduce((a, b) => a + b, 0);
       assert.ok(budget >= previous);
-      assert.equal(budget, Math.min(12, 4 + Math.floor(floor * 0.5)));
+      const target = Math.min(12, 4 + Math.floor(floor * 0.5));
+      const closest = Math.min(
+        ...ADVENTURE_CHARACTERS.map((card) =>
+          Math.abs(card.edges.reduce((a, b) => a + b, 0) - target),
+        ),
+      );
+      assert.equal(Math.abs(budget - target), closest);
       assert.ok(offers.every(validateStone));
       assert.deepEqual(offers, rewardCards({ ...run, floor }));
       previous = budget;

@@ -1,4 +1,6 @@
 import { isSwapForce, swapHand } from "./swapForce";
+import { collectionExport } from "./collectionExport";
+import { CARD_THEMES } from "./cardThemes";
 import { SwapPicker } from "./SwapPicker";
 import { SwapArtSettings, useSwapArt } from "./SwapArtSettings";
 import { customTribeLabels, rememberCustomTribes } from "./tribes";
@@ -972,6 +974,26 @@ export default function App() {
       );
     }
   }
+  function exportAllCards() {
+    try {
+      const report = collectionExport(library.custom, characterDefaults);
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(report, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Skystones-all-cards.json";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setToast(
+        `Exported ${report.cards.length} cards and ${report.tokens.length} token templates, including ${report.summary.editedCharacters} edited character defaults. Share the JSON file for review.`,
+      );
+    } catch {
+      setToast("Your collection could not be exported. Try downloading again.");
+    }
+  }
   function exportCard(stone: Stone) {
     const card = {
       ...stone,
@@ -1793,6 +1815,14 @@ export default function App() {
                   Import card
                 </button>
                 <button
+                  className="button button-outline"
+                  title="Download every card, edited character default, and token template in one collection report. Includes cards hidden by filters."
+                  onClick={exportAllCards}
+                >
+                  <Download size={16} />
+                  Export all cards
+                </button>
+                <button
                   className="button button-dark"
                   onClick={() =>
                     onlyTokens ? openTokenStudio() : openStudio()
@@ -1957,6 +1987,18 @@ export default function App() {
               </div>
             </div>
 
+            {elementFilter !== "all" && (
+              <aside
+                className="element-card-theme"
+                data-element={elementFilter}
+              >
+                <strong>
+                  {ELEMENTS[elementFilter as Element].name} ·{" "}
+                  {CARD_THEMES[elementFilter as Element].title}
+                </strong>
+                <p>{CARD_THEMES[elementFilter as Element].description}</p>
+              </aside>
+            )}
             {onlyTokens && (
               <p className="tokens-note">
                 Tokens are available through Conjure or custom enemy starting

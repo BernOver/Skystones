@@ -1,4 +1,27 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+async function chooseCardEffects(page: Page) {
+  while (await page.locator(".target-cell.available").count()) {
+    await page.locator(".target-cell.available").first().click();
+    const sides = page
+      .getByRole("group", { name: "Choose the edge that loses pips" })
+      .locator("button:enabled");
+    if (await sides.count()) await sides.first().click();
+  }
+  while (await page.locator(".discard-picker").count()) {
+    const count = Number(
+      (await page.locator(".discard-choice-count").innerText())
+        .split("/")[1]
+        .trim()
+        .split(" ")[0],
+    );
+    for (let i = 0; i < count; i++)
+      await page.locator(".discard-card-button").nth(i).click();
+    await page
+      .getByRole("button", { name: "Discard selected cards", exact: true })
+      .click();
+  }
+}
 
 test("play a complete match against a villain and start again", async ({
   page,
@@ -10,6 +33,7 @@ test("play a complete match against a villain and start again", async ({
     await expect(page.locator(".hand-card-button").first()).toBeEnabled();
     await page.locator(".hand-card-button").first().click();
     await page.locator(".board-cell.empty:enabled").first().click();
+    await chooseCardEffects(page);
     if (turn < 4)
       await expect(page.locator(".board-cell.filled")).toHaveCount(
         (turn + 1) * 2,
@@ -38,6 +62,7 @@ test("local two-player mode alternates hands and finishes a match", async ({
     );
     await page.locator(".hand-card-button").first().click();
     await page.locator(".board-cell.empty:enabled").first().click();
+    await chooseCardEffects(page);
   }
   await expect(page.locator(".result-card")).toBeVisible();
 });
@@ -53,6 +78,7 @@ test("the villain can start and a replaced match cancels the old computer turn",
   await expect(page.locator(".turn-indicator")).toContainText("Your move");
   await page.locator(".hand-card-button").first().click();
   await page.locator(".board-cell.empty:enabled").first().click();
+  await chooseCardEffects(page);
   await page.getByRole("button", { name: "New match", exact: true }).click();
   await page.getByRole("button", { name: /Bring a friend/ }).click();
   await page.getByLabel("Who makes the first move?").selectOption("0");
