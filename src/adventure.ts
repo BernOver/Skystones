@@ -1,3 +1,4 @@
+import { swapHand, validSwapParts } from "./swapForce.ts";
 import {
   readEncounterLibrary,
   validEncounterLibrary,
@@ -1353,6 +1354,28 @@ export function playAdventureCard(
   }
   return next;
 }
+export function swapAdventureCards(
+  run: Adventure,
+  firstId: string,
+  secondId: string,
+): Adventure {
+  if (run.phase !== "battle" || !run.battle)
+    throw new Error("Swap during an active battle.");
+  if (run.battle.current !== 0)
+    throw new Error("Wait for your turn before swapping halves.");
+  const hand = swapHand(run.battle.hands[0], firstId, secondId);
+  return {
+    ...run,
+    battle: {
+      ...run.battle,
+      hands: [hand, run.battle.hands[1]],
+      log: [
+        "SWAP Force: bottom halves exchanged before placement.",
+        ...run.battle.log,
+      ].slice(0, 20),
+    },
+  };
+}
 export function adventureEnemyMove(run: Adventure): Adventure {
   if (run.phase !== "battle" || run.battle?.current !== 1) return run;
   const battle = run.battle;
@@ -2013,6 +2036,7 @@ function validBattleCard(value: unknown): value is Stone {
       validReceivedElement(stone.receivedElement)) &&
     (stone.discardBuffs === undefined ||
       validDiscardBuffs(stone.discardBuffs)) &&
+    (stone.swapParts === undefined || validSwapParts(stone.swapParts)) &&
     validateKeywords(stone.keywords || [])
   );
 }
@@ -2219,7 +2243,10 @@ export function validateAdventure(value: unknown): value is Adventure {
     return false;
   if (run.healingLocked !== undefined && typeof run.healingLocked !== "boolean")
     return false;
-  if (run.note !== undefined && (!validateStone(run.note) || run.note.token))
+  if (
+    run.note !== undefined &&
+    (!validateStone(run.note) || run.note.token || run.note.swapParts)
+  )
     return false;
   if (
     run.shopRerolls !== undefined &&
@@ -2309,7 +2336,9 @@ export function validateAdventure(value: unknown): value is Adventure {
     !Array.isArray(run.inventory) ||
     run.inventory.length < handSize(run.size) ||
     run.inventory.length > 100 ||
-    !run.inventory.every((card) => validateStone(card) && !card.token) ||
+    !run.inventory.every(
+      (card) => validateStone(card) && !card.token && !card.swapParts,
+    ) ||
     new Set(run.inventory.map((s) => s.id)).size !== run.inventory.length ||
     !Array.isArray(run.deck) ||
     run.deck.length > handSize(run.size) ||
@@ -2323,10 +2352,14 @@ export function validateAdventure(value: unknown): value is Adventure {
     !run.potions.every((p) => Object.hasOwn(POTIONS, p)) ||
     !Array.isArray(run.rewards) ||
     run.rewards.length > 5 ||
-    !run.rewards.every((card) => validateStone(card) && !card.token) ||
+    !run.rewards.every(
+      (card) => validateStone(card) && !card.token && !card.swapParts,
+    ) ||
     !Array.isArray(run.shopCards) ||
     run.shopCards.length > 4 ||
-    !run.shopCards.every((card) => validateStone(card) && !card.token) ||
+    !run.shopCards.every(
+      (card) => validateStone(card) && !card.token && !card.swapParts,
+    ) ||
     !Array.isArray(run.shopPotions) ||
     run.shopPotions.length > 3 ||
     !run.shopPotions.every(
@@ -2560,6 +2593,7 @@ function spireServices(): SpireServices {
 
 function repairAdventureCards(run: Adventure): Adventure {
   const plain = (stone: Stone): Stone => {
+    if (stone.swapParts) return stone;
     const base = ADVENTURE_CHARACTERS.find(
       (base) => base.portrait === stone.portrait,
     );
@@ -2596,6 +2630,7 @@ function repairAdventureCards(run: Adventure): Adventure {
   const byId = new Map(inventory.map((stone) => [stone.id, stone]));
   const used = inventory.map(characterIdentity);
   const appearance = (stone: Stone): Stone => {
+    if (stone.swapParts) return stone;
     const packed = byId.get(stone.id);
     if (
       !packed ||

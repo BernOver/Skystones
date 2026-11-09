@@ -1,0 +1,201 @@
+.swap-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.swap-art-half {
+  position: absolute;
+  inset: 0;
+  background: var(--half-background);
+}
+.swap-art-half .character-art,
+.swap-art-half .creature-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: absolute;
+  inset: 0;
+  padding: 6px;
+}
+.swap-art-half .swap-skystones-art {
+  width: 190%;
+  height: 190%;
+  inset: -45%;
+  padding: 0;
+  object-fit: fill;
+  max-width: none;
+}
+.swap-art-top {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.swap-art-bottom {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+.swap-art-seam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.swap-art-seam path {
+  fill: none;
+  stroke: #fffcdf;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.swap-art-seam .horizontal-seam {
+  display: none;
+}
+[data-swap-art="horizontal"] .swap-art-top {
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+}
+[data-swap-art="horizontal"] .swap-art-bottom {
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+}
+[data-swap-art="horizontal"] .swap-art-seam .horizontal-seam {
+  display: block;
+}
+[data-swap-art="horizontal"] .swap-art-seam .diagonal-seam {
+  display: none;
+}
+.swap-dialog {
+  max-width: 800px;
+}
+.swap-picker > p,
+.swap-art-setting small,
+.swap-halves-info p {
+  font-size: 12px;
+  color: #77866d;
+  line-height: 1.7;
+}
+.swap-art-setting {
+  padding: 14px;
+  background: #f0f3e5;
+  border: 1px solid #dce4cc;
+  border-radius: 8px;
+  margin: 18px 0;
+}
+.swap-art-setting label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: #58714c;
+}
+.swap-art-setting small {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.swap-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 5px;
+  margin: 20px 0;
+}
+.swap-card-choice {
+  min-width: 0;
+  border: 2px solid transparent;
+  background: #f0f0e8;
+  border-radius: 9px;
+  padding: 5px;
+  align-self: start;
+}
+.swap-card-choice .stone-card,
+.swap-result-card > .stone-card {
+  height: auto;
+  aspect-ratio: 4/5;
+}
+.swap-card-choice.is-selected {
+  border-color: #8b9f70;
+  background: #e8edda;
+}
+.swap-card-choice:disabled {
+  opacity: 0.45;
+}
+.swap-card-choice > span {
+  display: block;
+  margin: 8px 0 3px;
+  font-size: 11px;
+  color: #6c7f59;
+}
+.swap-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 16px 0 24px;
+}
+.swap-result-card {
+  min-width: 0;
+}
+.swap-result-card > .stone-card {
+  max-width: 230px;
+  margin: auto;
+}
+.swap-result-card details {
+  font-size: 11px;
+  color: #6d7d5e;
+  line-height: 1.7;
+}
+.swap-halves-info {
+  border-top: 1px solid #e0e5d1;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+.swap-halves-info > div {
+  margin: 8px 0;
+  display: grid;
+  gap: 4px;
+  color: #68805b;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.swap-halves-info small {
+  font-size: 10px;
+  color: #8c957d;
+}
+.swap-halves-info p {
+  font-size: 10px;
+}
+.swap-half-field {
+  display: block;
+  margin: 10px 0;
+  font-size: 11px;
+  color: #718361;
+}
+.swap-half-field select {
+  margin-left: 8px;
+  padding: 7px;
+  border: 1px solid #d2dcc5;
+  border-radius: 6px;
+  background: #fffdf7;
+  color: #5b7152;
+}
+.swap-action-button {
+  margin: 10px 0;
+}
+.keyword-half-note {
+  display: block;
+  font-size: 10px;
+  color: #8a9b77;
+  margin: 6px 0;
+}
+@media (max-width: 600px) {
+  .swap-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .swap-result-grid {
+    gap: 12px;
+  }
+  .swap-picker .detail-actions {
+    flex-wrap: wrap;
+  }
+  .swap-dialog {
+    padding: 28px 16px;
+  }
+}

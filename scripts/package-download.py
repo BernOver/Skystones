@@ -58,6 +58,31 @@ Deleting a deck keeps the cards. Deleting a custom card or turning it into a
 token removes it from every saved deck. Incomplete decks need replacements
 before starting a new match. The current match keeps its hand and board.
 
+SWAP Force: keep at least two unplayed SWAP Force characters in your hand.
+On your turn choose Swap Force > exchange halves, choose two cards, preview the
+results, then Swap halves. Both cards remain in hand and no turn is spent.
+Each keeps its top (North/West) and receives the other's bottom (South/East).
+Wash Buckler and Blast Zone become Wash Zone and Blast Buckler. The top sets
+the element; both parts supply tribes. Cards in play cannot swap. The SWAP Force
+character tribe enables it; the SWAP Force Era game-family tag alone does not.
+In Card studio > Keywords, use Keyword half to assign every keyword to Top or
+Bottom. The whole effect travels with that half, independently of its target
+direction. Older directional keywords follow their edges; global ones use Top.
+Assignments work in character defaults and shared card files. Swap again with
+the same pair or a third card before placement. No keywords, Conjure, Dizzy,
+discards or Next Play effects trigger or get spent just by exchanging halves.
+Hand pip and Shield gifts follow their sides. Mixed cards can exceed the usual
+pip budget using the points already on those halves. Unique-keyword, 24-keyword
+and tribe limits remain; incompatible custom pairs cannot be confirmed and
+show an explanation. All 16 original SWAP Force characters can pair together.
+Portraits show diagonal halves by default. Toggle Show SWAP Force artwork as
+top and bottom in the swap dialog, SWAP Force card maker, or Board skins for a
+horizontal cut. It changes artwork only and saves across modes and reloads.
+Swaps work on both boards in normal, Draft and Adventure matches. They last for
+this battle only; original decks, cards, defaults, token templates, Adventure
+packs and Draft picks stay unchanged. Adventure reloads retain both parts,
+held and played stats, pictures and half keywords. Cancel swaps to keep the hand.
+
 Custom tribes: in Card studio > Tribes, enter a name and choose Add tribe.
 New tribes are selected immediately and available on other cards and in Combo,
 Resonance, Next Play, Conjure, environments and Collection filters. Card files

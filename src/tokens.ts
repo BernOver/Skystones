@@ -89,6 +89,7 @@ export function tokenDefinition(value: unknown): value is Stone {
     value.token === true &&
     !value.conjured &&
     !value.encounterStart &&
+    !value.swapParts &&
     !value.receivedKeywords &&
     !value.receivedElement &&
     !value.discardBuffs &&

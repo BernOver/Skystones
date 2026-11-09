@@ -1,3 +1,5 @@
+import { isSwapForce, keywordHalf } from "./swapForce";
+import { SwapArtSettings } from "./SwapArtSettings";
 import { useState } from "react";
 import { Flag, Plus, Trash2 } from "lucide-react";
 import {
@@ -470,7 +472,8 @@ function Fields({
                     onChange({
                       ...keyword,
                       element: (event.target.value || undefined) as
-                        Element | undefined,
+                        | Element
+                        | undefined,
                     })
                   }
                 >
@@ -608,7 +611,8 @@ function Fields({
                 onChange({
                   ...keyword,
                   element: (event.target.value || undefined) as
-                    Element | undefined,
+                    | Element
+                    | undefined,
                 })
               }
             >
@@ -629,7 +633,8 @@ function Fields({
                 onChange({
                   ...keyword,
                   changeElement: (event.target.value || undefined) as
-                    Element | undefined,
+                    | Element
+                    | undefined,
                   amount:
                     !event.target.value &&
                     !keyword.keywords?.length &&
@@ -1285,6 +1290,9 @@ export function KeywordEditor({
   const [error, setError] = useState("");
   const keywords = stone.keywords || [];
   function update(index: number, value: StoneKeyword) {
+    value = isSwapForce(stone)
+      ? { ...value, half: value.half || keywordHalf(keywords[index]) }
+      : value;
     const next = keywords.map((old, i) => (i === index ? value : old));
     if (
       !repeatableKeyword(value.type) &&
@@ -1314,9 +1322,37 @@ export function KeywordEditor({
         </div>
         <Flag size={19} />
       </div>
+      {isSwapForce(stone) && (
+        <>
+          <p>
+            SWAP Force: assign each keyword to Top (North / West) or Bottom
+            (South / East). It travels with that half. The usual unique-keyword
+            and 24-keyword limits apply.
+          </p>
+          <SwapArtSettings />
+        </>
+      )}
       <div className="keyword-editor-list">
         {keywords.map((keyword, index) => (
           <div className="keyword-editor-entry" key={index}>
+            {isSwapForce(stone) && (
+              <label className="swap-half-field">
+                Keyword half
+                <select
+                  aria-label={`Keyword half ${index + 1}`}
+                  value={keywordHalf(keyword)}
+                  onChange={(event) =>
+                    update(index, {
+                      ...keyword,
+                      half: event.target.value as "top" | "bottom",
+                    })
+                  }
+                >
+                  <option value="top">Top · North / West</option>
+                  <option value="bottom">Bottom · South / East</option>
+                </select>
+              </label>
+            )}
             <div
               className={`keyword-editor-row ${keyword.type === "resonance" ? "has-element" : ""} ${keyword.type === "sunder" || keyword.type === "shield" || keyword.type === "head-start" || keyword.type === "comeback" ? "has-strength" : ""} ${!("side" in keyword) ? "no-edge" : ""}`}
             >
@@ -1360,7 +1396,10 @@ export function KeywordEditor({
         onClick={() => {
           for (const type of Object.keys(KEYWORD_RULES) as KeywordType[])
             for (const side of [0, 1, 2, 3] as Side[]) {
-              const value = defaultKeyword(type, side, stone.element);
+              const initial = defaultKeyword(type, side, stone.element);
+              const value = isSwapForce(stone)
+                ? { ...initial, half: keywordHalf(initial) }
+                : initial;
               if (
                 !keywords.some((old) => keywordKey(old) === keywordKey(value))
               ) {

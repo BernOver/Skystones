@@ -28,6 +28,8 @@ import { validateConjure, MAX_HAND_CARDS } from "./conjure.ts";
 import type { ConjureKeyword, Conjuration } from "./conjure.ts";
 import { validDiscardKeyword, validDiscardBuffs } from "./discard.ts";
 import type { DiscardKeyword, DiscardBuffs, DiscardRecord } from "./discard.ts";
+import { validSwapParts } from "./swapForce.ts";
+import type { SwapHalf, SwapParts } from "./swapForce.ts";
 export type Element =
   | "fire"
   | "life"
@@ -114,7 +116,7 @@ export type ComboKeyword = {
   condition?: ComboCondition;
   tribe?: Tribe;
 };
-export type StoneKeyword = BasicKeyword | ComboKeyword;
+export type StoneKeyword = (BasicKeyword | ComboKeyword) & { half?: SwapHalf };
 export type ActiveKeyword =
   | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | {
@@ -271,6 +273,7 @@ export interface Stone {
   receivedKeywords?: StoneKeyword[];
   receivedElement?: { before: Element; after: Element };
   discardBuffs?: DiscardBuffs;
+  swapParts?: SwapParts;
 }
 export interface PlacedStone {
   stone: Stone;
@@ -1238,9 +1241,12 @@ export function validateStone(value: unknown): value is Stone {
     s.edges.length === 4 &&
     s.edges.every(
       (n) =>
-        Number.isInteger(n) && n >= 0 && n <= (s.conjured === true ? 64 : 5),
+        Number.isInteger(n) &&
+        n >= 0 &&
+        n <= (s.conjured === true || s.swapParts !== undefined ? 64 : 5),
     ) &&
     (s.conjured === true ||
+      s.swapParts !== undefined ||
       s.edges.reduce((a, b) => a + b, 0) <=
         (s.origin === "giants" ? 16 : 12)) &&
     (s.portrait === undefined ||
@@ -1267,6 +1273,7 @@ export function validateStone(value: unknown): value is Stone {
     (s.receivedElement === undefined ||
       validReceivedElement(s.receivedElement)) &&
     (s.discardBuffs === undefined || validDiscardBuffs(s.discardBuffs)) &&
+    (s.swapParts === undefined || validSwapParts(s.swapParts)) &&
     (s.keywords === undefined || validateKeywords(s.keywords)) &&
     (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
     (s.baseEdges === undefined ||
@@ -1311,6 +1318,8 @@ export function validateKeywords(
       typeof keyword.type !== "string" ||
       !Object.hasOwn(KEYWORD_RULES, keyword.type)
     )
+      return false;
+    if (keyword.half !== undefined && !["top", "bottom"].includes(keyword.half))
       return false;
     if (
       keyword.type === "silence" ||

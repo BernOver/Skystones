@@ -452,7 +452,9 @@ export function restoreDraft(value: unknown): DraftState | null {
     if (!saved.nominations[0].length && saved.nominations[1].length)
       return null;
     for (const id of saved.history) draft = pickDraftCard(draft, id);
-    return draft.cards.every((card) => validateStone(card) && !card.token)
+    return draft.cards.every(
+      (card) => validateStone(card) && !card.token && !card.swapParts,
+    )
       ? draft
       : null;
   } catch {

@@ -205,7 +205,8 @@ export function validEncounter(value: unknown): value is EncounterDefinition {
             !card.encounterStart &&
             !card.receivedKeywords &&
             !card.receivedElement &&
-            !card.discardBuffs,
+            !card.discardBuffs &&
+            !card.swapParts,
         )))
   );
 }

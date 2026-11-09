@@ -1,3 +1,6 @@
+import { isSwapForce } from "./swapForce";
+import { SwapPicker } from "./SwapPicker";
+import { swapAdventureCards } from "./adventure";
 import { EncounterEditor } from "./EncounterEditor";
 import { readEncounterLibrary } from "./encounters";
 import type { EncounterDefinition, EncounterPool } from "./encounters";
@@ -303,6 +306,7 @@ function ExpeditionView({
     [inspection, setInspection] = useState<Inspection | null>(null),
     [inspected, setInspected] = useState<Inspection | null>(null),
     [potionTarget, setPotionTarget] = useState<number | null>(null);
+  const [swapOpen, setSwapOpen] = useState(false);
   const [eventGuide, setEventGuide] = useState(false);
   const [potionGuide, setPotionGuide] = useState(false);
   const [relicGuide, setRelicGuide] = useState(false),
@@ -1137,6 +1141,18 @@ function ExpeditionView({
               </div>
             </section>
           )}
+          {battle.hands[0].some(isSwapForce) && (
+            <button
+              className="button button-outline swap-action-button"
+              disabled={ai || battle.hands[0].filter(isSwapForce).length < 2}
+              onClick={() => {
+                setInspection(null);
+                setSwapOpen(true);
+              }}
+            >
+              Swap Force · exchange halves
+            </button>
+          )}
           <div className="run-hand-heading">
             <h3>Your hand · {battle.hands[0].length} cards</h3>
             <span>{battle.hands[1].length} keeper cards remain</span>
@@ -1761,6 +1777,19 @@ function ExpeditionView({
           </button>
         </section>
       )}
+      {swapOpen && battle && (
+        <RunDialog title="Swap Force halves" onClose={() => setSwapOpen(false)}>
+          <SwapPicker
+            hand={battle.hands[0]}
+            onCancel={() => setSwapOpen(false)}
+            onConfirm={(firstId, secondId) => {
+              act((current) => swapAdventureCards(current, firstId, secondId));
+              setSelected(null);
+              setSwapOpen(false);
+            }}
+          />
+        </RunDialog>
+      )}
       {discardTarget && battle && (
         <RunDialog
           title="Choose cards to discard"
@@ -1912,6 +1941,7 @@ function ExpeditionView({
       {inspection &&
         !target &&
         !discardTarget &&
+        !swapOpen &&
         !card &&
         !inspected &&
         !eventGuide &&

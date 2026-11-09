@@ -11,6 +11,7 @@ import "./styles.css";
 import "./keywords.css";
 import "./adventure.css";
 import "./board-skins.css";
+import "./swap-force.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -1,3 +1,6 @@
+import { isSwapForce, swapHand } from "./swapForce";
+import { SwapPicker } from "./SwapPicker";
+import { SwapArtSettings, useSwapArt } from "./SwapArtSettings";
 import { customTribeLabels, rememberCustomTribes } from "./tribes";
 import { TribeEditor, TribeSelect, TribeBadges } from "./TribeEditor";
 import { hasTribe, portraitTribes } from "./tribes";
@@ -131,6 +134,7 @@ type Page = "table" | "collection" | "studio" | "run" | "draft";
 type Mode = "computer" | "local";
 type DialogState =
   | { kind: "rules" | "new" | "skins" }
+  | { kind: "swap"; owner: Owner }
   | { kind: "deck"; action: DeckAction }
   | {
       kind: "discard";
@@ -198,6 +202,7 @@ function readLibrary(): Library {
     ) {
       const custom: Stone[] = value.custom
         .filter(validateStone)
+        .filter((card: Stone) => !card.swapParts)
         .filter((card: Stone) => !card.token || tokenDefinition(card))
         .map((s: Stone) => ({ ...s, custom: true }));
       const ids = new Set(
@@ -437,6 +442,7 @@ function Brand({ small = false }: { small?: boolean }) {
 }
 
 export default function App() {
+  useSwapArt();
   const [page, setPage] = useState<Page>("table");
   const [library, setLibrary] = useState<Library>(readLibrary);
   const [characterDefaults, setCharacterDefaults] = useState<CharacterDefaults>(
@@ -1037,6 +1043,7 @@ export default function App() {
         receivedKeywords: undefined,
         receivedElement: undefined,
         discardBuffs: undefined,
+        swapParts: undefined,
       };
       if (!validateStone(stone))
         throw new Error(
@@ -1596,6 +1603,22 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                  {shownHand.some(isSwapForce) && (
+                    <button
+                      className="button button-outline swap-action-button"
+                      disabled={
+                        aiTurn ||
+                        done ||
+                        shownHand.filter(isSwapForce).length < 2
+                      }
+                      onClick={() => {
+                        hideInspection();
+                        setDialog({ kind: "swap", owner: match.current });
+                      }}
+                    >
+                      Swap Force · exchange halves
+                    </button>
+                  )}
                   <p className="hand-hint">
                     {selected !== null && !aiTurn
                       ? "A little courage. Choose your square."
@@ -2719,6 +2742,17 @@ export default function App() {
           <div className="rule-line">
             <Layers size={19} />
             <p>
+              <strong>SWAP Force</strong> cards can exchange halves before
+              playing if two are in your hand. Use Swap Force · exchange halves:
+              keep North/West, exchange South/East and its assigned keywords.
+              Both cards stay in hand and no turn is spent. The top sets the
+              element. Board skins can change the portraits from diagonal to
+              top/bottom without changing the rules.
+            </p>
+          </div>
+          <div className="rule-line">
+            <Layers size={19} />
+            <p>
               <strong>Discard</strong> removes chosen or random hand cards after
               captures and Conjure. Each player keeps enough cards for all
               remaining turns; unsafe discards are skipped.{" "}
@@ -2749,12 +2783,48 @@ export default function App() {
         </Dialog>
       )}
 
+      {dialog?.kind === "swap" && (
+        <Dialog
+          title="Swap Force halves"
+          onClose={() => setDialog(null)}
+          className="swap-dialog"
+        >
+          <SwapPicker
+            hand={match.hands[dialog.owner]}
+            onCancel={() => setDialog(null)}
+            onConfirm={(firstId, secondId) => {
+              if (aiTurn || done || match.current !== dialog.owner) return;
+              try {
+                const hand = swapHand(
+                    match.hands[dialog.owner],
+                    firstId,
+                    secondId,
+                  ),
+                  hands: [Stone[], Stone[]] = [...match.hands];
+                hands[dialog.owner] = hand;
+                setMatch({ ...match, hands });
+                setSelected(null);
+                setDialog(null);
+                hideInspection();
+                setToast("SWAP Force halves exchanged. Choose a card to play.");
+              } catch (error) {
+                setToast(
+                  error instanceof Error
+                    ? error.message
+                    : "Those halves could not be swapped.",
+                );
+              }
+            }}
+          />
+        </Dialog>
+      )}
       {dialog?.kind === "skins" && (
         <Dialog
           title="Board skins"
           onClose={() => setDialog(null)}
           className="board-skins-dialog"
         >
+          <SwapArtSettings />
           <BoardSkins
             selected={library.boardSkin}
             onSelect={(skin) => saveLibrary({ ...library, boardSkin: skin })}

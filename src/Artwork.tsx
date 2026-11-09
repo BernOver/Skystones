@@ -1,3 +1,4 @@
+import { swapIdentity } from "./swapForce";
 import { stoneTribes, tribeName } from "./tribes";
 import { memo, useId } from "react";
 import {
@@ -610,7 +611,58 @@ export const StoneCard = memo(
         }
       >
         <div className="stone-art">
-          {artwork ? (
+          {stone.swapParts ? (
+            <div
+              className="swap-art"
+              role="img"
+              aria-label={`SWAP Force portrait: ${stone.swapParts.top.name} top, ${stone.swapParts.bottom.name} bottom`}
+            >
+              {(["top", "bottom"] as const).map((half) => {
+                const part = swapIdentity(stone, half),
+                  src = part.image || portraitImage(part.portrait);
+                const statArt =
+                  !part.image &&
+                  hasSkystonesArtwork({
+                    ...stone,
+                    portrait: part.portrait,
+                    image: undefined,
+                  });
+                return (
+                  <div
+                    key={half}
+                    className={`swap-art-half swap-art-${half}`}
+                    style={
+                      {
+                        "--half-background": ELEMENTS[part.element].pale,
+                      } as React.CSSProperties
+                    }
+                  >
+                    {src ? (
+                      <img
+                        src={src}
+                        alt=""
+                        className={`character-art ${statArt ? "swap-skystones-art" : ""}`}
+                      />
+                    ) : (
+                      <CreatureArt
+                        creature={part.creature}
+                        element={part.element}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+              <svg
+                className="swap-art-seam"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path className="diagonal-seam" d="M0 100 L100 0" />
+                <path className="horizontal-seam" d="M0 50 H100" />
+              </svg>
+            </div>
+          ) : artwork ? (
             <img
               src={artwork}
               alt=""

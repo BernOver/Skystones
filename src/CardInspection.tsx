@@ -1,3 +1,4 @@
+import { SwapDetails } from "./SwapDetails";
 import { TribeBadges } from "./TribeEditor";
 import { stoneTribes, tribeName } from "./tribes";
 import type { Tribe } from "./tribes";
@@ -888,6 +889,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         )}
       </div>
       <TribeBadges stone={stone} />
+      <SwapDetails stone={stone} edges={edges} />
       {stone.token && (
         <p className="conjured-notice">
           Token · available through Conjure or a custom enemy’s starting hand.
