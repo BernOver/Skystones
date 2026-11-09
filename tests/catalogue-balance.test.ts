@@ -150,7 +150,7 @@ test("element themes cover all available keywords and every Conjure template dep
   );
   for (const c of CHARACTER_STONES) {
     assert.ok(validateKeywords(c.keywords || []));
-    assert.doesNotThrow(() => tokenDependencies(c, DEFAULT_TOKENS), c.name);
+    assert.doesNotThrow(() => tokenDependencies(c), c.name);
     if (c.keywords?.some((keyword) => keyword.type === "discard-priority"))
       assert.ok(
         c.keywords.some((keyword) => keyword.type === "parting-gift"),

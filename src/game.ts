@@ -1,3 +1,7 @@
+import { trapEdges, trapBonus, withTrap, boardTrap } from "./traps.ts";
+import type { Trap } from "./traps.ts";
+import { amplifyPlan, validRuntimeEffects } from "./amplify.ts";
+import type { AmplifyKeyword, AmplifyQueue, AmplifySpent } from "./amplify.ts";
 import { CHARACTER_STONES, CHARACTER_PORTRAITS } from "./characters.ts";
 import {
   boardEnvironments,
@@ -79,7 +83,10 @@ export type KeywordType =
   | "discard"
   | "scavenge"
   | "parting-gift"
-  | "discard-priority";
+  | "discard-priority"
+  | "assemble"
+  | "flash"
+  | "amplify";
 export type ShiftKeyword = {
   type: "shift";
   side: Side;
@@ -90,6 +97,9 @@ export type TargetKeyword =
   | { type: "sunder"; side: Side | "any"; amount?: number }
   | { type: "silence" };
 export type BasicKeyword =
+  | { type: "assemble"; count: number }
+  | { type: "flash" }
+  | AmplifyKeyword
   | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | { type: "resonance"; side: Side; element: Element; tribe?: Tribe }
   | { type: "dizzy"; sides?: Side[] }
@@ -161,6 +171,15 @@ export type TargetEffect =
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
+  assemble: {
+    name: "Assemble",
+    condition: "generate Parts; pairs build a Supercharger",
+  },
+  flash: { name: "Flash", condition: "play without ending your turn" },
+  amplify: {
+    name: "Amplify",
+    condition: "double an effect: always or next uses",
+  },
   "head-start": { name: "Head Start", condition: "winning" },
   comeback: { name: "Comeback", condition: "losing" },
   resonance: { name: "Resonance", condition: "element or tribe count" },
@@ -188,10 +207,14 @@ export const KEYWORD_RULES = {
   },
 } as const;
 export const MAX_KEYWORDS = 24;
+export const MAX_RUNTIME_KEYWORDS = 128;
 export const MAX_KEYWORD_DEPTH = 3;
 export const DIZZY_EDGE_CAP = 5;
 export function keywordKey(keyword: StoneKeyword): string {
-  return keyword.type === "silence" ||
+  return keyword.type === "assemble" ||
+    keyword.type === "flash" ||
+    keyword.type === "amplify" ||
+    keyword.type === "silence" ||
     keyword.type === "dizzy" ||
     keyword.type === "combo" ||
     keyword.type === "environment" ||
@@ -205,6 +228,8 @@ export function keywordKey(keyword: StoneKeyword): string {
 }
 export function repeatableKeyword(type: KeywordType): boolean {
   return (
+    type === "assemble" ||
+    type === "amplify" ||
     type === "sunder" ||
     type === "next-play" ||
     type === "environment" ||
@@ -216,6 +241,7 @@ export function repeatableKeyword(type: KeywordType): boolean {
 export function keywordGroups(keywords: StoneKeyword[]) {
   return keywords.flatMap((keyword, index) => {
     if (
+      keyword.type === "combo" ||
       keyword.type === "sunder" ||
       keyword.type === "silence" ||
       keyword.type === "next-play" ||
@@ -269,6 +295,10 @@ export interface Stone {
   tribes?: Tribe[];
   conjured?: true;
   token?: true;
+  unique?: true;
+  part?: true;
+  supercharger?: { parts: [string, string] };
+  runtimeEffects?: true;
   encounterStart?: true;
   receivedKeywords?: StoneKeyword[];
   receivedElement?: { before: Element; after: Element };
@@ -276,6 +306,11 @@ export interface Stone {
   swapParts?: SwapParts;
 }
 export interface PlacedStone {
+  trap?: Trap;
+  history?: PlacedStone[];
+  resolvedEffects?: BasicKeyword[];
+  queuedAmplify?: AmplifyQueue[];
+  amplifySpent?: AmplifySpent[];
   stone: Stone;
   owner: Owner;
   playedBy?: Owner;
@@ -293,6 +328,7 @@ export interface PlacedStone {
   shields?: Edges;
   grantedKeywords?: BasicKeyword[];
   comboActive?: boolean;
+  comboStates?: boolean[];
   comboPrevious?: Element;
   comboPreviousTribes?: Tribe[];
   playedOrder?: number;
@@ -308,6 +344,7 @@ export interface PlacedStone {
 }
 export type Board = (PlacedStone | null)[];
 export interface Move {
+  keepsTurn?: boolean;
   board: Board;
   captured: number[];
   effects: TargetEffect[];
@@ -364,7 +401,7 @@ export function withNextKeywords(
   if (
     stone.receivedKeywords?.length ||
     stone.receivedElement ||
-    !board.some((cell) =>
+    !playHistory(board).some((cell) =>
       cell?.queuedPips?.some(
         (effect) => effect.keywords?.length || effect.changeElement,
       ),
@@ -380,14 +417,18 @@ export function withNextKeywords(
     undefined,
   );
   if (!granted.length && !element) return stone;
+  const runtime =
+    !!stone.runtimeEffects || granted.some((k) => !validateKeywords([k]));
   const { keywords, added: received } = mergeKeywordGrants(
     stone.keywords || [],
     granted,
+    runtime,
   );
   return received.length || element
     ? {
         ...stone,
         keywords,
+        ...(runtime ? { runtimeEffects: true as const } : {}),
         ...(received.length ? { receivedKeywords: received } : {}),
         ...(element
           ? {
@@ -402,17 +443,25 @@ export function withNextKeywords(
 export function mergeKeywordGrants(
   existing: readonly StoneKeyword[],
   grants: readonly StoneKeyword[],
+  runtime = false,
 ) {
   const keywords = [...existing],
     added: StoneKeyword[] = [];
   for (const keyword of grants) {
-    if (keywords.length >= MAX_KEYWORDS) break;
+    if (keywords.length >= (runtime ? MAX_RUNTIME_KEYWORDS : MAX_KEYWORDS))
+      break;
     if (
+      !runtime &&
       !repeatableKeyword(keyword.type) &&
       keywords.some((old) => keywordKey(old) === keywordKey(keyword))
     )
       continue;
-    if (!validateKeywords([...keywords, keyword])) continue;
+    if (
+      !(runtime
+        ? validRuntimeEffects([...keywords, keyword])
+        : validateKeywords([...keywords, keyword]))
+    )
+      continue;
     const copy = structuredClone(keyword);
     keywords.push(copy);
     added.push(copy);
@@ -427,67 +476,131 @@ export function previousElement(
 ): Element | undefined {
   return previousStone(board, player)?.element;
 }
-export function previousStone(board: Board, player: Owner): Stone | undefined {
+export function playHistory(board: Board): PlacedStone[] {
   return board
+    .flatMap((cell) => (cell ? [...(cell.history || []), cell] : []))
+    .sort((a, b) => (a.playedOrder || 0) - (b.playedOrder || 0));
+}
+export function previousStone(board: Board, player: Owner): Stone | undefined {
+  return playHistory(board)
     .filter(
-      (cell) => cell?.playedBy === player && cell.playedOrder !== undefined,
+      (cell) => cell.playedBy === player && cell.playedOrder !== undefined,
     )
-    .sort((a, b) => b!.playedOrder! - a!.playedOrder!)[0]?.stone;
+    .at(-1)?.stone;
 }
 export function comboKeywords(stone: Stone, board: Board, player: Owner) {
   stone = withNextKeywords(stone, board, player);
-  const combo = stone.keywords?.find((keyword) => keyword.type === "combo");
-  const previousCard = previousStone(board, player);
-  const previous = previousCard?.element;
-  const elementMatch = !!previousCard && previous === stone.element;
-  const condition = combo?.condition || "element";
-  const tribeMatch =
-    !!combo &&
-    condition !== "element" &&
-    !!previousCard &&
-    (combo?.tribe
-      ? hasTribe(stone, combo.tribe) && hasTribe(previousCard, combo.tribe)
-      : sharedTribes(stone, previousCard).length > 0);
-  const active =
-    !!combo &&
-    (condition === "element"
-      ? elementMatch
-      : condition === "tribe"
-        ? tribeMatch
-        : condition === "either"
-          ? elementMatch || tribeMatch
-          : elementMatch && tribeMatch);
+  const previousCard = previousStone(board, player),
+    previous = previousCard?.element;
+  const results = (stone.keywords || [])
+    .filter((k) => k.type === "combo")
+    .map((combo) => {
+      const elementMatch = !!previousCard && previous === stone.element,
+        condition = combo.condition || "element";
+      const tribeMatch =
+        !!previousCard &&
+        (combo.tribe
+          ? hasTribe(stone, combo.tribe) && hasTribe(previousCard, combo.tribe)
+          : sharedTribes(stone, previousCard).length > 0);
+      const active =
+        condition === "element"
+          ? elementMatch
+          : condition === "tribe"
+            ? tribeMatch
+            : condition === "either"
+              ? elementMatch || tribeMatch
+              : elementMatch && tribeMatch;
+      return { combo, active };
+    });
   return {
-    combo,
+    combo: results[0]?.combo,
     previous,
-    active,
-    ...(combo && condition !== "element"
+    active: results.some((r) => r.active),
+    results,
+    ...(results.some(
+      (r) => r.combo.condition && r.combo.condition !== "element",
+    )
       ? { previousTribes: previousCard ? [...stoneTribes(previousCard)] : [] }
       : {}),
-    granted: active ? combo!.keywords || [] : [],
+    granted: results.flatMap((r) => (r.active ? r.combo.keywords || [] : [])),
   };
+}
+export function effectPlan(stone: Stone, board: Board, player?: Owner) {
+  if (player !== undefined) stone = withNextKeywords(stone, board, player);
+  const combo =
+    player !== undefined ? comboKeywords(stone, board, player) : undefined;
+  const groups = (stone.keywords || []).map((keyword) =>
+    keyword.type === "combo"
+      ? {
+          keyword,
+          active: !!combo?.results.find(
+            (r) => JSON.stringify(r.combo) === JSON.stringify(keyword),
+          )?.active,
+        }
+      : { keyword, active: true },
+  );
+  const plan = amplifyPlan(stone, groups, board, player);
+  return { ...plan, combo };
 }
 export function effectiveKeywords(
   stone: Stone,
   board: Board,
   player?: Owner,
 ): BasicKeyword[] {
-  if (player !== undefined) stone = withNextKeywords(stone, board, player);
   const shifts = new Set<Side>();
-  return (stone.keywords || [])
-    .flatMap((keyword) =>
-      keyword.type === "combo"
-        ? player !== undefined && comboKeywords(stone, board, player).active
-          ? keyword.keywords || []
-          : []
-        : [keyword],
-    )
-    .filter((keyword) => {
-      if (keyword.type !== "shift") return true;
-      if (shifts.has(keyword.side)) return false;
-      shifts.add(keyword.side);
+  const plan = effectPlan(stone, board, player);
+  return plan.effects.filter((keyword) => {
+    if (keyword.type !== "shift" || stone.runtimeEffects || plan.amplified)
       return true;
-    });
+    if (shifts.has(keyword.side)) return false;
+    shifts.add(keyword.side);
+    return true;
+  });
+}
+export function placedKeywords(cell: PlacedStone): BasicKeyword[] {
+  if (cell.silenced) return [];
+  return (
+    cell.resolvedEffects ||
+    (cell.stone.keywords || []).flatMap((k) =>
+      k.type === "combo" ? cell.grantedKeywords || [] : [k],
+    )
+  );
+}
+export function canPlace(board: Board, index: number): boolean {
+  return (
+    index >= 0 &&
+    index < board.length &&
+    (!board[index] || !!board[index]?.stone.supercharger)
+  );
+}
+export function boardFinished(board: Board): boolean {
+  return board.every((c) => !!c && !c.stone.supercharger);
+}
+export function finishingCard(stone: Stone): boolean {
+  return !stone.part && !stone.supercharger;
+}
+export function playableHand(hand: Stone[]): boolean {
+  return hand.some((c) => !c.part);
+}
+export function coverStone(board: Board, index: number, stone: Stone): Stone {
+  const cell = board[index];
+  if (!cell?.stone.supercharger) return stone;
+  const keywords = [
+    ...(stone.keywords || []),
+    ...(cell.silenced ? [] : cell.stone.keywords || []).filter(
+      (k) => k.type !== "flash",
+    ),
+  ];
+  if (keywords.length > MAX_RUNTIME_KEYWORDS)
+    throw new Error("This combination has too many effects.");
+  return {
+    ...stone,
+    runtimeEffects: true,
+    edges: stone.edges.map((n, s) =>
+      Math.min(99, n + (cell.edges || cell.stone.edges)[s]),
+    ) as Edges,
+    keywords,
+  };
 }
 export function shieldEdges(
   stone: Stone,
@@ -513,11 +626,15 @@ export function arenaEdges(
 }
 export function cardEdges(cell: PlacedStone): Edges {
   return arenaEdges(
-    environmentEdges(
-      cell.edges || cell.stone.edges,
-      cell.stone.element,
-      cell.environment,
+    trapEdges(
+      environmentEdges(
+        cell.edges || cell.stone.edges,
+        cell.stone.element,
+        cell.environment,
+        cell.stone,
+      ),
       cell.stone,
+      cell.trap,
     ),
     cell.stone.element,
     cell.arenaElement,
@@ -525,7 +642,10 @@ export function cardEdges(cell: PlacedStone): Edges {
 }
 export function attackEdges(cell: PlacedStone): Edges {
   const bonus = environmentAttack(cell.environment, cell.stone);
-  return cardEdges(cell).map((value) => value + bonus) as Edges;
+  const trap = trapBonus(cell.trap, cell.stone, "attack");
+  return cardEdges(cell).map((value, s) =>
+    Math.max(0, value + bonus + trap[s]),
+  ) as Edges;
 }
 export function withArenaElement(board: Board, element: Element): Board {
   return board.map((cell) =>
@@ -536,9 +656,15 @@ export function defenseEdges(cell: PlacedStone): Edges {
   const shields = cell.silenced
     ? [0, 0, 0, 0]
     : cell.shields || shieldEdges(cell.stone, false, cell.grantedKeywords);
-  return cardEdges(cell).map(
-    (edge, side) =>
-      edge + shields[side] + environmentDefense(cell.environment, cell.stone),
+  const trap = trapBonus(cell.trap, cell.stone, "defense");
+  return cardEdges(cell).map((edge, side) =>
+    Math.max(
+      0,
+      edge +
+        shields[side] +
+        environmentDefense(cell.environment, cell.stone) +
+        trap[side],
+    ),
   ) as Edges;
 }
 export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
@@ -550,20 +676,23 @@ export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
     (edge, side) => edge + (stone.discardBuffs?.pips[side] || 0),
   ) as Edges;
   const combo = comboKeywords(stone, board, player);
-  if (combo.active)
-    for (const pip of combo.combo!.pips || []) edges[pip.side] += pip.amount;
-  for (const keyword of effectiveKeywords(stone, board, player)) {
+  const plan = effectPlan(stone, board, player);
+  for (const side of [0, 1, 2, 3] as Side[])
+    edges[side] += plan.comboPips[side];
+  for (const keyword of plan.effects) {
     if (keyword.type === "resonance") {
-      const bonus = board.filter(
+      const bonus =
+        (keyword as typeof keyword & { multiplier?: number }).multiplier || 1;
+      const count = board.filter(
         (cell) =>
           !!cell &&
           (keyword.tribe
             ? hasTribe(cell.stone, keyword.tribe)
             : cell.stone.element === keyword.element),
       ).length;
-      if (bonus > 0) {
-        activeKeywords.push({ ...keyword, bonus });
-        edges[keyword.side] += bonus;
+      if (count > 0) {
+        activeKeywords.push({ ...keyword, bonus: Math.min(99, count * bonus) });
+        edges[keyword.side] += count * bonus;
       }
     } else if (
       (keyword.type === "head-start" || keyword.type === "comeback") &&
@@ -583,10 +712,13 @@ export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
     ) as Edges,
     ...(hasInherited ? { inheritedPips } : {}),
     activeKeywords,
-    shields: shieldEdges(stone, false, combo.granted),
+    shields: shieldEdges({ ...stone, keywords: plan.effects }),
     ...(combo.combo
       ? {
           comboActive: combo.active,
+          ...(combo.results.length > 1
+            ? { comboStates: combo.results.map((r) => r.active) }
+            : {}),
           comboPrevious: combo.previous,
           ...(combo.previousTribes
             ? { comboPreviousTribes: combo.previousTribes }
@@ -606,6 +738,8 @@ export function prepareTargeting(
   owner?: Owner,
   placementIndex?: number,
 ) {
+  if (placementIndex !== undefined)
+    stone = coverStone(board, placementIndex, stone);
   if (owner !== undefined) stone = withNextKeywords(stone, board, owner);
   if (
     new Set(targets.map((choice) => choice.keywordIndex)).size !==
@@ -828,7 +962,8 @@ export function chooseKeywordTargets(
   owner: Owner,
   arenaElement?: Element,
 ): KeywordTarget[] {
-  stone = withNextKeywords(stone, board, owner);
+  const original = stone;
+  stone = withNextKeywords(coverStone(board, index, stone), board, owner);
   const targets: KeywordTarget[] = [];
   const resolved = evaluateKeywords(stone, board, owner).edges;
   const sides = [
@@ -841,7 +976,7 @@ export function chooseKeywordTargets(
   const edges = sides.length
     ? rollDizzy(resolved, placementSeed(board, index, owner), 0, sides)
     : resolved;
-  let state = prepareTargeting(board, stone, targets, owner, index);
+  let state = prepareTargeting(board, original, targets, owner, index);
   while (state.pending) {
     let { options } = state.pending;
     if (state.pending.keyword.type === "environment") {
@@ -862,7 +997,7 @@ export function chooseKeywordTargets(
     for (const option of options) {
       const preview = prepareTargeting(
         board,
-        stone,
+        original,
         [...targets, option],
         owner,
         index,
@@ -893,6 +1028,7 @@ export function chooseKeywordTargets(
         owner,
         edges,
         environment,
+        trap: boardTrap(board),
         arenaElement,
       };
       const value =
@@ -906,7 +1042,7 @@ export function chooseKeywordTargets(
       }
     }
     targets.push(best);
-    state = prepareTargeting(board, stone, targets, owner, index);
+    state = prepareTargeting(board, original, targets, owner, index);
   }
   return targets;
 }
@@ -981,22 +1117,29 @@ export function placeStone(
     seed?: number;
     minimumDizzyPips?: number;
     arenaElement?: Element;
+    trap?: Trap;
   } = {},
 ): Move {
+  if (stone.part)
+    throw new Error(
+      "Parts automatically combine in pairs; they cannot be played alone.",
+    );
   if (stone.token && !stone.conjured && !stone.encounterStart)
     throw new Error("Generate this token through Conjure before playing it.");
-  stone = withNextKeywords(stone, board, owner);
+  const original = stone;
+  stone = withNextKeywords(coverStone(board, index, stone), board, owner);
   if (
     (board.length !== 9 && board.length !== 16) ||
     !Number.isInteger(index) ||
     index < 0 ||
     index >= board.length ||
-    board[index]
+    !canPlace(board, index)
   ) {
     throw new Error("Choose an empty square on the board.");
   }
   const resolved = evaluateKeywords(stone, board, owner);
-  const targeted = prepareTargeting(board, stone, targets, owner, index);
+  const plan = effectPlan(stone, board, owner);
+  const targeted = prepareTargeting(board, original, targets, owner, index);
   if (targeted.pending)
     throw new Error("Choose a target before placing this card.");
   let next = targeted.board.map((cell) => (cell ? { ...cell } : null));
@@ -1024,13 +1167,30 @@ export function placeStone(
         ]
       : [],
   );
+  const old = board[index];
+  const history = old
+    ? [...(old.history || []), { ...old, history: undefined }]
+    : [];
+  const order =
+    1 + Math.max(0, ...playHistory(board).map((c) => c.playedOrder || 0));
   next[index] = {
     stone,
+    ...(history.length ? { history } : {}),
+    ...(plan.amplified ? { resolvedEffects: plan.effects } : {}),
+    ...(plan.spent.length ? { amplifySpent: plan.spent } : {}),
+    ...(plan.queues.length
+      ? {
+          queuedAmplify: plan.queues.map((q, i) => ({
+            ...q,
+            id: `${order}-${i}`,
+            owner,
+          })),
+        }
+      : {}),
     owner,
     playedBy: owner,
     playedElement: stone.receivedElement?.before || stone.element,
-    playedOrder:
-      1 + Math.max(0, ...board.map((cell) => cell?.playedOrder || 0)),
+    playedOrder: order,
     ...resolved,
     ...(queuedPips.length ? { queuedPips } : {}),
     ...(options.arenaElement ? { arenaElement: options.arenaElement } : {}),
@@ -1049,12 +1209,18 @@ export function placeStone(
         ),
       ),
     ];
-    const after = rollDizzy(
-      resolved.edges,
-      seed,
-      options.minimumDizzyPips,
-      sides,
-    );
+    let after = resolved.edges;
+    effectiveKeywords(stone, board, owner)
+      .filter((k) => k.type === "dizzy")
+      .forEach((keyword, n) => {
+        if (keyword.type === "dizzy")
+          after = rollDizzy(
+            after,
+            n === 0 ? seed : seed ^ Math.imul(n, 0x9e3779b1),
+            options.minimumDizzyPips,
+            dizzySides(keyword),
+          );
+      });
     next[index] = {
       ...next[index]!,
       edges: after,
@@ -1066,11 +1232,19 @@ export function placeStone(
       },
     };
   }
-  next = withTileEnvironments(next);
+  next = withTrap(withTileEnvironments(next), options.trap || boardTrap(board));
   const captured = capturesAt(next, index, owner, attackEdges(next[index]!));
   for (const neighbor of captured)
     next[neighbor] = { ...next[neighbor]!, owner };
-  return { board: next, captured, effects: targeted.effects };
+  if (old && old.owner !== owner) captured.push(index);
+  return {
+    board: next,
+    captured,
+    effects: targeted.effects,
+    ...(plan.effects.some((k) => k.type === "flash")
+      ? { keepsTurn: true }
+      : {}),
+  };
 }
 
 export function score(board: Board): [number, number] {
@@ -1089,7 +1263,7 @@ export function chooseMove(
   hand: Stone[],
   rivalHand: Stone[],
   owner: Owner,
-  arena: { current?: Element; next?: Element } = {},
+  arena: { current?: Element; next?: Element; trap?: Trap } = {},
 ): { index: number; cardIndex: number; targets: KeywordTarget[] } {
   let best = {
     index: -1,
@@ -1098,8 +1272,8 @@ export function chooseMove(
     value: -Infinity,
   };
   hand.forEach((stone, cardIndex) =>
-    board.forEach((cell, index) => {
-      if (cell) return;
+    board.forEach((_cell, index) => {
+      if (!canPlace(board, index) || stone.part) return;
       const targets = chooseKeywordTargets(
         board,
         index,
@@ -1109,14 +1283,15 @@ export function chooseMove(
       );
       const move = placeStone(board, index, stone, owner, targets, {
         arenaElement: arena.current,
+        trap: arena.trap,
       });
       const replyBoard = arena.next
         ? withArenaElement(move.board, arena.next)
         : move.board;
       let worstReply = 0;
       rivalHand.forEach((rival) =>
-        replyBoard.forEach((target, spot) => {
-          if (!target)
+        replyBoard.forEach((_target, spot) => {
+          if (canPlace(replyBoard, spot) && !rival.part)
             worstReply = Math.max(
               worstReply,
               placeStone(
@@ -1131,7 +1306,7 @@ export function chooseMove(
                   owner === 0 ? 1 : 0,
                   arena.next,
                 ),
-                { arenaElement: arena.next },
+                { arenaElement: arena.next, trap: arena.trap },
               ).captured.length,
             );
         }),
@@ -1243,9 +1418,15 @@ export function validateStone(value: unknown): value is Stone {
       (n) =>
         Number.isInteger(n) &&
         n >= 0 &&
-        n <= (s.conjured === true || s.swapParts !== undefined ? 64 : 5),
+        n <=
+          (s.runtimeEffects === true
+            ? 99
+            : s.conjured === true || s.swapParts !== undefined
+              ? 64
+              : 5),
     ) &&
-    (s.conjured === true ||
+    (s.runtimeEffects === true ||
+      s.conjured === true ||
       s.swapParts !== undefined ||
       s.edges.reduce((a, b) => a + b, 0) <=
         (s.origin === "giants" ? 16 : 12)) &&
@@ -1263,18 +1444,37 @@ export function validateStone(value: unknown): value is Stone {
     (s.tribes === undefined || validateTribes(s.tribes)) &&
     (s.conjured === undefined || s.conjured === true) &&
     (s.token === undefined || s.token === true) &&
+    (s.unique === undefined || (s.unique === true && !s.token)) &&
+    (s.part === undefined ||
+      (s.part === true && s.token === true && !s.unique)) &&
+    (s.runtimeEffects === undefined || s.runtimeEffects === true) &&
+    (s.supercharger === undefined ||
+      (!!s.supercharger &&
+        s.runtimeEffects === true &&
+        !s.part &&
+        Array.isArray((s.supercharger as Stone["supercharger"])?.parts) &&
+        (s.supercharger as NonNullable<Stone["supercharger"]>).parts.length ===
+          2 &&
+        (s.supercharger as NonNullable<Stone["supercharger"]>).parts.every(
+          (n) => typeof n === "string" && n.length <= 40,
+        ))) &&
     (s.encounterStart === undefined ||
       (s.encounterStart === true &&
         String(s.id).startsWith("custom-encounter-"))) &&
     (s.receivedKeywords === undefined ||
       (Array.isArray(s.receivedKeywords) &&
         s.receivedKeywords.length > 0 &&
-        validateKeywords(s.receivedKeywords))) &&
+        (s.runtimeEffects
+          ? validRuntimeEffects(s.receivedKeywords)
+          : validateKeywords(s.receivedKeywords)))) &&
     (s.receivedElement === undefined ||
       validReceivedElement(s.receivedElement)) &&
     (s.discardBuffs === undefined || validDiscardBuffs(s.discardBuffs)) &&
     (s.swapParts === undefined || validSwapParts(s.swapParts)) &&
-    (s.keywords === undefined || validateKeywords(s.keywords)) &&
+    (s.keywords === undefined ||
+      (s.runtimeEffects
+        ? validRuntimeEffects(s.keywords)
+        : validateKeywords(s.keywords))) &&
     (s.baseKeywords === undefined || validateKeywords(s.baseKeywords)) &&
     (s.baseEdges === undefined ||
       (Array.isArray(s.baseEdges) &&
@@ -1303,11 +1503,12 @@ export function validReceivedElement(
 export function validateKeywords(
   value: unknown,
   depth = 0,
+  runtime = false,
 ): value is StoneKeyword[] {
   if (
     depth > MAX_KEYWORD_DEPTH ||
     !Array.isArray(value) ||
-    value.length > MAX_KEYWORDS
+    value.length > (runtime ? MAX_RUNTIME_KEYWORDS : MAX_KEYWORDS)
   )
     return false;
   const seen = new Set<string>();
@@ -1322,6 +1523,9 @@ export function validateKeywords(
     if (keyword.half !== undefined && !["top", "bottom"].includes(keyword.half))
       return false;
     if (
+      keyword.type === "assemble" ||
+      keyword.type === "flash" ||
+      keyword.type === "amplify" ||
       keyword.type === "silence" ||
       keyword.type === "dizzy" ||
       keyword.type === "combo" ||
@@ -1339,6 +1543,26 @@ export function validateKeywords(
           (!Number.isInteger(keyword.side) ||
             keyword.side < 0 ||
             keyword.side > 3)
+    )
+      return false;
+    if (
+      keyword.type === "assemble" &&
+      (!Number.isInteger(keyword.count) ||
+        keyword.count < 1 ||
+        keyword.count > 5)
+    )
+      return false;
+    if (
+      keyword.type === "amplify" &&
+      ((keyword.effect !== "all" &&
+        (!Object.hasOwn(KEYWORD_RULES, keyword.effect) ||
+          keyword.effect === "amplify")) ||
+        !["always", "next"].includes(keyword.duration) ||
+        (keyword.duration === "next"
+          ? !Number.isInteger(keyword.count) ||
+            keyword.count < 1 ||
+            keyword.count > 5
+          : keyword.count !== undefined))
     )
       return false;
     if (keyword.type === "conjure" && !validateConjure(keyword, depth))
@@ -1480,7 +1704,8 @@ export function validateKeywords(
     )
       return false;
     const key = keywordKey(keyword);
-    if (!repeatableKeyword(keyword.type) && seen.has(key)) return false;
+    if (!runtime && !repeatableKeyword(keyword.type) && seen.has(key))
+      return false;
     seen.add(key);
     return true;
   });

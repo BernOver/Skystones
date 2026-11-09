@@ -1,3 +1,4 @@
+import { playHistory } from "./game.ts";
 import { hasTribe, tribeName, validTribe } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
 import type { Stone, StoneKeyword, TargetEffect } from "./game.ts";
@@ -150,7 +151,10 @@ export function validPipAmount(value: unknown, signed = false): boolean {
     Number(value) <= 5
   );
 }
-export function validateEnvironment(value: unknown): value is TileEnvironment {
+export function validateEnvironment(
+  value: unknown,
+  runtime = false,
+): value is TileEnvironment {
   if (!value || typeof value !== "object") return false;
   const env = value as TileEnvironment;
   if (
@@ -159,7 +163,13 @@ export function validateEnvironment(value: unknown): value is TileEnvironment {
   )
     return false;
   if (env.kind === "elemental" || env.kind === "blight") {
-    if (!validEffectSide(env.side) || !validPipAmount(env.amount)) return false;
+    if (
+      !validEffectSide(env.side) ||
+      !(runtime
+        ? Number.isInteger(env.amount) && env.amount >= 1 && env.amount <= 99
+        : validPipAmount(env.amount))
+    )
+      return false;
     if (
       env.kind === "elemental" &&
       ![
@@ -180,7 +190,9 @@ export function validateEnvironment(value: unknown): value is TileEnvironment {
   }
   if (
     (env.kind === "bastion" || env.kind === "war-banner") &&
-    !validPipAmount(env.amount)
+    !(runtime
+      ? Number.isInteger(env.amount) && env.amount >= 1 && env.amount <= 99
+      : validPipAmount(env.amount))
   )
     return false;
   return true;
@@ -192,8 +204,9 @@ export function pendingPipEffects(
   board: Board,
   recipient: Owner,
 ): (QueuedPips & { source: string })[] {
-  if (!board.some((cell) => cell?.queuedPips?.length)) return [];
-  const history = board.filter((cell) => cell?.playedBy === recipient);
+  const plays = playHistory(board);
+  if (!plays.some((cell) => cell?.queuedPips?.length)) return [];
+  const history = plays.filter((cell) => cell?.playedBy === recipient);
   const lastPlay = Math.max(
     0,
     ...history.map((cell) => cell?.playedOrder || 0),
@@ -218,7 +231,7 @@ export function pendingPipEffects(
       );
     return matchingPlays.get(key)!;
   };
-  return [...board]
+  return [...plays]
     .sort((a, b) => (a?.playedOrder || 0) - (b?.playedOrder || 0))
     .flatMap((cell) =>
       cell
@@ -297,7 +310,7 @@ export function boardEnvironments(
   const result: (TileEnvironment | undefined)[] = Array(board.length).fill(
     undefined,
   );
-  for (const cell of board
+  for (const cell of playHistory(board)
     .filter(
       (cell): cell is PlacedStone =>
         !!cell?.effects?.some((effect) => effect.type === "environment"),
@@ -315,7 +328,7 @@ export function withTileEnvironments(
 ): Board {
   if (
     !additional.length &&
-    !board.some(
+    !playHistory(board).some(
       (cell) =>
         cell?.environment ||
         cell?.effects?.some((effect) => effect.type === "environment"),

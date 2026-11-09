@@ -1,6 +1,7 @@
+import { DEFAULT_PARTS } from "./assemble.ts";
 import { validateStone } from "./game.ts";
-import { hasTribe } from "./tribes.ts";
-import type { Stone, StoneKeyword } from "./game.ts";
+import { cardDependencies } from "./cardDependencies.ts";
+import type { Stone } from "./game.ts";
 
 export const TOKEN_ID_PREFIX = "custom-token-";
 export const LIBRARY_STORAGE = "skystones-library-v1";
@@ -101,6 +102,9 @@ export function tokenDefinition(value: unknown): value is Stone {
   return (
     validateStone(value) &&
     value.token === true &&
+    !value.unique &&
+    !value.runtimeEffects &&
+    !value.supercharger &&
     !value.conjured &&
     !value.encounterStart &&
     !value.swapParts &&
@@ -111,14 +115,16 @@ export function tokenDefinition(value: unknown): value is Stone {
   );
 }
 export function tokenCatalogue(custom: readonly Stone[] = []): Stone[] {
-  const byId = new Map(DEFAULT_TOKENS.map((card) => [card.id, card]));
+  const byId = new Map(
+    [...DEFAULT_TOKENS, ...DEFAULT_PARTS].map((card) => [card.id, card]),
+  );
   for (const card of custom) if (tokenDefinition(card)) byId.set(card.id, card);
   return [...byId.values()];
 }
 let cachedLibrary: string | null | undefined;
-let cachedTokens = DEFAULT_TOKENS;
+let cachedTokens: Stone[] | undefined;
 export function readTokens(): Stone[] {
-  if (typeof localStorage === "undefined") return DEFAULT_TOKENS;
+  if (typeof localStorage === "undefined") return tokenCatalogue();
   try {
     const raw = localStorage.getItem(LIBRARY_STORAGE);
     if (raw !== cachedLibrary) {
@@ -128,62 +134,25 @@ export function readTokens(): Stone[] {
       );
       cachedLibrary = raw;
     }
-    return cachedTokens;
+    return cachedTokens || tokenCatalogue();
   } catch {
-    return DEFAULT_TOKENS;
+    return tokenCatalogue();
   }
 }
 export function tokenName(key: string): string {
   return readTokens().find((card) => card.id === key)?.name || "Missing token";
 }
 export function deckEligible(card: Stone): boolean {
-  return !card.token && !card.conjured;
+  return (
+    !card.token &&
+    !card.conjured &&
+    !card.part &&
+    !card.supercharger &&
+    !card.runtimeEffects
+  );
 }
 export function tokenDependencies(card: Stone, tokens = readTokens()): Stone[] {
-  const found = new Map<string, Stone>();
-  const visit = (stone: Stone) => {
-    const flatten = (keywords: StoneKeyword[]): StoneKeyword[] =>
-      keywords.flatMap((keyword) =>
-        keyword.type === "combo" || keyword.type === "next-play"
-          ? flatten(keyword.keywords || [])
-          : keyword.type === "conjure"
-            ? [keyword, ...flatten(keyword.keywords || [])]
-            : [keyword],
-      );
-    const keywords = flatten(stone.keywords || []);
-    const add = (token: Stone) => {
-      if (found.has(token.id)) return;
-      found.set(token.id, token);
-      visit(token);
-    };
-    for (const keyword of keywords) {
-      if (keyword.type !== "conjure") continue;
-      if (keyword.mode === "token") {
-        const token = tokens.find((token) => token.id === keyword.token);
-        if (!token)
-          throw new Error(
-            "A referenced token is missing. Choose another token before exporting.",
-          );
-        add(token);
-      } else if (
-        keyword.mode === "random" &&
-        keyword.pool &&
-        keyword.pool !== "cards"
-      ) {
-        tokens
-          .filter(
-            (token) =>
-              (!keyword.element || token.element === keyword.element) &&
-              (!keyword.tribe || hasTribe(token, keyword.tribe)),
-          )
-          .forEach(add);
-      }
-    }
-  };
-  if (card.token) found.set(card.id, card);
-  visit(card);
-  found.delete(card.id);
-  return [...found.values()];
+  return cardDependencies(card, tokens).tokens;
 }
 export function mergeTokenDefinitions(
   custom: Stone[],

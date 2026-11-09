@@ -93,7 +93,7 @@ test("create a Conjure-only token, keep it out of decks, and share its definitio
   test.setTimeout(90_000);
   await page.goto("/");
   await tokensTab(page);
-  await expect(page.locator(".collection-item")).toHaveCount(6);
+  await expect(page.locator(".collection-item")).toHaveCount(12);
   await expect(page.locator(".deck-toggle")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Create a token", exact: true })

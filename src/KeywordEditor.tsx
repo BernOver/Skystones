@@ -1,3 +1,5 @@
+import { readUniques } from "./unique";
+import { amplifyText } from "./amplify";
 import { isSwapForce, keywordHalf } from "./swapForce";
 import { SwapArtSettings } from "./SwapArtSettings";
 import { useState } from "react";
@@ -38,6 +40,10 @@ export function defaultKeyword(
   side: Side = 0,
   element: Element = "magic",
 ): StoneKeyword {
+  if (type === "assemble") return { type, count: 2 };
+  if (type === "flash") return { type };
+  if (type === "amplify")
+    return { type, effect: "all", duration: "next", count: 1 };
   if (type === "silence") return { type };
   if (type === "dizzy") return { type, sides: [side] };
   if (type === "combo") return { type, pips: [{ side, amount: 1 }] };
@@ -175,6 +181,101 @@ function Fields({
           </select>
         </label>
       </div>
+      {keyword.type === "assemble" && (
+        <label>
+          Parts generated
+          <select
+            aria-label={`Assemble count · ${label}`}
+            value={keyword.count}
+            onChange={(e) =>
+              onChange({ ...keyword, count: Number(e.target.value) })
+            }
+          >
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n}>{n}</option>
+            ))}
+          </select>
+          <small>
+            Two Parts automatically combine into a Flash Supercharger. Edit the
+            Parts token pool in Collection → Tokens.
+          </small>
+        </label>
+      )}
+      {keyword.type === "flash" && (
+        <p className="field-note">
+          This card can be played without ending your turn. A stone covering a
+          Supercharger inherits its other effects, but not Flash.
+        </p>
+      )}
+      {keyword.type === "amplify" && (
+        <div className="effect-editor-options">
+          <label>
+            Effect to double
+            <select
+              aria-label={`Amplify effect · ${label}`}
+              value={keyword.effect}
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  effect: e.target.value as typeof keyword.effect,
+                })
+              }
+            >
+              <option value="all">All effects</option>
+              {Object.entries(KEYWORD_RULES)
+                .filter(([id]) => id !== "amplify" && id !== "flash")
+                .map(([id, r]) => (
+                  <option key={id} value={id}>
+                    {r.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Duration
+            <select
+              aria-label={`Amplify duration · ${label}`}
+              value={keyword.duration}
+              onChange={(e) =>
+                onChange(
+                  e.target.value === "next"
+                    ? {
+                        type: "amplify",
+                        effect: keyword.effect,
+                        duration: "next",
+                        count: 1,
+                      }
+                    : {
+                        type: "amplify",
+                        effect: keyword.effect,
+                        duration: "always",
+                      },
+                )
+              }
+            >
+              <option value="next">Next matching effects you play</option>
+              <option value="always">Always on this card</option>
+            </select>
+          </label>
+          {keyword.duration === "next" && (
+            <label>
+              Uses
+              <select
+                aria-label={`Amplify uses · ${label}`}
+                value={keyword.count}
+                onChange={(e) =>
+                  onChange({ ...keyword, count: Number(e.target.value) })
+                }
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <small>{amplifyText(keyword)}</small>
+        </div>
+      )}
       {keyword.type === "discard" && (
         <div className="effect-editor-options">
           <label>
@@ -370,40 +471,72 @@ function Fields({
                   ...(keyword.keywords ? { keywords: keyword.keywords } : {}),
                 };
                 onChange(
-                  event.target.value === "specific"
+                  event.target.value === "unique"
                     ? {
                         type: "conjure",
                         ...buffs,
-                        mode: "specific",
-                        card: "spyro",
+                        mode: "unique",
+                        unique: readUniques()[0]?.id || "custom-unique-missing",
                         count: keyword.count,
                         recipient: keyword.recipient,
                       }
-                    : event.target.value === "token"
+                    : event.target.value === "specific"
                       ? {
                           type: "conjure",
                           ...buffs,
-                          mode: "token",
-                          token: readTokens()[0].id,
+                          mode: "specific",
+                          card: "spyro",
                           count: keyword.count,
                           recipient: keyword.recipient,
                         }
-                      : {
-                          type: "conjure",
-                          ...buffs,
-                          mode: "random",
-                          count: keyword.count,
-                          recipient: keyword.recipient,
-                        },
+                      : event.target.value === "token"
+                        ? {
+                            type: "conjure",
+                            ...buffs,
+                            mode: "token",
+                            token: readTokens()[0].id,
+                            count: keyword.count,
+                            recipient: keyword.recipient,
+                          }
+                        : {
+                            type: "conjure",
+                            ...buffs,
+                            mode: "random",
+                            count: keyword.count,
+                            recipient: keyword.recipient,
+                          },
                 );
               }}
             >
               <option value="specific">Specified card</option>
               <option value="token">Specified token</option>
+              <option value="unique">Specified Unique card</option>
               <option value="random">Random cards</option>
             </select>
           </label>
-          {keyword.mode === "specific" ? (
+          {keyword.mode === "unique" ? (
+            <label>
+              Specified Unique card
+              <select
+                aria-label={`Specified Unique card · ${label}`}
+                value={keyword.unique}
+                onChange={(e) =>
+                  onChange({ ...keyword, unique: e.target.value })
+                }
+              >
+                {!readUniques().some((c) => c.id === keyword.unique) && (
+                  <option value={keyword.unique}>
+                    Create a Unique card first
+                  </option>
+                )}
+                {readUniques().map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : keyword.mode === "specific" ? (
             <label>
               Specified card
               <select
@@ -454,13 +587,20 @@ function Fields({
                   onChange={(event) =>
                     onChange({
                       ...keyword,
-                      pool: event.target.value as "cards" | "tokens" | "all",
+                      pool: event.target.value as
+                        | "cards"
+                        | "tokens"
+                        | "all"
+                        | "unique"
+                        | "parts",
                     })
                   }
                 >
                   <option value="cards">Normal cards</option>
                   <option value="tokens">Tokens only</option>
                   <option value="all">Cards and tokens</option>
+                  <option value="unique">Unique cards only (explicit)</option>
+                  <option value="parts">Parts only</option>
                 </select>
               </label>
               <label>
@@ -1476,8 +1616,11 @@ export function KeywordEditor({
         </div>
       )}
       <p className="field-note">
-        Bonuses do not spend the printed 12-point budget. All on-play checks
-        happen once. Captures never retrigger keywords.
+        Assemble builds Flash Superchargers from pairs of Parts. Amplify doubles
+        a selected effect or all effects, either always on this card or for a
+        chosen number of future matching effects. Bonuses do not spend the
+        printed 12-point budget. All on-play checks happen once. Captures never
+        retrigger keywords.
       </p>
     </section>
   );

@@ -1,5 +1,16 @@
 # Skystones
 
+The latest build adds **Traps**, **Unique cards**, **Assemble / Parts / Flash Superchargers**, and **Amplify** with either a lasting bonus or a limited number of future matching effects. It includes all **20 base SuperCharger vehicle portraits**, **16 vehicle variants**, and **four additional character variants**, bundled for offline play.
+
+- **Traps:** Collection → Traps contains 11 crystal presets and an editor for element/tribe filters, pip changes, attack, or defense. One shared Trap affects both players and every matching card type. Each player may activate one per turn for free; replacement removes the previous modifier immediately. Flash does not reset this allowance.
+- **Unique:** check “Unique card” in Card studio. Unique cards work in decks, remain separate from tokens, and never appear in normal random, mixed, or specified-character Conjure. Use “Specified Unique card” or the explicit “Unique cards only” pool. Card files include their Unique and token dependencies.
+- **Assemble:** generate 1–5 random tokens from the **Parts** pool. Two Parts in hand automatically combine, summing pips and retaining both sets of effects, even repeated ones. Six starter Parts can be edited under Collection → Tokens; custom token templates can be marked as Parts. A loose Part cannot be played alone.
+- **Superchargers:** assembled vehicles use actual vehicle portraits and have **Flash**, which keeps the current player’s turn. Either player may place a stone over one and inherit its current ordinary pips and printed keywords except Flash; inherited effects trigger again. Live Trap, terrain, and boss bonuses are applied once. Vehicles must be covered before the board is full. These battle-only cards never enter saved decks or the Adventure pack.
+- **Amplify:** choose an effect type or “All effects,” then choose “Always on this card” or “Next matching effects you play” with 1–5 uses. The latter waits for a matching keyword after the source’s play and spends one use per matching effect, in printed order. Unrelated plays leave it ready. A new matching play is not doubled after its uses are spent. Numeric effects double their magnitude; positional effects resolve twice. Dizzy retains its 0–5 cap, and Flash does not create another turn. Base pips never double.
+
+These rules work on both board sizes in normal, Draft, and Adventure games. Existing Adventure copies retain their saved stats. Giants and Minis keep their protected base profiles.
+
+
 A browser game inspired by classic Skylanders Skystones, with a Giants card catalogue, sixteen illustrated creature presets, a custom card studio, a roguelike Adventure mode, and a two-player Draft mode. Built with React, TypeScript, and Vite. Everything runs in the browser; no account, API keys, or backend is needed.
 
 ## Download and play
@@ -95,7 +106,7 @@ The collection now has **182 Skylanders and distinct forms** across all six main
 
 Pips are a fan-game adaptation of character classes, published stat profiles where available, and fighting styles. Minis sit at the low end; Giants, Trap Masters, and Senseis generally have larger budgets. Defensive characters receive Shield; rapid attackers often receive Combo. These values are approximate game balance, not official Skystones stats. Draft cards preserve their directional tradeoffs, and Adventure selects stronger fixed character profiles as the run progresses.
 
-**Card studio** includes **337 bundled portraits**, searchable by character, game, role, and element. Check **Portraits without a default card** to find 116 additional portrait choices. Selecting a portrait updates the card’s name and element to match that character. You can edit the name afterward. Selecting original Skystones artwork also loads that picture’s original directional pips; later manual edits remain available. You can still upload an image. Portrait selections survive saves and card-file exports, and all artwork works offline. Old starter deck IDs and numbered Giants deck choices migrate to the consolidated roster. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for artwork and metadata sources.
+**Card studio** includes **377 bundled portraits**, searchable by character, game, role, and element. Check **Portraits without a default card** to find 156 additional portrait choices. Selecting a portrait updates the card’s name and element to match that character. You can edit the name afterward. Selecting original Skystones artwork also loads that picture’s original directional pips; later manual edits remain available. You can still upload an image. Portrait selections survive saves and card-file exports, and all artwork works offline. Old starter deck IDs and numbered Giants deck choices migrate to the consolidated roster. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for artwork and metadata sources.
 
 ## Character defaults
 

@@ -1,3 +1,19 @@
+import {
+  playTrap,
+  trapResponse,
+  trapEdges,
+  withTrap,
+  validTrapState,
+  validTrap,
+} from "./traps.ts";
+import type { Trap, TrapState } from "./traps.ts";
+import { assembleParts, combineParts } from "./assemble.ts";
+import { boardFinished, playableHand } from "./game.ts";
+import {
+  validAmplifyQueue,
+  validAmplifySpent,
+  validRuntimeEffects,
+} from "./amplify.ts";
 import { swapHand, validSwapParts } from "./swapForce.ts";
 import {
   readEncounterLibrary,
@@ -434,6 +450,8 @@ export const adventureEventId = (id: string): string =>
     }) as Record<string, string>
   )[id] || id;
 export interface AdventureBattle {
+  traps?: TrapState;
+  turnNumber?: number;
   board: Board;
   hands: [Stone[], Stone[]];
   current: Owner;
@@ -905,8 +923,10 @@ function beginBattle(
       board,
       ...(elementCycle ? { elementCycle } : {}),
       hands: [
-        normalHand.map((stone, index) => curseCards[index] || stone),
-        enemies,
+        combineParts(
+          normalHand.map((stone, index) => curseCards[index] || stone),
+        ),
+        combineParts(enemies),
       ],
       current: 0,
       turns: 0,
@@ -1126,7 +1146,7 @@ export function adventureCardStrengths(
   return {
     ...result,
     edges: arenaEdges(
-      result.edges,
+      trapEdges(result.edges, prepared, run.battle?.traps?.active?.trap),
       prepared.element,
       adventureArena(run)?.current,
     ),
@@ -1259,6 +1279,7 @@ export function playAdventureCard(
       minimumDizzyPips:
         battle.current === 0 && hasRelic(run, "loaded-dice") ? 2 : 0,
       arenaElement: arena?.current,
+      trap: battle.traps?.active?.trap,
     }),
     hands: [Stone[], Stone[]] = [[...battle.hands[0]], [...battle.hands[1]]];
   hands[battle.current].splice(cardIndex, 1);
@@ -1280,10 +1301,16 @@ export function playAdventureCard(
       Math.imul(battle.turns + 1, 0x85ebca6b) ^
       index,
   );
-  const discarded = resolveDiscards(
+  const assembled = assembleParts(
     conjured.board,
     index,
     conjured.hands,
+    run.seed ^ Math.imul(battle.turns + 1, 0x71ab),
+  );
+  const discarded = resolveDiscards(
+    assembled.board,
+    index,
+    assembled.hands,
     run.seed ^ Math.imul(battle.turns + 1, 0x6d2b79f5) ^ index,
     discardChoices,
     !manualDiscard,
@@ -1314,8 +1341,10 @@ export function playAdventureCard(
         ? withArenaElement(discarded.board, arena.next)
         : discarded.board,
       hands: discarded.hands,
-      current: (battle.current === 0 ? 1 : 0) as Owner,
+      current: (move.keepsTurn ? battle.current : 1 - battle.current) as Owner,
       turns: battle.turns + 1,
+      turnNumber:
+        (battle.turnNumber ?? battle.turns) + (move.keepsTurn ? 0 : 1),
       captures:
         (battle.captures || 0) +
         (battle.current === 0 ? move.captured.length : 0),
@@ -1325,7 +1354,7 @@ export function playAdventureCard(
         (battle.current === 0 && hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
-        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${discarded.records.length ? ` · ${discardSummary(discarded.records, ["You", "Keeper"])}` : ""}${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
+        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${assembled.messages.length ? ` · ${assembled.messages.join(", ")}` : ""}${move.keepsTurn ? " · Flash: play again" : ""}${discarded.records.length ? ` · ${discardSummary(discarded.records, ["You", "Keeper"])}` : ""}${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
           .filter((effect) => effect.type === "shift")
           .map((effect) =>
             effect.type === "shift"
@@ -1337,23 +1366,46 @@ export function playAdventureCard(
       ].slice(0, 20),
     },
   };
-  if (move.board.every(Boolean)) return finishBattle(next);
-  if (
-    next.battle!.customEncounter &&
-    !next.battle!.hands[next.battle!.current].length
-  ) {
+  if (boardFinished(move.board)) return finishBattle(next);
+  if (!playableHand(next.battle!.hands[next.battle!.current])) {
     const other = (1 - next.battle!.current) as Owner;
-    if (!next.battle!.hands[other].length) return finishBattle(next);
+    if (!playableHand(next.battle!.hands[other])) return finishBattle(next);
     return {
       ...next,
       battle: {
         ...next.battle!,
         current: other,
+        turnNumber: move.keepsTurn
+          ? (battle.turnNumber ?? battle.turns) + 1
+          : next.battle!.turnNumber,
         log: ["Empty hand: turn passed.", ...next.battle!.log].slice(0, 20),
       },
     };
   }
   return next;
+}
+export function activateAdventureTrap(run: Adventure, trap: Trap): Adventure {
+  if (run.phase !== "battle" || !run.battle)
+    throw new Error("Activate a Trap during a battle.");
+  const battle = run.battle,
+    update = playTrap(
+      battle.board,
+      battle.traps,
+      trap,
+      battle.current,
+      battle.turnNumber ?? battle.turns,
+    );
+  return {
+    ...run,
+    battle: {
+      ...battle,
+      ...update,
+      log: [
+        `${battle.current === 0 ? "You" : "Keeper"} activate ${trap.name}. Its shared effect replaces the previous Trap.`,
+        ...battle.log,
+      ].slice(0, 20),
+    },
+  };
 }
 export function swapAdventureCards(
   run: Adventure,
@@ -1379,14 +1431,22 @@ export function swapAdventureCards(
 }
 export function adventureEnemyMove(run: Adventure): Adventure {
   if (run.phase !== "battle" || run.battle?.current !== 1) return run;
-  const battle = run.battle;
-  const move = chooseMove(
+  let battle = run.battle;
+  const response = trapResponse(
     battle.board,
+    battle.traps,
     battle.hands[1],
-    battle.hands[0],
     1,
-    adventureArena(run) || {},
+    battle.turnNumber ?? battle.turns,
   );
+  if (response) {
+    run = activateAdventureTrap(run, response);
+    battle = run.battle!;
+  }
+  const move = chooseMove(battle.board, battle.hands[1], battle.hands[0], 1, {
+    ...(adventureArena(run) || {}),
+    trap: battle.traps?.active?.trap,
+  });
   return playAdventureCard(run, move.index, move.cardIndex, move.targets);
 }
 export function claimAdventureReward(
@@ -1698,85 +1758,98 @@ function rollWorkshopOffer(
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
-    type === "conjure"
-      ? {
-          type,
-          mode: "random",
-          count: 1,
-          recipient: "self",
-          ...((run.seed + run.floor + reroll) % 2 === 0
-            ? { pool: "tokens" as const }
-            : {}),
-        }
-      : type === "discard"
-        ? { type, mode: "random", recipient: "opponent", count: 1 }
-        : type === "scavenge"
-          ? { type, from: "self", pips: [{ side, amount: 1 }] }
-          : type === "parting-gift"
-            ? { type, target: "allies", pips: [{ side, amount: 1 }] }
-            : type === "discard-priority"
-              ? { type, priority: 1 }
-              : type === "shift"
-                ? {
-                    type,
-                    side,
-                    direction: (
-                      [side, (side + 1) % 4, (side + 3) % 4] as Side[]
-                    )[Math.floor(rng() * 3)],
-                    affects: (["enemies", "allies", "both"] as const)[
-                      Math.floor(rng() * 3)
-                    ],
-                  }
-                : type === "environment"
-                  ? {
-                      type,
-                      environment: defaultEnvironment(
-                        (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
-                          Math.floor(rng() * 7)
-                        ],
-                        elements[Math.floor(rng() * elements.length)],
-                      ),
-                    }
-                  : type === "next-play"
-                    ? {
-                        type,
-                        side: rng() < 0.5 ? "all" : side,
-                        amount: rng() < 0.35 ? -1 : 1,
-                        recipient: rng() < 0.35 ? "opponent" : "self",
-                        ...((run.seed + run.floor + reroll) % 3 === 0
-                          ? {
-                              amount: run.seed % 2 ? 0 : 1,
-                              recipient: "self" as const,
-                              keywords: [{ type: "shield" as const, side }],
-                            }
-                          : {}),
-                      }
-                    : type === "combo"
+    type === "assemble"
+      ? { type, count: 2 }
+      : type === "flash"
+        ? { type }
+        : type === "amplify"
+          ? { type, effect: "all", duration: "next", count: 1 }
+          : type === "conjure"
+            ? {
+                type,
+                mode: "random",
+                count: 1,
+                recipient: "self",
+                ...((run.seed + run.floor + reroll) % 2 === 0
+                  ? { pool: "tokens" as const }
+                  : {}),
+              }
+            : type === "discard"
+              ? { type, mode: "random", recipient: "opponent", count: 1 }
+              : type === "scavenge"
+                ? { type, from: "self", pips: [{ side, amount: 1 }] }
+                : type === "parting-gift"
+                  ? { type, target: "allies", pips: [{ side, amount: 1 }] }
+                  : type === "discard-priority"
+                    ? { type, priority: 1 }
+                    : type === "shift"
                       ? {
                           type,
-                          pips: [{ side, amount: 1 }],
-                          keywords: [
-                            { type: "shield", side: ((side + 2) % 4) as Side },
+                          side,
+                          direction: (
+                            [side, (side + 1) % 4, (side + 3) % 4] as Side[]
+                          )[Math.floor(rng() * 3)],
+                          affects: (["enemies", "allies", "both"] as const)[
+                            Math.floor(rng() * 3)
                           ],
                         }
-                      : type === "dizzy"
-                        ? { type, sides: [side] }
-                        : type === "silence"
-                          ? { type }
-                          : type === "resonance"
+                      : type === "environment"
+                        ? {
+                            type,
+                            environment: defaultEnvironment(
+                              (Object.keys(ENVIRONMENTS) as EnvironmentKind[])[
+                                Math.floor(rng() * 7)
+                              ],
+                              elements[Math.floor(rng() * elements.length)],
+                            ),
+                          }
+                        : type === "next-play"
+                          ? {
+                              type,
+                              side: rng() < 0.5 ? "all" : side,
+                              amount: rng() < 0.35 ? -1 : 1,
+                              recipient: rng() < 0.35 ? "opponent" : "self",
+                              ...((run.seed + run.floor + reroll) % 3 === 0
+                                ? {
+                                    amount: run.seed % 2 ? 0 : 1,
+                                    recipient: "self" as const,
+                                    keywords: [
+                                      { type: "shield" as const, side },
+                                    ],
+                                  }
+                                : {}),
+                            }
+                          : type === "combo"
                             ? {
                                 type,
-                                side,
-                                element:
-                                  elements[Math.floor(rng() * elements.length)],
+                                pips: [{ side, amount: 1 }],
+                                keywords: [
+                                  {
+                                    type: "shield",
+                                    side: ((side + 2) % 4) as Side,
+                                  },
+                                ],
                               }
-                            : type === "sunder"
-                              ? {
-                                  type,
-                                  side,
-                                  amount: 1 + Math.floor(run.floor / 4),
-                                }
-                              : { type, side };
+                            : type === "dizzy"
+                              ? { type, sides: [side] }
+                              : type === "silence"
+                                ? { type }
+                                : type === "resonance"
+                                  ? {
+                                      type,
+                                      side,
+                                      element:
+                                        elements[
+                                          Math.floor(rng() * elements.length)
+                                        ],
+                                    }
+                                  : type === "sunder"
+                                    ? {
+                                        type,
+                                        side,
+                                        amount: 1 + Math.floor(run.floor / 4),
+                                      }
+                                    : { type, side };
   const tribeRoll =
     (run.seed ^
       Math.imul(run.floor + 1, 0x79b1) ^
@@ -2020,28 +2093,51 @@ function validBattleCard(value: unknown): value is Stone {
     Object.hasOwn(ELEMENTS, stone.element) &&
     Array.isArray(stone.edges) &&
     stone.edges.length === 4 &&
-    stone.edges.every((n) => Number.isInteger(n) && n >= 0 && n <= 64) &&
+    stone.edges.every(
+      (n) =>
+        Number.isInteger(n) && n >= 0 && n <= (stone.runtimeEffects ? 99 : 64),
+    ) &&
     (stone.tribes === undefined || validateTribes(stone.tribes)) &&
     (stone.conjured === undefined || stone.conjured === true) &&
     (stone.encounterStart === undefined ||
       (stone.encounterStart === true &&
         stone.id.startsWith("custom-encounter-"))) &&
+    (stone.unique === undefined || (stone.unique === true && !stone.token)) &&
+    (stone.part === undefined ||
+      (stone.part === true && stone.token === true)) &&
+    (stone.supercharger === undefined ||
+      (!!stone.supercharger &&
+        stone.runtimeEffects === true &&
+        Array.isArray(stone.supercharger.parts) &&
+        stone.supercharger.parts.length === 2 &&
+        stone.supercharger.parts.every(
+          (n) => typeof n === "string" && n.length <= 40,
+        ))) &&
+    (stone.runtimeEffects === undefined || stone.runtimeEffects === true) &&
     (stone.token === undefined ||
       (stone.token === true &&
         (stone.conjured === true || stone.encounterStart === true))) &&
     (stone.receivedKeywords === undefined ||
       (Array.isArray(stone.receivedKeywords) &&
         stone.receivedKeywords.length > 0 &&
-        validateKeywords(stone.receivedKeywords))) &&
+        (stone.runtimeEffects
+          ? validRuntimeEffects(stone.receivedKeywords)
+          : validateKeywords(stone.receivedKeywords)))) &&
     (stone.receivedElement === undefined ||
       validReceivedElement(stone.receivedElement)) &&
     (stone.discardBuffs === undefined ||
       validDiscardBuffs(stone.discardBuffs)) &&
     (stone.swapParts === undefined || validSwapParts(stone.swapParts)) &&
-    validateKeywords(stone.keywords || [])
+    (stone.runtimeEffects
+      ? validRuntimeEffects(stone.keywords || [])
+      : validateKeywords(stone.keywords || []))
   );
 }
-function validPlaced(value: unknown, length: number): boolean {
+function validPlaced(
+  value: unknown,
+  length: number,
+  archived = false,
+): boolean {
   if (value === null) return true;
   if (!value || typeof value !== "object") return false;
   const cell = value as NonNullable<Board[number]>;
@@ -2050,13 +2146,26 @@ function validPlaced(value: unknown, length: number): boolean {
     input.length === 4 &&
     input.every((n) => Number.isInteger(n) && n >= 0 && n <= 99);
   return (
+    (cell.history === undefined ||
+      (!archived &&
+        Array.isArray(cell.history) &&
+        cell.history.length <= 1000 &&
+        cell.history.every((c) => validPlaced(c, length, true)))) &&
+    (cell.trap === undefined || validTrap(cell.trap)) &&
+    (cell.queuedAmplify === undefined ||
+      validAmplifyQueue(cell.queuedAmplify)) &&
+    (cell.amplifySpent === undefined || validAmplifySpent(cell.amplifySpent)) &&
+    (cell.resolvedEffects === undefined ||
+      validRuntimeEffects(cell.resolvedEffects)) &&
     [0, 1].includes(cell.owner) &&
     validBattleCard(cell.stone) &&
     (cell.edges === undefined || edges(cell.edges)) &&
-    (cell.environment === undefined || validateEnvironment(cell.environment)) &&
+    (cell.environment === undefined ||
+      validateEnvironment(cell.environment, true)) &&
     (cell.conjurations === undefined ||
-      validateConjurations(cell.conjurations)) &&
-    (cell.discards === undefined || validateDiscardRecords(cell.discards)) &&
+      validateConjurations(cell.conjurations, !!cell.resolvedEffects)) &&
+    (cell.discards === undefined ||
+      validateDiscardRecords(cell.discards, !!cell.resolvedEffects)) &&
     (cell.discardBuffs === undefined || validDiscardBuffs(cell.discardBuffs)) &&
     (cell.inheritedPips === undefined ||
       (Array.isArray(cell.inheritedPips) &&
@@ -2066,13 +2175,18 @@ function validPlaced(value: unknown, length: number): boolean {
         ))) &&
     (cell.queuedPips === undefined ||
       (Array.isArray(cell.queuedPips) &&
-        cell.queuedPips.length <= MAX_KEYWORDS + 5 &&
+        cell.queuedPips.length <=
+          (cell.resolvedEffects ? 4096 : MAX_KEYWORDS + 5) &&
         cell.queuedPips.every(
           (effect) =>
             effect &&
             [0, 1].includes(effect.recipient) &&
             validEffectSide(effect.side) &&
-            (validPipAmount(effect.amount, true) ||
+            ((cell.resolvedEffects
+              ? Number.isInteger(effect.amount) &&
+                Math.abs(effect.amount) <= 99 &&
+                effect.amount !== 0
+              : validPipAmount(effect.amount, true)) ||
               (effect.amount === 0 &&
                 (!!effect.keywords?.length || !!effect.changeElement))) &&
             (effect.element === undefined ||
@@ -2084,8 +2198,10 @@ function validPlaced(value: unknown, length: number): boolean {
             (effect.keywords === undefined ||
               (Array.isArray(effect.keywords) &&
                 effect.keywords.length > 0 &&
-                effect.keywords.length <= 5 &&
-                validateKeywords(effect.keywords))) &&
+                effect.keywords.length <= (cell.resolvedEffects ? 128 : 5) &&
+                (cell.resolvedEffects
+                  ? validRuntimeEffects(effect.keywords)
+                  : validateKeywords(effect.keywords)))) &&
             (effect.tribe === undefined || validTribe(effect.tribe)),
         ))) &&
     (cell.arenaElement === undefined ||
@@ -2099,17 +2215,23 @@ function validPlaced(value: unknown, length: number): boolean {
     (cell.playedOrder === undefined ||
       (Number.isInteger(cell.playedOrder) &&
         cell.playedOrder >= 1 &&
-        cell.playedOrder <= length)) &&
+        cell.playedOrder <= 10000)) &&
     (cell.playedElement === undefined ||
       (typeof cell.playedElement === "string" &&
         Object.hasOwn(ELEMENTS, cell.playedElement))) &&
+    (cell.comboStates === undefined ||
+      (Array.isArray(cell.comboStates) &&
+        cell.comboStates.length <= 128 &&
+        cell.comboStates.every((n) => typeof n === "boolean"))) &&
     (cell.comboActive === undefined || typeof cell.comboActive === "boolean") &&
     (cell.comboPreviousTribes === undefined ||
       validateTribes(cell.comboPreviousTribes)) &&
     (cell.comboPrevious === undefined ||
       Object.hasOwn(ELEMENTS, cell.comboPrevious)) &&
     (cell.grantedKeywords === undefined ||
-      (validateKeywords(cell.grantedKeywords) &&
+      ((cell.stone.runtimeEffects
+        ? validRuntimeEffects(cell.grantedKeywords)
+        : validateKeywords(cell.grantedKeywords)) &&
         cell.grantedKeywords.every(
           (keyword) => String(keyword.type) !== "combo",
         ))) &&
@@ -2185,11 +2307,15 @@ function validPlaced(value: unknown, length: number): boolean {
                 (effect.reason === undefined ||
                   ["no-target", "blocked"].includes(effect.reason)))) &&
             (effect.type !== "environment" ||
-              validateEnvironment(effect.environment)) &&
+              validateEnvironment(
+                effect.environment,
+                !!cell.resolvedEffects,
+              )) &&
             (effect.keywordIndex === undefined ||
               (Number.isInteger(effect.keywordIndex) &&
                 effect.keywordIndex >= 0 &&
-                effect.keywordIndex < MAX_KEYWORDS + 5)) &&
+                effect.keywordIndex <
+                  (cell.resolvedEffects ? 4096 : MAX_KEYWORDS + 5))) &&
             Number.isInteger(effect.target) &&
             effect.target >= (effect.type === "shift" ? -1 : 0) &&
             effect.target < length &&
@@ -2380,6 +2506,15 @@ export function validateAdventure(value: unknown): value is Adventure {
   if (run.battle) {
     const battle = run.battle;
     if (
+      battle.turnNumber !== undefined &&
+      (!Number.isInteger(battle.turnNumber) ||
+        battle.turnNumber < 0 ||
+        battle.turnNumber > 10000)
+    )
+      return false;
+    if (battle.traps !== undefined && !validTrapState(battle.traps))
+      return false;
+    if (
       (battle.customEncounter !== undefined &&
         battle.customEncounter !== true) ||
       !!run.node?.encounter !== (battle.customEncounter === true)
@@ -2421,13 +2556,13 @@ export function validateAdventure(value: unknown): value is Adventure {
         typeof battle.eventContinue !== "boolean") ||
       !Number.isInteger(battle.turns) ||
       battle.turns < 0 ||
-      battle.turns > run.size ** 2 ||
+      battle.turns > 10000 ||
       (battle.vanguardUsed !== undefined &&
         typeof battle.vanguardUsed !== "boolean") ||
       (battle.captures !== undefined &&
         (!Number.isInteger(battle.captures) ||
           battle.captures < 0 ||
-          battle.captures > 64)) ||
+          battle.captures > 10000)) ||
       (battle.potionsUsed !== undefined &&
         (!Number.isSafeInteger(battle.potionsUsed) ||
           battle.potionsUsed < 0)) ||
@@ -2452,8 +2587,8 @@ export function validateAdventure(value: unknown): value is Adventure {
   if (
     run.phase === "battle" &&
     (!run.battle ||
-      run.battle.board.every(Boolean) ||
-      !run.battle!.hands[run.battle!.current].length)
+      boardFinished(run.battle.board) ||
+      !playableHand(run.battle!.hands[run.battle!.current]))
   )
     return false;
   return run.phase !== "battle" || !!run.battle;
@@ -2461,6 +2596,14 @@ export function validateAdventure(value: unknown): value is Adventure {
 export function restoreAdventure(value: unknown): Adventure | null {
   if (!validateAdventure(value)) return null;
   let run = repairAdventureCards(value);
+  if (run.battle)
+    run = {
+      ...run,
+      battle: {
+        ...run.battle,
+        board: withTrap(run.battle.board, run.battle.traps?.active?.trap),
+      },
+    };
   // A completed download from the one-act version can continue its journey.
   if (run.phase === "ended" && run.victory && run.floor < 9)
     return advance({
@@ -2594,7 +2737,13 @@ function spireServices(): SpireServices {
 
 function repairAdventureCards(run: Adventure): Adventure {
   const plain = (stone: Stone): Stone => {
-    if (stone.swapParts) return stone;
+    if (
+      stone.swapParts ||
+      stone.supercharger ||
+      stone.runtimeEffects ||
+      stone.part
+    )
+      return stone;
     stone = refreshCharacterFlavor(stone);
     const base = ADVENTURE_CHARACTERS.find(
       (base) => base.portrait === stone.portrait,
@@ -2632,7 +2781,13 @@ function repairAdventureCards(run: Adventure): Adventure {
   const byId = new Map(inventory.map((stone) => [stone.id, stone]));
   const used = inventory.map(characterIdentity);
   const appearance = (stone: Stone): Stone => {
-    if (stone.swapParts) return stone;
+    if (
+      stone.swapParts ||
+      stone.supercharger ||
+      stone.runtimeEffects ||
+      stone.part
+    )
+      return stone;
     const packed = byId.get(stone.id);
     if (
       !packed ||

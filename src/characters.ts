@@ -1,3 +1,4 @@
+import { SUPERCHARGER_PORTRAITS } from "./superchargers.ts";
 import type { Stone, Element } from "./game.ts";
 export interface CharacterPortrait {
   id: string;
@@ -3154,6 +3155,7 @@ export const CHARACTER_PORTRAITS: CharacterPortrait[] = [
     source: "legacy:arkeyan-ultron",
     playable: true,
   },
+  ...SUPERCHARGER_PORTRAITS,
 ];
 export const CHARACTER_STONES: Stone[] = [
   {
@@ -5438,6 +5440,7 @@ export const CHARACTER_STONES: Stone[] = [
     origin: "skylanders",
     portrait: "high-volt",
     keywords: [
+      { type: "assemble", count: 1 },
       {
         type: "combo",
         pips: [
@@ -6597,6 +6600,7 @@ export const CHARACTER_STONES: Stone[] = [
     origin: "skylanders",
     portrait: "spitfire",
     keywords: [
+      { type: "assemble", count: 2 },
       {
         type: "conjure",
         mode: "token",
@@ -6637,6 +6641,7 @@ export const CHARACTER_STONES: Stone[] = [
     origin: "skylanders",
     portrait: "splat",
     keywords: [
+      { type: "amplify", effect: "conjure", duration: "next", count: 1 },
       {
         type: "conjure",
         mode: "token",
@@ -6824,6 +6829,7 @@ export const CHARACTER_STONES: Stone[] = [
     origin: "skylanders",
     portrait: "stormblade",
     keywords: [
+      { type: "flash" },
       {
         type: "shift",
         side: 1,

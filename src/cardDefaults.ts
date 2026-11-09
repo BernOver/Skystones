@@ -44,6 +44,8 @@ export function parseCharacterDefaults(value: unknown): CharacterDefaults {
       !entry.card.receivedElement &&
       !entry.card.discardBuffs &&
       !entry.card.swapParts &&
+      !entry.card.runtimeEffects &&
+      !entry.card.supercharger &&
       validateStone({ ...entry.card, id: "custom-default-validation" })
     )
       result[key] = structuredClone(entry);

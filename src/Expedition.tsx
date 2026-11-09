@@ -1,3 +1,6 @@
+import { TrapPanel } from "./Traps";
+import { activateAdventureTrap } from "./adventure";
+import { canPlace } from "./game";
 import { isSwapForce } from "./swapForce";
 import { SwapPicker } from "./SwapPicker";
 import { swapAdventureCards } from "./adventure";
@@ -520,6 +523,7 @@ function ExpeditionView({
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
           comboActive: cell.comboActive,
+          comboStates: cell.comboStates,
           comboPrevious: cell.comboPrevious,
           comboPreviousTribes: cell.comboPreviousTribes,
           grantedKeywords: cell.grantedKeywords,
@@ -543,6 +547,7 @@ function ExpeditionView({
       discardBuffs: cell?.discardBuffs,
       playerNames: ["You", "Keeper"],
       dizzy: cell?.dizzy,
+      trap: battle?.traps?.active?.trap,
       environment: cell?.environment,
       size: run!.size,
       arenaElement: cell?.arenaElement || adventureArena(run!)?.current,
@@ -1037,6 +1042,21 @@ function ExpeditionView({
                   : `Win the score AND hold ${adventureOpponent(run).name}’s throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
             </p>
           )}
+          <TrapPanel
+            state={battle.traps}
+            turn={battle.turnNumber ?? battle.turns}
+            owner={battle.current}
+            board={battle.board}
+            disabled={ai}
+            onPlay={(trap) => {
+              try {
+                setRun(activateAdventureTrap(run, trap));
+                setInspection(null);
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+          />
           <div
             className={`adventure-board adventure-board-${run.size}`}
             data-board-skin={skin}
@@ -1048,14 +1068,16 @@ function ExpeditionView({
                 id={`adventure-board-${index}`}
                 key={index}
                 className={`adventure-square ${tileEnvironments[index] ? "has-environment" : ""} ${cell ? "occupied" : "vacant"} ${battle.objective === index ? "objective-square" : ""} ${battle.lastCaptured.includes(index) ? "run-captured" : ""}`}
-                disabled={!cell && (ai || selected === null)}
+                disabled={
+                  canPlace(battle.board, index) && (ai || selected === null)
+                }
                 aria-label={
                   cell
                     ? `${coordinate(index, run.size)}: ${cell.stone.name}, ${cell.owner === 0 ? "You" : "Keeper"}, north ${cardEdges(cell)[0]}, east ${cardEdges(cell)[1]}, south ${cardEdges(cell)[2]}, west ${cardEdges(cell)[3]}`
                     : `${coordinate(index, run.size)}, empty adventure square`
                 }
                 onClick={(event) =>
-                  cell
+                  cell && !(cell.stone.supercharger && selected !== null && !ai)
                     ? look(cell.stone, event.currentTarget, index, true)
                     : play(index)
                 }
@@ -1085,6 +1107,7 @@ function ExpeditionView({
                       edges={cardEdges(cell)}
                       shields={cell.shields}
                       silenced={cell.silenced}
+                      trap={battle.traps?.active?.trap}
                       environment={cell.environment}
                     />
                   </CaptureFlip>
@@ -1097,6 +1120,13 @@ function ExpeditionView({
                 {battle.objective === index && (
                   <span className="objective-badge">
                     {battle.objectiveKind === "chest" ? "CHEST" : "THRONE"}
+                  </span>
+                )}
+                {cell?.stone.supercharger && (
+                  <span className="supercharger-cover">
+                    {selected !== null
+                      ? "Cover & inherit"
+                      : "Supercharger · coverable"}
                   </span>
                 )}
                 <TileMark environment={tileEnvironments[index]} />
@@ -1128,6 +1158,7 @@ function ExpeditionView({
                     onBlur={() => setInspection(null)}
                   >
                     <StoneCard
+                      trap={battle.traps?.active?.trap}
                       stone={withNextKeywords(stone, battle.board, 1)}
                       owner={1}
                       grantedKeywords={
@@ -1165,7 +1196,7 @@ function ExpeditionView({
                 key={stone.id}
                 aria-label={`Select ${stone.name}, adventure card ${index + 1}`}
                 aria-pressed={selected === index}
-                disabled={ai}
+                disabled={ai || !!stone.part}
                 onClick={() => setSelected(selected === index ? null : index)}
                 onPointerEnter={(event) =>
                   event.pointerType !== "touch" &&
@@ -1179,6 +1210,7 @@ function ExpeditionView({
                 onBlur={() => setInspection(null)}
               >
                 <StoneCard
+                  trap={battle.traps?.active?.trap}
                   stone={withNextKeywords(stone, battle.board, 0)}
                   grantedKeywords={
                     adventureCardStrengths(run, stone).grantedKeywords

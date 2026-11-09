@@ -1,3 +1,5 @@
+import { trapBonus } from "./traps";
+import type { Trap } from "./traps";
 import { swapIdentity } from "./swapForce";
 import { stoneTribes, tribeName } from "./tribes";
 import { memo, useId } from "react";
@@ -575,6 +577,7 @@ export const StoneCard = memo(
     played = false,
     grantedKeywords = [],
     environment,
+    trap,
   }: {
     stone: Stone;
     owner?: 0 | 1;
@@ -587,6 +590,7 @@ export const StoneCard = memo(
     played?: boolean;
     grantedKeywords?: import("./game").BasicKeyword[];
     environment?: TileEnvironment;
+    trap?: Trap;
   }) {
     const element = ELEMENTS[stone.element];
     const Icon = ELEMENT_ICONS[stone.element];
@@ -595,10 +599,17 @@ export const StoneCard = memo(
     const statPicture = hasSkystonesArtwork(stone);
     const unknownSides =
       !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
+    const trapDefense = trapBonus(trap, stone, "defense"),
+      trapAttack = trapBonus(trap, stone, "attack");
     const visibleShields = shields.map(
-      (pips) => (silenced ? 0 : pips) + environmentDefense(environment, stone),
+      (pips, s) =>
+        (silenced ? 0 : pips) +
+        environmentDefense(environment, stone) +
+        trapDefense[s],
     );
-    const attackBonus = environmentAttack(environment, stone);
+    const attackBonus = trapAttack.map(
+      (n) => n + environmentAttack(environment, stone),
+    );
     return (
       <div
         className={`stone-card ${silenced ? "stone-silenced" : ""} ${owner !== undefined ? `owned-${owner}` : ""} ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${faded ? "faded" : ""}`}
@@ -673,7 +684,7 @@ export const StoneCard = memo(
           )}
           {edges.map((edge, i) => (
             <span
-              className={`edge edge-${i} ${visibleShields[i] && attackBonus ? "has-both-pips" : ""} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
+              className={`edge edge-${i} ${visibleShields[i] && attackBonus[i] ? "has-both-pips" : ""} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
               key={i}
             >
               <b>{edge}</b>
@@ -691,16 +702,22 @@ export const StoneCard = memo(
                   aria-label={`${visibleShields[i]} defense-only shield pips`}
                 >
                   <Shield size={12} fill="currentColor" />
-                  <strong>+{visibleShields[i]}</strong>
+                  <strong>
+                    {visibleShields[i] > 0 ? "+" : ""}
+                    {visibleShields[i]}
+                  </strong>
                 </small>
               )}
-              {!!attackBonus && (
+              {!!attackBonus[i] && (
                 <small
                   className="attack-pip"
-                  aria-label={`${attackBonus} attack-only pips`}
+                  aria-label={`${attackBonus[i]} attack-only pips`}
                 >
                   <Swords size={11} />
-                  <strong>+{attackBonus}</strong>
+                  <strong>
+                    {attackBonus[i] > 0 ? "+" : ""}
+                    {attackBonus[i]}
+                  </strong>
                 </small>
               )}
               <span className="edge-spikes">
@@ -747,35 +764,45 @@ export const StoneCard = memo(
                     <b>
                       {matches
                         .map((keyword) =>
-                          keyword.type === "conjure"
-                            ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
-                            : keyword.type === "next-play"
-                              ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
-                              : keyword.type === "shift"
-                                ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
-                                : keyword.type === "environment"
-                                  ? ENVIRONMENTS[keyword.environment.kind].name
-                                  : keyword.type === "silence" ||
-                                      keyword.type === "dizzy" ||
-                                      keyword.type === "combo"
-                                    ? keyword.type === "dizzy"
-                                      ? dizzySides(keyword)
-                                          .map((side) => SIDE_LETTERS[side])
-                                          .join("/")
-                                      : keyword.type === "combo"
-                                        ? comboRequirement(stone, keyword)
-                                        : "ON PLAY"
-                                    : keyword.type === "discard"
-                                      ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
-                                      : keyword.type === "scavenge"
-                                        ? `${keyword.from} · ${buffText(keyword)}`
-                                        : keyword.type === "parting-gift"
-                                          ? `${keyword.target} · ${buffText(keyword)}`
-                                          : keyword.type === "discard-priority"
-                                            ? `${keyword.priority ?? 1}`
-                                            : keyword.side === "any"
-                                              ? "ANY EDGE"
-                                              : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
+                          keyword.type === "assemble"
+                            ? `${keyword.count} PARTS`
+                            : keyword.type === "flash"
+                              ? "FREE PLAY"
+                              : keyword.type === "amplify"
+                                ? `${keyword.effect.toUpperCase()} · ${keyword.duration === "next" ? `NEXT ${keyword.count}` : "ALWAYS"}`
+                                : keyword.type === "conjure"
+                                  ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
+                                  : keyword.type === "next-play"
+                                    ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
+                                    : keyword.type === "shift"
+                                      ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
+                                      : keyword.type === "environment"
+                                        ? ENVIRONMENTS[keyword.environment.kind]
+                                            .name
+                                        : keyword.type === "silence" ||
+                                            keyword.type === "dizzy" ||
+                                            keyword.type === "combo"
+                                          ? keyword.type === "dizzy"
+                                            ? dizzySides(keyword)
+                                                .map(
+                                                  (side) => SIDE_LETTERS[side],
+                                                )
+                                                .join("/")
+                                            : keyword.type === "combo"
+                                              ? comboRequirement(stone, keyword)
+                                              : "ON PLAY"
+                                          : keyword.type === "discard"
+                                            ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
+                                            : keyword.type === "scavenge"
+                                              ? `${keyword.from} · ${buffText(keyword)}`
+                                              : keyword.type === "parting-gift"
+                                                ? `${keyword.target} · ${buffText(keyword)}`
+                                                : keyword.type ===
+                                                    "discard-priority"
+                                                  ? `${keyword.priority ?? 1}`
+                                                  : keyword.side === "any"
+                                                    ? "ANY EDGE"
+                                                    : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
                         )
                         .join("/")}
                     </b>
@@ -789,7 +816,15 @@ export const StoneCard = memo(
           className="stone-tribes"
           title={stoneTribes(stone).map(tribeName).join(" · ")}
         >
-          {stone.token ? "Token · " : ""}
+          {stone.supercharger
+            ? "Supercharger · "
+            : stone.part
+              ? "Part · "
+              : stone.unique
+                ? "Unique · "
+                : stone.token
+                  ? "Token · "
+                  : ""}
           {stone.conjured ? "Conjured · " : ""}
           {stone.encounterStart ? "Encounter · " : ""}
           {stoneTribes(stone).map(tribeName).join(" · ") || "No tribes"}

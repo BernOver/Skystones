@@ -2,11 +2,11 @@
 
 Skylanders, its character names, character depictions, figures, and original game artwork belong to Activision, Toys for Bob, and their respective creators. This is an independent fan recreation, not an official product.
 
-The application bundles 337 portrait images. Most hero/form photographs and renders are adapted from **velasquezd/SkylanderImages**, revision `9b43be566894d8e94292c012468d86553487adcb`:
+The application bundles 377 portrait images. Most hero/form photographs and renders are adapted from **velasquezd/SkylanderImages**, revision `9b43be566894d8e94292c012468d86553487adcb`:
 
 https://github.com/velasquezd/SkylanderImages/tree/9b43be566894d8e94292c012468d86553487adcb
 
-Spyro’s portrait uses **Mirakel’s clean Spyro coin portrait**, from **skylandersNFC/Skylanders-Image-Generator**, revision `a8c0bde4d3bd89918f30daa5cb04afb28147b115`, file `assets/01_Spyro/coins/Mirakel_Clean/1) Figures/Mirakel's spyro.png`. Credit: Mirakel and the skylandersNFC community. This replaces a miscolored photograph in the first reference. Character pictures were resized and encoded as WebP for offline use. Individual source paths are recorded in `src/characters.ts`.
+Spyro’s portrait uses **Mirakel’s clean Spyro coin portrait**, from **skylandersNFC/Skylanders-Image-Generator**, revision `a8c0bde4d3bd89918f30daa5cb04afb28147b115`, file `assets/01_Spyro/coins/Mirakel_Clean/1) Figures/Mirakel's spyro.png`. Credit: Mirakel and the skylandersNFC community. This replaces a miscolored photograph in the first reference. Character pictures were resized and encoded as WebP for offline use. Individual source paths are recorded in `src/characters.ts` and `src/superchargers.ts`. The added SuperChargers assets include all 20 base vehicles, 16 vehicle variants, and four chase character variants from the same pinned velasquezd/SkylanderImages revision. Traptanium crystal icons are original vector illustrations.
 
 Names, elements, character classes, and published character-stat hints were checked against **Anthony Kalampogias’s SkyRipper**, revision `90cd4f9f2dd2bb378726090a4c7962a83fbddf2a`, which credits the **Skylanders Wiki contributors**. No biographies, dialogue, or gameplay code were copied. The adapted character metadata and roster data are shared under **Creative Commons Attribution-ShareAlike 4.0 International**; this applies to the data adaptation, not ownership of underlying character artwork or to the application's independently written code.
 

@@ -43,7 +43,7 @@ combat choices show the enemy portrait, character name, and matching flavor
 text before you enter. The same title and story follow you into the battle.
 
 The collection contains 182 Skylanders/forms and 39 unique Giants opponents.
-Card studio has 337 searchable portraits, including 116 without a default card.
+Card studio has 377 searchable portraits, including 156 without a default card.
 Shield adds defense-only pips. Combo grants pips and/or keywords when your
 previous played card matches its element/tribe requirement. Hover for full rules.
 Captured cards flip to show their new owner, then stay fully visible.
@@ -260,6 +260,23 @@ No matching cards means no additions. Repeat Conjure for different specified
 cards. Combo can grant it too. Copies use saved character defaults or the fixed
 base for that mode. They arrive after captures and can be played on later turns.
 Creating cards does not activate their keywords or spend Next Play bonuses.
+NEW: TRAPS, UNIQUE CARDS, PARTS AND AMPLIFY
+Collection > Traps: choose from 11 shared crystals or make your own. Only one
+is active, affecting both players. Activate one per turn; Flash keeps the turn
+and does not reset that allowance. A replacement removes the old bonus.
+Card studio: Unique cards can enter decks but normal Conjure cannot create them.
+Use the explicit Unique Conjure source. Card exports bundle their dependencies.
+Assemble generates random Parts tokens. Two Parts automatically combine into a
+Supercharger with both sets of pips and effects plus Flash. Play it without
+ending your turn. Either player can cover it to inherit pips and effects except
+Flash; inherited effects trigger again. Vehicles must be covered to finish.
+Collection > Tokens includes six starter Parts and the custom Part checkbox.
+All 20 base vehicles and 16 vehicle variants have bundled offline pictures;
+four additional character variants also appear in the portrait picker.
+Amplify doubles one effect type or all effects, either always on its card or
+for the next 1-5 matching effects you play. Each match spends one queued use;
+unrelated plays do not. Base pips and turn length never double.
+
 Hands hold up to 20 cards; excess copies are skipped and reported. Larger hands
 wrap onto additional rows. Canceled plays add nothing. Capture and Silence do
 not remove cards already added. Copies are marked Conjured and last for this

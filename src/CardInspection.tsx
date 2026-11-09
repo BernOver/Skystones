@@ -1,3 +1,6 @@
+import { amplifyText } from "./amplify";
+import { trapText } from "./traps";
+import type { Trap } from "./traps";
 import { SwapDetails } from "./SwapDetails";
 import { TribeBadges } from "./TribeEditor";
 import { stoneTribes, tribeName } from "./tribes";
@@ -57,6 +60,7 @@ import { discardText, discardSummary } from "./discard";
 import type { DiscardBuffs, DiscardRecord } from "./discard";
 
 export interface Inspection {
+  trap?: Trap;
   stone: Stone;
   sourceId: string;
   anchor: { left: number; right: number; top: number };
@@ -79,6 +83,7 @@ export interface Inspection {
   size?: BoardSize;
   shields?: Edges;
   comboActive?: boolean;
+  comboStates?: boolean[];
   comboPrevious?: Element;
   comboPreviousTribes?: Tribe[];
   grantedKeywords?: BasicKeyword[];
@@ -103,6 +108,7 @@ export function KeywordDetails({
   dizzy,
   size = 3,
   comboActive,
+  comboStates,
   comboPrevious,
   comboPreviousTribes,
   keywordOffset = 0,
@@ -123,6 +129,7 @@ export function KeywordDetails({
   };
   size?: BoardSize;
   comboActive?: boolean;
+  comboStates?: boolean[];
   comboPrevious?: Element;
   comboPreviousTribes?: Tribe[];
   keywordOffset?: number;
@@ -132,10 +139,14 @@ export function KeywordDetails({
     (stone.keywords || [])
       .slice(0, index)
       .reduce(
-        (count, keyword) =>
+        (count, keyword, previousIndex) =>
           count +
           (keyword.type === "combo"
-            ? comboActive
+            ? (comboStates?.[
+                (stone.keywords || [])
+                  .slice(0, previousIndex + 1)
+                  .filter((k) => k.type === "combo").length - 1
+              ] ?? comboActive)
               ? keyword.keywords?.length || 0
               : 0
             : 1),
@@ -203,6 +214,21 @@ export function KeywordDetails({
                           </span>
                         ),
                     )}
+              </section>
+            );
+          if (type === "assemble" || type === "flash" || type === "amplify")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <strong>{KEYWORD_RULES[type].name}</strong>
+                {keywords.map((k, i) => (
+                  <p key={i}>
+                    {k.type === "amplify"
+                      ? amplifyText(k)
+                      : k.type === "assemble"
+                        ? `Generate ${k.count} random Parts tokens. Two Parts in hand immediately combine into a Supercharger with both Parts’ pips and effects plus Flash. Any player can cover it to inherit its pips and other effects, which trigger again. Flash is not inherited.`
+                        : "Play this card without ending your turn. A temporary Supercharger must be covered by a stone before the board is complete."}
+                  </p>
+                ))}
               </section>
             );
           if (
@@ -436,6 +462,12 @@ export function KeywordDetails({
               </section>
             );
           if (type === "combo") {
+            const activeCombo =
+              comboStates?.[
+                (stone.keywords || [])
+                  .slice(0, keywordIndex + 1)
+                  .filter((k) => k.type === "combo").length - 1
+              ] ?? comboActive;
             const combo = keywords.find((keyword) => keyword.type === "combo");
             if (!combo || combo.type !== "combo") return null;
             return (
@@ -483,13 +515,13 @@ export function KeywordDetails({
                   </p>
                 )}
                 <span
-                  className={`keyword-status ${comboActive && !silenced ? "is-active" : ""}`}
+                  className={`keyword-status ${activeCombo && !silenced ? "is-active" : ""}`}
                 >
                   {silenced
                     ? "Disabled by Silence · Combo pips and granted keywords removed"
-                    : comboActive === undefined
+                    : activeCombo === undefined
                       ? "Matching your previous card activates these effects."
-                      : `${comboActive ? (played ? "Activated when played · bonuses locked in" : "Will activate if played now") : played ? "Did not activate when played" : "Will not activate if played now"}${comboPrevious ? ` · previous element: ${ELEMENTS[comboPrevious].name}` : " · no previous card"}`}
+                      : `${activeCombo ? (played ? "Activated when played · bonuses locked in" : "Will activate if played now") : played ? "Did not activate when played" : "Will not activate if played now"}${comboPrevious ? ` · previous element: ${ELEMENTS[comboPrevious].name}` : " · no previous card"}`}
                 </span>
                 {combo.condition &&
                   combo.condition !== "element" &&
@@ -514,13 +546,13 @@ export function KeywordDetails({
                     <strong>Granted keywords</strong>
                     <KeywordDetails
                       stone={{ ...stone, keywords: combo.keywords }}
-                      played={played && !!comboActive}
+                      played={played && !!activeCombo}
                       keywordOffset={effectIndexFor(keywordIndex)}
-                      activeKeywords={comboActive ? activeKeywords : undefined}
+                      activeKeywords={activeCombo ? activeKeywords : undefined}
                       silenced={silenced}
-                      effects={comboActive ? effects : undefined}
-                      conjurations={comboActive ? conjurations : undefined}
-                      discards={comboActive ? discards : undefined}
+                      effects={activeCombo ? effects : undefined}
+                      conjurations={activeCombo ? conjurations : undefined}
+                      discards={activeCombo ? discards : undefined}
                       playerNames={playerNames}
                       dizzy={dizzy}
                       size={size}
@@ -890,6 +922,28 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
       </div>
       <TribeBadges stone={stone} />
       <SwapDetails stone={stone} edges={edges} />
+      {stone.unique && (
+        <p className="inspection-note">
+          Unique · playable in decks; excluded from normal Conjure. Use an
+          explicit Unique source to generate it.
+        </p>
+      )}
+      {stone.part && (
+        <p className="inspection-note">
+          Part · pairs automatically assemble in hand. Cannot be played alone.
+        </p>
+      )}
+      {stone.supercharger && (
+        <p className="inspection-note">
+          Supercharger · {stone.supercharger.parts.join(" + ")}. Cover to
+          inherit its pips and effects, except Flash.
+        </p>
+      )}
+      {inspection.trap && (
+        <p className="inspection-note">
+          Active Trap · {inspection.trap.name}: {trapText(inspection.trap)}
+        </p>
+      )}
       {stone.token && (
         <p className="conjured-notice">
           Token · available through Conjure or a custom enemy’s starting hand.
@@ -1076,6 +1130,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         dizzy={dizzy}
         size={inspection.size}
         comboActive={inspection.comboActive}
+        comboStates={inspection.comboStates}
         comboPrevious={inspection.comboPrevious}
         comboPreviousTribes={inspection.comboPreviousTribes}
       />
@@ -1147,6 +1202,7 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
           edges={inspection.edges}
           silenced={inspection.silenced}
           shields={inspection.shields}
+          trap={inspection.trap}
           environment={inspection.environment}
         />
       </div>

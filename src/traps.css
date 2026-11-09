@@ -1,0 +1,125 @@
+.trap-panel {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid #beb7c9;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #ebe5f3, #f9f5e9);
+  margin: 14px 0;
+  text-align: left;
+}
+.trap-crystal {
+  width: 72px;
+  height: 86px;
+  flex: none;
+  filter: drop-shadow(0 4px 6px #35294630);
+}
+.trap-panel p,
+.trap-collection p {
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 5px 0;
+}
+.trap-panel small {
+  font-size: 11px;
+  color: #5c5567;
+}
+.trap-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 10px 0;
+}
+.trap-controls label,
+.trap-editor label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+.trap-controls select,
+.trap-editor select,
+.trap-editor input:not([type="checkbox"]) {
+  padding: 8px;
+  border: 1px solid #b6aabf;
+  border-radius: 6px;
+  background: #fff;
+}
+.trap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 20px;
+  margin: 20px 0;
+}
+.trap-grid article {
+  background: #f6f1e8;
+  border: 1px solid #d4cabb;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+}
+.trap-grid h2 {
+  font-size: 20px;
+}
+.trap-editor {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+  max-width: 650px;
+}
+.trap-editor fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #c6becd;
+}
+.amplify-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.amplify-status span {
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: #dfd4ed;
+  color: #4e3269;
+  font-size: 12px;
+}
+.supercharger-cover {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  right: 4px;
+  background: #6741a8;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 3px;
+  z-index: 3;
+}
+.board-cell,
+.adventure-square {
+  position: relative;
+}
+.stone-card:has(.stone-tribes) {
+  --trap: 0;
+}
+.trap-preview {
+  color: #62516c;
+}
+
+.collection-tabs {
+  flex-wrap: wrap;
+}
+.stone-keyword.keyword-amplify,
+.stone-keyword.keyword-assemble {
+  background: #ebe0f1;
+  color: #604477;
+}
+.stone-keyword.keyword-flash {
+  background: #f9edb4;
+  color: #735817;
+}

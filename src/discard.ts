@@ -1,3 +1,5 @@
+import { scaleEffect } from "./amplify.ts";
+import { placedKeywords as liveKeywords, finishingCard } from "./game.ts";
 import type { Board, Edges, Owner, Side, Stone, StoneKeyword } from "./game.ts";
 
 export type BuffSpec = {
@@ -138,11 +140,24 @@ function addBuffs(
   };
 }
 export function discardPriority(stone: Stone): number {
-  return Math.max(
-    0,
-    ...(stone.keywords || []).map((keyword) =>
-      keyword.type === "discard-priority" ? (keyword.priority ?? 1) : 0,
-    ),
+  const multiplier = (stone.keywords || []).reduce(
+    (n, k) =>
+      n *
+      (k.type === "amplify" &&
+      k.duration === "always" &&
+      (k.effect === "all" || k.effect === "discard-priority")
+        ? 2
+        : 1),
+    1,
+  );
+  return Math.min(
+    99,
+    Math.max(
+      0,
+      ...(stone.keywords || []).map((keyword) =>
+        keyword.type === "discard-priority" ? (keyword.priority ?? 1) : 0,
+      ),
+    ) * multiplier,
   );
 }
 export function finishCardsRequired(
@@ -150,9 +165,11 @@ export function finishCardsRequired(
   nextPlayer: Owner,
   hands?: [Stone[], Stone[]],
 ): [number, number] {
-  const remaining = board.filter((cell) => !cell).length;
+  const remaining = board.filter(
+    (cell) => !cell || cell.stone.supercharger,
+  ).length;
   if (hands) {
-    const stock = hands.map((hand) => hand.length),
+    const stock = hands.map((hand) => hand.filter(finishingCard).length),
       required: [number, number] = [0, 0];
     let current = nextPlayer;
     for (let left = remaining; left > 0 && stock.some(Boolean); left--) {
@@ -172,9 +189,7 @@ export function finishCardsRequired(
 }
 function placedKeywords(cell: NonNullable<Board[number]>): StoneKeyword[] {
   if (cell.silenced) return [];
-  return (cell.stone.keywords || []).flatMap((keyword) =>
-    keyword.type === "combo" ? cell.grantedKeywords || [] : [keyword],
-  );
+  return liveKeywords(cell);
 }
 // Conjure has already resolved against the actual hand cap and available pools.
 // Choosing discards is transactional: callers commit only when pending is absent.
@@ -202,7 +217,7 @@ export function resolveDiscards(
   }
   const required = finishCardsRequired(
     board,
-    (1 - actor) as Owner,
+    (keywords.some((k) => k.type === "flash") ? actor : 1 - actor) as Owner,
     passEmptyHands ? hands : undefined,
   );
   let nextBoard = [...board];
@@ -246,9 +261,16 @@ export function resolveDiscards(
         ? [0, 1]
         : [keyword.recipient === "self" ? actor : ((1 - actor) as Owner)];
     for (const owner of owners) {
+      const excess = () =>
+        Math.max(
+          0,
+          nextHands[owner].filter(finishingCard).length - required[owner],
+        );
+      const disposable = () =>
+        nextHands[owner].filter((c) => !finishingCard(c) || excess() > 0);
       const count = Math.min(
         keyword.count,
-        Math.max(0, nextHands[owner].length - required[owner]),
+        nextHands[owner].filter((c) => !finishingCard(c)).length + excess(),
       );
       const record: DiscardRecord = {
         keywordIndex,
@@ -278,7 +300,7 @@ export function resolveDiscards(
               count,
               requested: keyword.count,
               required: required[owner],
-              cards: [...nextHands[owner]],
+              cards: disposable(),
             },
           };
         if (choice) {
@@ -287,20 +309,26 @@ export function resolveDiscards(
             new Set(choice.cardIds).size !== count ||
             choice.cardIds.some(
               (id) => !nextHands[owner].some((card) => card.id === id),
-            )
+            ) ||
+            choice.cardIds.filter((id) =>
+              nextHands[owner].some((c) => c.id === id && finishingCard(c)),
+            ).length > excess()
           )
             throw new Error(`Choose exactly ${count} cards from this hand.`);
           used.add(choice);
           ids = [...choice.cardIds];
         } else
-          ids = [...nextHands[owner]]
+          ids = [...disposable()]
             .sort((a, b) => {
               const strength = (card: Stone) =>
                 card.edges.reduce((a, b) => a + b, 0) +
                 (card.discardBuffs?.pips.reduce((a, b) => a + b, 0) || 0) +
                 (card.discardBuffs?.shields.reduce((a, b) => a + b, 0) || 0) +
                 (card.keywords?.length || 0);
-              return (strength(a) - strength(b)) * (owner === actor ? 1 : -1);
+              return (
+                Number(finishingCard(a)) - Number(finishingCard(b)) ||
+                (strength(a) - strength(b)) * (owner === actor ? 1 : -1)
+              );
             })
             .slice(0, count)
             .map((card) => card.id);
@@ -310,8 +338,16 @@ export function resolveDiscards(
         ids = [];
         const available = [...nextHands[owner]];
         for (let n = 0; n < count; n++) {
-          const priority = Math.max(...available.map(discardPriority)),
-            candidates = available.filter(
+          const finishingChosen = ids.filter(
+            (id) =>
+              available.every((c) => c.id !== id) &&
+              nextHands[owner].some((c) => c.id === id && finishingCard(c)),
+          ).length;
+          const safe = available.filter(
+            (c) => !finishingCard(c) || finishingChosen < excess(),
+          );
+          const priority = Math.max(...safe.map(discardPriority)),
+            candidates = safe.filter(
               (card) => discardPriority(card) === priority,
             ),
             chosen = candidates[Math.floor(random() * candidates.length)];
@@ -345,7 +381,21 @@ export function resolveDiscards(
         );
         for (const observer of observers)
           buffBoard(observer.target, observer.ability, observer.name, record);
-        for (const gift of card.keywords || []) {
+        const giftMultiplier = (card.keywords || []).reduce(
+          (n, k) =>
+            n *
+            (k.type === "amplify" &&
+            k.duration === "always" &&
+            (k.effect === "all" || k.effect === "parting-gift")
+              ? 2
+              : 1),
+          1,
+        );
+        for (const gift of (card.keywords || []).flatMap((k) =>
+          k.type === "parting-gift"
+            ? scaleEffect(k, Math.min(32, giftMultiplier))
+            : [],
+        )) {
           if (gift.type !== "parting-gift") continue;
           if (gift.target === "hand") {
             const extra = specifiedBuffs(gift);
@@ -412,22 +462,23 @@ export function discardText(keyword: DiscardKeyword): string {
 }
 export function validateDiscardRecords(
   value: unknown,
+  runtime = false,
 ): value is DiscardRecord[] {
   return (
     Array.isArray(value) &&
-    value.length <= 58 &&
+    value.length <= (runtime ? 8192 : 58) &&
     value.every(
       (record) =>
         record &&
         Number.isInteger(record.keywordIndex) &&
         record.keywordIndex >= 0 &&
-        record.keywordIndex < 29 &&
+        record.keywordIndex < (runtime ? 4096 : 29) &&
         [0, 1].includes(record.owner) &&
         Number.isInteger(record.requested) &&
         record.requested >= 1 &&
-        record.requested <= 5 &&
+        record.requested <= (runtime ? 160 : 5) &&
         Array.isArray(record.cards) &&
-        record.cards.length <= 5 &&
+        record.cards.length <= (runtime ? 20 : 5) &&
         record.cards.every(
           (card: { id: string; name: string }) =>
             card &&

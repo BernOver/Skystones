@@ -267,7 +267,7 @@ test("saved token edits affect newly generated copies and never rewrite copies a
       Object.defineProperty(globalThis, "localStorage", descriptor);
     else Reflect.deleteProperty(globalThis, "localStorage");
   });
-  assert.equal(readTokens().length, 6);
+  assert.equal(readTokens().length, 12);
   const old = generate(conjure());
   raw = JSON.stringify({
     custom: [{ ...token, name: "Edited Seedling", edges: [2, 0, 0, 0] }],
@@ -277,7 +277,7 @@ test("saved token edits affect newly generated copies and never rewrite copies a
   assert.equal(fresh.hands[0][0].name, "Edited Seedling");
   assert.equal(old.hands[0][0].name, token.name);
   raw = "invalid";
-  assert.equal(readTokens().length, 6);
+  assert.equal(readTokens().length, 12);
 });
 for (const size of [3, 4] as BoardSize[])
   test(`${size}×${size} Adventure tokens save and play like cards, keep their stats through reload, and never enter the pack`, () => {

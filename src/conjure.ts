@@ -1,7 +1,13 @@
+import { readUniques, validUniqueKey, uniqueName } from "./unique.ts";
+import { combineParts } from "./assemble.ts";
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
 import { hasTribe, validTribe, tribeName } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
-import { mergeKeywordGrants, validateKeywords } from "./game.ts";
+import {
+  mergeKeywordGrants,
+  validateKeywords,
+  placedKeywords,
+} from "./game.ts";
 import type {
   Board,
   Element,
@@ -25,11 +31,12 @@ export type ConjureKeyword = {
 } & (
   | { mode: "specific"; card: string }
   | { mode: "token"; token: string }
+  | { mode: "unique"; unique: string }
   | {
       mode: "random";
       element?: Element;
       tribe?: Tribe;
-      pool?: "cards" | "tokens" | "all";
+      pool?: "cards" | "tokens" | "all" | "unique" | "parts";
     }
 );
 export interface Conjuration {
@@ -72,50 +79,62 @@ export function validateConjure(
         value.keywords.length <= 5 &&
         validateKeywords(value.keywords, depth + 1))) &&
     ["self", "opponent", "both"].includes(String(value.recipient)) &&
-    (value.mode === "specific"
-      ? typeof value.card === "string" &&
-        CARD_KEYS.has(value.card) &&
-        value.element === undefined &&
-        value.tribe === undefined &&
+    (value.mode === "unique"
+      ? validUniqueKey(value.unique) &&
+        value.card === undefined &&
         value.token === undefined &&
-        value.pool === undefined
-      : value.mode === "token"
-        ? validTokenKey(value.token) &&
-          value.card === undefined &&
-          value.element === undefined &&
-          value.tribe === undefined &&
-          value.pool === undefined
-        : value.mode === "random" &&
-          value.token === undefined &&
-          (value.pool === undefined ||
-            ["cards", "tokens", "all"].includes(String(value.pool))) &&
-          value.card === undefined &&
-          (value.element === undefined ||
-            [
-              "fire",
-              "water",
-              "life",
-              "air",
-              "magic",
-              "earth",
-              "tech",
-              "undead",
-              "light",
-              "dark",
-              "neutral",
-            ].includes(String(value.element))) &&
-          (value.tribe === undefined || validTribe(value.tribe)))
+        value.pool === undefined &&
+        value.element === undefined &&
+        value.tribe === undefined
+      : value.unique === undefined &&
+        (value.mode === "specific"
+          ? typeof value.card === "string" &&
+            CARD_KEYS.has(value.card) &&
+            value.element === undefined &&
+            value.tribe === undefined &&
+            value.token === undefined &&
+            value.pool === undefined
+          : value.mode === "token"
+            ? validTokenKey(value.token) &&
+              value.card === undefined &&
+              value.element === undefined &&
+              value.tribe === undefined &&
+              value.pool === undefined
+            : value.mode === "random" &&
+              value.token === undefined &&
+              (value.pool === undefined ||
+                ["cards", "tokens", "all", "unique", "parts"].includes(
+                  String(value.pool),
+                )) &&
+              value.card === undefined &&
+              (value.element === undefined ||
+                [
+                  "fire",
+                  "water",
+                  "life",
+                  "air",
+                  "magic",
+                  "earth",
+                  "tech",
+                  "undead",
+                  "light",
+                  "dark",
+                  "neutral",
+                ].includes(String(value.element))) &&
+              (value.tribe === undefined || validTribe(value.tribe))))
   );
 }
 export function conjureCardName(key: string): string {
   return CONJURE_CARDS.find((card) => card.portrait === key)?.name || key;
 }
 export function conjureSource(keyword: ConjureKeyword): string {
-  return keyword.mode === "specific"
-    ? conjureCardName(keyword.card)
-    : keyword.mode === "token"
-      ? `${tokenName(keyword.token)} · Token`
-      : `Random${keyword.element ? ` ${keyword.element[0].toUpperCase()}${keyword.element.slice(1)}` : ""}${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""}${keyword.pool === "tokens" ? " tokens" : keyword.pool === "all" ? " cards/tokens" : ""}`;
+  return keyword.mode === "unique"
+    ? `${uniqueName(keyword.unique)} · Unique`
+    : keyword.mode === "specific"
+      ? conjureCardName(keyword.card)
+      : keyword.mode === "token"
+        ? `${tokenName(keyword.token)} · Token`
+        : `Random${keyword.element ? ` ${keyword.element[0].toUpperCase()}${keyword.element.slice(1)}` : ""}${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""}${keyword.pool === "unique" ? " Unique cards" : keyword.pool === "parts" ? " Parts" : keyword.pool === "tokens" ? " tokens" : keyword.pool === "all" ? " cards/tokens" : ""}`;
 }
 export function conjureText(keyword: ConjureKeyword): string {
   const recipient =
@@ -163,13 +182,12 @@ export function applyConjure(
   catalogue: readonly Stone[] | (() => readonly Stone[]),
   seed: number,
   tokens: readonly Stone[] | (() => readonly Stone[]) = readTokens,
+  uniques: readonly Stone[] | (() => readonly Stone[]) = readUniques,
 ): { board: Board; hands: [Stone[], Stone[]]; conjurations: Conjuration[] } {
   const cell = board[index];
   if (!cell || cell.silenced || cell.conjurations)
     return { board, hands, conjurations: [] };
-  const keywords = (cell.stone.keywords || []).flatMap((keyword) =>
-    keyword.type === "combo" ? cell.grantedKeywords || [] : [keyword],
-  );
+  const keywords = placedKeywords(cell);
   if (!keywords.some((keyword) => keyword.type === "conjure"))
     return { board, hands, conjurations: [] };
   const cards = typeof catalogue === "function" ? catalogue() : catalogue;
@@ -191,24 +209,43 @@ export function applyConjure(
   };
   keywords.forEach((keyword, keywordIndex) => {
     if (keyword.type !== "conjure") return;
+    const uniquePool = () =>
+      typeof uniques === "function" ? uniques() : uniques;
     const candidates =
-      keyword.mode === "token" ||
-      (keyword.mode === "random" && keyword.pool === "tokens")
-        ? getTokens()
-        : keyword.mode === "random" && keyword.pool === "all"
-          ? [...cards.filter((card) => !card.token), ...getTokens()]
-          : cards;
+      keyword.mode === "unique" ||
+      (keyword.mode === "random" && keyword.pool === "unique")
+        ? uniquePool()
+        : keyword.mode === "token" ||
+            (keyword.mode === "random" &&
+              (keyword.pool === "tokens" || keyword.pool === "parts"))
+          ? getTokens()
+          : keyword.mode === "random" && keyword.pool === "all"
+            ? [
+                ...cards.filter((c) => !c.token && !c.unique),
+                ...getTokens().filter((c) => !c.part),
+              ]
+            : cards;
     const pool = candidates.filter((card) =>
-      keyword.mode === "specific"
-        ? !card.token && (card.characterKey || card.portrait) === keyword.card
-        : keyword.mode === "token"
-          ? card.token === true && card.id === keyword.token
-          : (keyword.pool === "all" ||
-              (keyword.pool === "tokens"
-                ? card.token === true
-                : !card.token)) &&
-            (!keyword.element || card.element === keyword.element) &&
-            (!keyword.tribe || hasTribe(card, keyword.tribe)),
+      keyword.mode === "unique"
+        ? card.unique === true && card.id === keyword.unique
+        : keyword.mode === "specific"
+          ? !card.unique &&
+            !card.token &&
+            (card.characterKey || card.portrait) === keyword.card
+          : keyword.mode === "token"
+            ? card.token === true && card.id === keyword.token
+            : (!card.unique || keyword.pool === "unique") &&
+              (keyword.pool === "unique"
+                ? !!card.unique
+                : keyword.pool === "parts"
+                  ? !!card.part
+                  : keyword.pool === "tokens"
+                    ? !!card.token && !card.part
+                    : keyword.pool === "all"
+                      ? !card.part
+                      : !card.token) &&
+              (!keyword.element || card.element === keyword.element) &&
+              (!keyword.tribe || hasTribe(card, keyword.tribe)),
     );
     const owner = cell.playedBy ?? cell.owner;
     const recipients: Owner[] =
@@ -257,6 +294,7 @@ export function applyConjure(
             keyword.keywords,
           ).keywords;
         nextHands[recipient].push(card);
+        nextHands[recipient] = combineParts(nextHands[recipient]);
         record.cards.push({ id, name: card.name });
       }
       records.push(record);
@@ -267,19 +305,22 @@ export function applyConjure(
   return { board: nextBoard, hands: nextHands, conjurations: records };
 }
 
-export function validateConjurations(value: unknown): value is Conjuration[] {
+export function validateConjurations(
+  value: unknown,
+  runtime = false,
+): value is Conjuration[] {
   return (
     Array.isArray(value) &&
-    value.length <= 58 &&
+    value.length <= (runtime ? 8192 : 58) &&
     value.every(
       (record) =>
         record &&
         Number.isInteger(record.keywordIndex) &&
         record.keywordIndex >= 0 &&
-        record.keywordIndex < 29 &&
+        record.keywordIndex < (runtime ? 4096 : 29) &&
         [0, 1].includes(record.recipient) &&
         Array.isArray(record.cards) &&
-        record.cards.length <= 5 &&
+        record.cards.length <= (runtime ? 20 : 5) &&
         record.cards.every(
           (card: { id: string; name: string }) =>
             card &&
@@ -293,7 +334,7 @@ export function validateConjurations(value: unknown): value is Conjuration[] {
         Number.isInteger(record.skipped) &&
         record.skipped >= 0 &&
         record.cards.length + record.skipped >= 1 &&
-        record.cards.length + record.skipped <= 5 &&
+        record.cards.length + record.skipped <= (runtime ? 160 : 5) &&
         (record.skipped
           ? ["full", "no-match"].includes(record.reason)
           : record.reason === undefined),

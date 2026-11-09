@@ -1,3 +1,5 @@
+import { readTraps } from "./traps.ts";
+import { DEFAULT_PARTS } from "./assemble.ts";
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
 import { characterDefault, parseCharacterDefaults } from "./cardDefaults.ts";
 import type { CharacterDefaults } from "./cardDefaults.ts";
@@ -18,6 +20,8 @@ export function collectionExport(
       !card.conjured &&
       !card.encounterStart &&
       !card.swapParts &&
+      !card.supercharger &&
+      !card.runtimeEffects &&
       !card.discardBuffs &&
       !card.receivedKeywords &&
       !card.receivedElement,
@@ -50,7 +54,8 @@ export function collectionExport(
     originalCards: originals.filter(
       (card) => card.portrait && Object.hasOwn(defaults, card.portrait),
     ),
-    originalTokens: DEFAULT_TOKENS,
+    originalTokens: [...DEFAULT_TOKENS, ...DEFAULT_PARTS],
+    traps: readTraps(),
     customTribes,
   });
 }

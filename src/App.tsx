@@ -1,3 +1,9 @@
+import { TrapPanel, TrapCollection } from "./Traps";
+import { playTrap, trapResponse, trapEdges } from "./traps";
+import type { TrapState } from "./traps";
+import { assembleParts } from "./assemble";
+import { uniqueCatalogue, uniqueDefinition } from "./unique";
+import { cardDependencies, mergeUniqueDefinitions } from "./cardDependencies";
 import { isSwapForce, swapHand } from "./swapForce";
 import { collectionExport } from "./collectionExport";
 import { CARD_THEMES } from "./cardThemes";
@@ -62,6 +68,9 @@ import {
 } from "lucide-react";
 import { ELEMENT_ICONS, StoneCard } from "./Artwork";
 import {
+  boardFinished,
+  canPlace,
+  playableHand,
   coordinate,
   boardSize,
   cardEdges,
@@ -102,7 +111,6 @@ import {
   deckEligible,
   TOKEN_ID_PREFIX,
   DEFAULT_TOKENS,
-  tokenDependencies,
   mergeTokenDefinitions,
 } from "./tokens";
 import { applyConjure, CONJURE_CARDS, conjurationSummary } from "./conjure";
@@ -169,6 +177,8 @@ interface JournalEntry {
   effects: string;
 }
 interface Match {
+  traps?: TrapState;
+  turnNumber?: number;
   id: string;
   board: Board;
   hands: [Stone[], Stone[]];
@@ -204,7 +214,10 @@ function readLibrary(): Library {
     ) {
       const custom: Stone[] = value.custom
         .filter(validateStone)
-        .filter((card: Stone) => !card.swapParts)
+        .filter(
+          (card: Stone) =>
+            !card.swapParts && !card.supercharger && !card.runtimeEffects,
+        )
         .filter((card: Stone) => !card.token || tokenDefinition(card))
         .map((s: Stone) => ({ ...s, custom: true }));
       const ids = new Set(
@@ -292,6 +305,7 @@ function applyMove(
     ) >>> 0;
   const move = placeStone(match.board, index, stone, match.current, targets, {
     seed,
+    trap: match.traps?.active?.trap,
   });
   const hands: [Stone[], Stone[]] = [[...match.hands[0]], [...match.hands[1]]];
   hands[match.current].splice(cardIndex, 1);
@@ -302,21 +316,37 @@ function applyMove(
     () => CONJURE_CARDS.map((card) => characterDefault(card)),
     seed ^ 0x27d4eb2d,
   );
-  const discarded = resolveDiscards(
+  const assembled = assembleParts(
     conjured.board,
     index,
     conjured.hands,
+    seed ^ 0x71ab,
+  );
+  const discarded = resolveDiscards(
+    assembled.board,
+    index,
+    assembled.hands,
     seed ^ 0x6d2b79f5,
     discardChoices,
     !manualDiscard,
   );
   if (discarded.pending) throw new DiscardSelectionRequired(discarded.pending);
+  let nextOwner: Owner = move.keepsTurn
+    ? match.current
+    : ((1 - match.current) as Owner);
+  if (
+    !playableHand(discarded.hands[nextOwner]) &&
+    playableHand(discarded.hands[(1 - nextOwner) as Owner])
+  )
+    nextOwner = (1 - nextOwner) as Owner;
   return {
     ...match,
     board: discarded.board,
     hands: discarded.hands,
-    current: match.current === 0 ? 1 : 0,
+    current: nextOwner,
     moves: match.moves + 1,
+    turnNumber:
+      (match.turnNumber ?? match.moves) + (nextOwner === match.current ? 0 : 1),
     lastCaptured: move.captured,
     lastPlaced: index,
     entries: [
@@ -326,6 +356,8 @@ function applyMove(
         text: `${stone.name} → ${coordinate(index, boardSize(match.board))}`,
         captured: move.captured.length,
         effects: [
+          ...assembled.messages,
+          ...(move.keepsTurn ? ["Flash: play again"] : []),
           discardSummary(
             discarded.records,
             match.mode === "local"
@@ -466,6 +498,7 @@ export default function App() {
   const [onlyCustom, setOnlyCustom] = useState(false);
   const [onlyGiants, setOnlyGiants] = useState(false);
   const [onlyTokens, setOnlyTokens] = useState(false);
+  const [extraTab, setExtraTab] = useState<"" | "traps" | "unique">("");
   const [draft, setDraft] = useState<Stone>(freshDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -482,11 +515,17 @@ export default function App() {
   const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
     .map((card) => characterDefault(card, characterDefaults))
     .concat(library.custom.filter(deckEligible), tokens);
+  const uniques = uniqueCatalogue(
+    library.custom,
+    CONJURE_CARDS.map((c) => characterDefault(c, characterDefaults)),
+  );
+  const filled = match.board.filter((c) => !!c && !c.stone.supercharger).length;
+  const activeTrap = match.traps?.active?.trap;
   const scores = score(match.board);
   const tileEnvironments = boardEnvironments(match.board);
   const size = boardSize(match.board);
   const capacity = handSize(library.boardSize);
-  const done = match.board.every(Boolean);
+  const done = boardFinished(match.board) || !match.hands.some(playableHand);
   const tied = scores[0] === scores[1];
   const aiTurn = match.mode === "computer" && match.current === 1 && !done;
   const rival = opponent(match.opponent);
@@ -499,6 +538,7 @@ export default function App() {
   const shownHand = match.hands[handOwner];
   const visible = collection.filter(
     (s) =>
+      (extraTab !== "unique" || !!s.unique) &&
       (onlyTokens ? !!s.token : !s.token) &&
       (!onlyCustom || s.custom) &&
       (!onlyGiants || onlyCustom || s.origin === "giants") &&
@@ -519,7 +559,7 @@ export default function App() {
     setInspection((previous) =>
       previous ? refreshInspection(previous) : null,
     );
-  }, [match.moves]);
+  }, [match.moves, match.traps]);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") hideInspection();
@@ -545,14 +585,33 @@ export default function App() {
         if (
           current.id !== id ||
           current.current !== 1 ||
-          current.board.every(Boolean)
+          boardFinished(current.board)
         )
           return current;
+        const response = trapResponse(
+          current.board,
+          current.traps,
+          current.hands[1],
+          1,
+          current.turnNumber ?? current.moves,
+        );
+        if (response)
+          current = {
+            ...current,
+            ...playTrap(
+              current.board,
+              current.traps,
+              response,
+              1,
+              current.turnNumber ?? current.moves,
+            ),
+          };
         const move = chooseMove(
           current.board,
           current.hands[1],
           current.hands[0],
           1,
+          { trap: current.traps?.active?.trap },
         );
         return applyMove(current, move.index, move.cardIndex, move.targets);
       });
@@ -628,11 +687,19 @@ export default function App() {
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
           comboActive: cell.comboActive,
+          comboStates: cell.comboStates,
           comboPrevious: cell.comboPrevious,
           comboPreviousTribes: cell.comboPreviousTribes,
           grantedKeywords: cell.grantedKeywords,
         }
-      : evaluateKeywords(stone, match.board, player);
+      : {
+          ...evaluateKeywords(stone, match.board, player),
+          edges: trapEdges(
+            evaluateKeywords(stone, match.board, player).edges,
+            stone,
+            activeTrap,
+          ),
+        };
     const rect = anchor.getBoundingClientRect();
     return {
       stone,
@@ -651,6 +718,7 @@ export default function App() {
       discardBuffs: cell?.discardBuffs,
       playerNames: names,
       dizzy: cell?.dizzy,
+      trap: activeTrap,
       environment: cell?.environment,
       size,
     };
@@ -755,7 +823,8 @@ export default function App() {
     navigate("table");
   }
   function playAt(index: number) {
-    if (aiTurn || done || match.board[index] || selected === null) return;
+    if (aiTurn || done || !canPlace(match.board, index) || selected === null)
+      return;
     const stone = match.hands[match.current][selected];
     if (
       prepareTargeting(match.board, stone, [], match.current, index).pending
@@ -1000,9 +1069,11 @@ export default function App() {
       id: stone.custom ? stone.id : `custom-${stone.id}`,
       custom: true,
     };
-    let dependencies: Stone[];
+    let dependencies: Stone[], uniqueDependencies: Stone[];
     try {
-      dependencies = tokenDependencies(card, tokens);
+      const bundle = cardDependencies(card, tokens, uniques);
+      dependencies = bundle.tokens;
+      uniqueDependencies = bundle.uniques;
     } catch (error) {
       setToast((error as Error).message);
       return;
@@ -1015,7 +1086,14 @@ export default function App() {
               format: "skystones-card",
               version: 1,
               card,
-              customTribes: customTribeLabels([card, ...dependencies]),
+              customTribes: customTribeLabels([
+                card,
+                ...dependencies,
+                ...uniqueDependencies,
+              ]),
+              ...(uniqueDependencies.length
+                ? { uniques: uniqueDependencies }
+                : {}),
               ...(dependencies.length ? { tokens: dependencies } : {}),
             },
             null,
@@ -1058,7 +1136,9 @@ export default function App() {
           ? tokenDefinition(payload.card)
             ? payload.card.id
             : `${TOKEN_ID_PREFIX}${createId()}`
-          : `custom-${createId()}`,
+          : payload.card.unique && uniqueDefinition(payload.card)
+            ? payload.card.id
+            : `custom-${createId()}`,
         custom: true,
         conjured: undefined,
         encounterStart: undefined,
@@ -1066,6 +1146,8 @@ export default function App() {
         receivedElement: undefined,
         discardBuffs: undefined,
         swapParts: undefined,
+        supercharger: undefined,
+        runtimeEffects: undefined,
       };
       if (!validateStone(stone))
         throw new Error(
@@ -1074,19 +1156,37 @@ export default function App() {
       const importedTokens = payload.tokens === undefined ? [] : payload.tokens;
       if (!Array.isArray(importedTokens))
         throw new Error("Invalid token bundle");
-      const custom = mergeTokenDefinitions(library.custom, [
+      let custom = mergeTokenDefinitions(library.custom, [
         ...importedTokens,
         ...(stone.token ? [stone] : []),
       ]);
-      tokenDependencies(stone, tokenCatalogue(custom));
-      rememberCustomTribes([stone, ...importedTokens], payload.customTribes);
+      const importedUniques = payload.uniques || [];
+      custom = mergeUniqueDefinitions(custom, [
+        ...importedUniques,
+        ...(stone.unique ? [stone] : []),
+      ]);
+      if (stone.unique && !uniqueDefinition(stone))
+        throw new Error("Invalid Unique card");
+      cardDependencies(
+        stone,
+        tokenCatalogue(custom),
+        uniqueCatalogue(
+          custom,
+          CONJURE_CARDS.map((c) => characterDefault(c)),
+        ),
+      );
+      rememberCustomTribes(
+        [stone, ...importedTokens, ...importedUniques],
+        payload.customTribes,
+      );
       if (
         saveLibrary({
           ...library,
-          custom: stone.token ? custom : [...custom, stone],
+          custom: stone.token || stone.unique ? custom : [...custom, stone],
         })
       ) {
         setToast(`${stone.name} has joined your collection.`);
+        setExtraTab(stone.unique ? "unique" : "");
         setOnlyCustom(!stone.token);
         setOnlyTokens(!!stone.token);
         setOnlyGiants(false);
@@ -1324,6 +1424,30 @@ export default function App() {
                     </div>
                   </div>
 
+                  <TrapPanel
+                    state={match.traps}
+                    board={match.board}
+                    turn={match.turnNumber ?? match.moves}
+                    owner={match.current}
+                    disabled={aiTurn || done}
+                    onPlay={(trap) => {
+                      try {
+                        setMatch({
+                          ...match,
+                          ...playTrap(
+                            match.board,
+                            match.traps,
+                            trap,
+                            match.current,
+                            match.turnNumber ?? match.moves,
+                          ),
+                        });
+                        hideInspection();
+                      } catch (error) {
+                        setToast((error as Error).message);
+                      }
+                    }}
+                  />
                   <div className="board-wrap">
                     <span className="board-decoration decoration-one">✧</span>
                     <span className="board-decoration decoration-two">✦</span>
@@ -1344,7 +1468,8 @@ export default function App() {
                               : `${coordinate(index, size)}, empty square`
                           }
                           disabled={
-                            !cell && (aiTurn || done || selected === null)
+                            canPlace(match.board, index) &&
+                            (aiTurn || done || selected === null)
                           }
                           aria-describedby={
                             inspection?.sourceId === `board-${index}`
@@ -1376,7 +1501,13 @@ export default function App() {
                           }}
                           onBlur={hideInspection}
                           onClick={(event) =>
-                            cell
+                            cell &&
+                            !(
+                              cell.stone.supercharger &&
+                              selected !== null &&
+                              !aiTurn &&
+                              !done
+                            )
                               ? setDialog({
                                   kind: "inspect",
                                   inspection: cardInspection(
@@ -1401,6 +1532,7 @@ export default function App() {
                                 owner={cell.owner}
                                 edges={cardEdges(cell)}
                                 environment={cell.environment}
+                                trap={activeTrap}
                                 shields={cell.shields}
                                 silenced={cell.silenced}
                                 compact
@@ -1418,6 +1550,13 @@ export default function App() {
                               />
                               <span className="place-label">Place stone</span>
                             </>
+                          )}
+                          {cell?.stone.supercharger && (
+                            <span className="supercharger-cover">
+                              {selected !== null
+                                ? "Cover & inherit"
+                                : "Supercharger · coverable"}
+                            </span>
                           )}
                           <TileMark environment={tileEnvironments[index]} />
                         </button>
@@ -1556,9 +1695,10 @@ export default function App() {
                       <button
                         id={`hand-${stone.id}`}
                         className={`hand-card-button ${selected === index && !aiTurn ? "is-selected" : ""}`}
-                        aria-label={`Select ${stone.name}, current strengths north, east, south, west: ${evaluateKeywords(stone, match.board, handOwner).edges.join(", ")}`}
+                        aria-label={`Select ${stone.name}, current strengths north, east, south, west: ${trapEdges(evaluateKeywords(stone, match.board, handOwner).edges, withNextKeywords(stone, match.board, handOwner), activeTrap).join(", ")}`}
                         aria-pressed={selected === index && !aiTurn}
-                        aria-disabled={aiTurn || done}
+                        aria-disabled={aiTurn || done || !!stone.part}
+                        disabled={!!stone.part}
                         aria-describedby={
                           inspection?.sourceId === `hand-${stone.id}`
                             ? "card-inspector"
@@ -1588,10 +1728,12 @@ export default function App() {
                         onClick={() =>
                           !aiTurn &&
                           !done &&
+                          !stone.part &&
                           setSelected(selected === index ? null : index)
                         }
                       >
                         <StoneCard
+                          trap={activeTrap}
                           stone={withNextKeywords(
                             stone,
                             match.board,
@@ -1602,10 +1744,12 @@ export default function App() {
                               .grantedKeywords
                           }
                           selected={selected === index && !aiTurn}
-                          edges={
+                          edges={trapEdges(
                             evaluateKeywords(stone, match.board, handOwner)
-                              .edges
-                          }
+                              .edges,
+                            withNextKeywords(stone, match.board, handOwner),
+                            activeTrap,
+                          )}
                           shields={
                             evaluateKeywords(stone, match.board, handOwner)
                               .shields
@@ -1677,7 +1821,7 @@ export default function App() {
                   </div>
                   <div
                     className="score-track"
-                    aria-label={`${scores[0]} blue stones, ${scores[1]} orange stones, ${match.board.length - match.moves} empty squares`}
+                    aria-label={`${scores[0]} blue stones, ${scores[1]} orange stones, ${match.board.length - filled} empty squares`}
                   >
                     {Array.from({ length: match.board.length }, (_, i) => (
                       <span
@@ -1694,12 +1838,12 @@ export default function App() {
                   </div>
                   <div className="board-progress">
                     <span>
-                      {match.moves} of {match.board.length} squares filled
+                      {filled} of {match.board.length} squares filled
                     </span>
                     <span>
                       {done
                         ? "Complete"
-                        : `${match.board.length - match.moves} to go`}
+                        : `${match.board.length - filled} to go`}
                     </span>
                   </div>
                 </section>
@@ -1907,9 +2051,12 @@ export default function App() {
               <div className="collection-tabs">
                 <button
                   className={
-                    !onlyCustom && !onlyGiants && !onlyTokens ? "active" : ""
+                    !onlyCustom && !onlyGiants && !onlyTokens && !extraTab
+                      ? "active"
+                      : ""
                   }
                   onClick={() => {
+                    setExtraTab("");
                     setOnlyCustom(false);
                     setOnlyGiants(false);
                     setOnlyTokens(false);
@@ -1923,6 +2070,7 @@ export default function App() {
                     onlyGiants && !onlyCustom && !onlyTokens ? "active" : ""
                   }
                   onClick={() => {
+                    setExtraTab("");
                     setOnlyGiants(true);
                     setOnlyCustom(false);
                     setOnlyTokens(false);
@@ -1933,6 +2081,7 @@ export default function App() {
                 <button
                   className={onlyCustom ? "active" : ""}
                   onClick={() => {
+                    setExtraTab("");
                     setOnlyCustom(true);
                     setOnlyTokens(false);
                   }}
@@ -1943,12 +2092,35 @@ export default function App() {
                 <button
                   className={onlyTokens ? "active" : ""}
                   onClick={() => {
+                    setExtraTab("");
                     setOnlyTokens(true);
                     setOnlyCustom(false);
                     setOnlyGiants(false);
                   }}
                 >
                   Tokens<span>{tokens.length}</span>
+                </button>
+                <button
+                  className={extraTab === "unique" ? "active" : ""}
+                  onClick={() => {
+                    setExtraTab("unique");
+                    setOnlyTokens(false);
+                    setOnlyCustom(false);
+                    setOnlyGiants(false);
+                  }}
+                >
+                  Unique<span>{collection.filter((c) => c.unique).length}</span>
+                </button>
+                <button
+                  className={extraTab === "traps" ? "active" : ""}
+                  onClick={() => {
+                    setExtraTab("traps");
+                    setOnlyTokens(false);
+                    setOnlyCustom(false);
+                    setOnlyGiants(false);
+                  }}
+                >
+                  Traps
                 </button>
               </div>
               <div className="collection-filters">
@@ -2015,7 +2187,9 @@ export default function App() {
                 </a>
               </p>
             )}
-            {visible.length ? (
+            {extraTab === "traps" ? (
+              <TrapCollection />
+            ) : visible.length ? (
               <div className="collection-grid">
                 {visible.map((stone) => {
                   const Icon = ELEMENT_ICONS[stone.element];
@@ -2024,7 +2198,11 @@ export default function App() {
                     <article className="collection-item" key={stone.id}>
                       <div className="collection-card-stage">
                         <span className="collection-badge">
-                          {stone.token ? (
+                          {stone.unique ? (
+                            "UNIQUE"
+                          ) : stone.part ? (
+                            "PART"
+                          ) : stone.token ? (
                             "TOKEN"
                           ) : stone.custom ? (
                             <>
@@ -2176,6 +2354,8 @@ export default function App() {
                             setDraft({
                               ...draft,
                               token: event.target.checked ? true : undefined,
+                              unique: undefined,
+                              part: undefined,
                             })
                           }
                         />{" "}
@@ -2186,6 +2366,51 @@ export default function App() {
                         element, tribes, portrait, and keywords work normally
                         once generated. It cannot be put in a starting deck.
                         Saved token templates keep this card type.
+                      </p>
+                    </div>
+                  )}
+                  <div className="field-group token-type-field">
+                    <label>
+                      <input
+                        type="checkbox"
+                        aria-label="Unique card · excluded from normal Conjure"
+                        checked={!!draft.unique}
+                        disabled={!!editingId?.startsWith(TOKEN_ID_PREFIX)}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            unique: e.target.checked ? true : undefined,
+                            token: undefined,
+                            part: undefined,
+                          })
+                        }
+                      />{" "}
+                      Unique card · excluded from normal Conjure
+                    </label>
+                    <p>
+                      Playable in normal decks. Generate it only through an
+                      explicit Unique Conjure source.
+                    </p>
+                  </div>
+                  {draft.token && (
+                    <div className="field-group token-type-field">
+                      <label>
+                        <input
+                          type="checkbox"
+                          aria-label="Part token · Assemble pool"
+                          checked={!!draft.part}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              part: e.target.checked ? true : undefined,
+                            })
+                          }
+                        />{" "}
+                        Part token · Assemble pool
+                      </label>
+                      <p>
+                        Two Parts combine automatically. Parts cannot be played
+                        individually.
                       </p>
                     </div>
                   )}
@@ -2614,6 +2839,31 @@ export default function App() {
             <Swords size={30} strokeWidth={1.3} />
           </span>
           <div className="eyebrow">WELCOME TO THE TABLE</div>
+          <p>
+            <strong>Traps:</strong> one shared crystal affects both players’
+            matching cards. Activate one per turn without spending a stone;
+            another Trap replaces it. Collection → Traps lets you customize
+            crystals.
+          </p>
+          <p>
+            <strong>Unique:</strong> a deck card type excluded from normal
+            Conjure. Only an explicit Unique source can generate these cards.
+          </p>
+          <p>
+            <strong>Assemble:</strong> generate random Parts tokens. Two Parts
+            automatically build a pictured Supercharger with both sets of pips
+            and keywords. Its Flash play keeps your turn. Either player can
+            cover it to inherit its pips and other keywords, which trigger
+            again. Flash is not inherited; temporary vehicles must be covered to
+            finish the board.
+          </p>
+          <p>
+            <strong>Amplify:</strong> double one effect type or all effects.
+            Choose “Always on this card” or queue 1–5 future matching effects.
+            Queued uses wait through unrelated plays, then consume one use per
+            matching keyword. Printed base pips and turn length never double.
+          </p>
+
           <h2>
             A small board.
             <br />A clever little game.
