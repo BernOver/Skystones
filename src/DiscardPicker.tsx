@@ -1,3 +1,4 @@
+import { trapEdges } from "./traps";
 import { useState } from "react";
 import { StoneCard } from "./Artwork";
 import { KeywordDetails } from "./CardInspection";
@@ -55,15 +56,18 @@ export function DiscardPicker({
           >
             <StoneCard
               stone={card}
-              edges={
+              trap={pending.trap}
+              edges={trapEdges(
                 card.edges.map((n, side) =>
                   Math.min(99, n + (card.discardBuffs?.pips[side] || 0)),
-                ) as Edges
-              }
+                ) as Edges,
+                card,
+                pending.trap,
+              )}
             />
-            {discardPriority(card) > 0 && (
+            {discardPriority(card, pending.trap) > 0 && (
               <span className="discard-priority-note">
-                Random priority {discardPriority(card)}
+                Random priority {discardPriority(card, pending.trap)}
               </span>
             )}
           </button>

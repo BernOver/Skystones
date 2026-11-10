@@ -59,6 +59,7 @@ import {
   SIDE_NAMES,
   coordinate,
   cardEdges,
+  keywordShieldEdges,
   handSize,
   prepareTargeting,
   score,
@@ -521,6 +522,7 @@ function ExpeditionView({
           inheritedPips: cell.inheritedPips,
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
+          keywordShields: keywordShieldEdges(cell),
           comboActive: cell.comboActive,
           comboStates: cell.comboStates,
           comboPrevious: cell.comboPrevious,
@@ -1095,6 +1097,7 @@ function ExpeditionView({
                       owner={cell.owner}
                       edges={cardEdges(cell)}
                       shields={cell.shields}
+                      keywordShields={keywordShieldEdges(cell)}
                       silenced={cell.silenced}
                       trap={battle.traps?.active?.trap}
                       environment={cell.environment}
@@ -1916,6 +1919,8 @@ function ExpeditionView({
               stone={inspected.stone}
               edges={inspected.edges}
               shields={inspected.shields}
+              keywordShields={inspected.keywordShields}
+              trap={inspected.trap}
               silenced={inspected.silenced}
               environment={inspected.environment}
               played={inspected.played}

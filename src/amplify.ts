@@ -1,3 +1,10 @@
+import {
+  boardTrap,
+  trapKeywordMultiplier,
+  isTrapPipEffect,
+  validTrap,
+} from "./traps.ts";
+import type { Trap } from "./traps.ts";
 import { hasTribe } from "./tribes.ts";
 import type {
   BasicKeyword,
@@ -96,10 +103,14 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
         }));
       break;
     case "trap":
-      out.trap.effects = out.trap.effects.map((e) => ({
-        ...e,
-        amount: Math.max(-99, Math.min(99, e.amount * times)),
-      }));
+      out.trap.effects = out.trap.effects.map((e) =>
+        isTrapPipEffect(e)
+          ? {
+              ...e,
+              amount: Math.max(-99, Math.min(99, e.amount * times)),
+            }
+          : e,
+      );
       break;
     case "environment":
       if ("amount" in out.environment)
@@ -126,6 +137,23 @@ export function amplifyPlan(
         : []
       : [g.keyword],
   );
+  const trap =
+    all.filter((k) => k.type === "trap").at(-1)?.trap || boardTrap(board);
+  // Reactive keywords read the field when they actually trigger, rather than locking it at placement.
+  const reactive = new Set<KeywordType>([
+    "shield",
+    "scavenge",
+    "parting-gift",
+    "discard-priority",
+  ]);
+  let fieldAmplified = false;
+  const fieldMultiplier = (type: KeywordType, includeAll: boolean) => {
+    const times = reactive.has(type)
+      ? 1
+      : trapKeywordMultiplier(trap, stone, type, includeAll);
+    if (times > 1) fieldAmplified = true;
+    return times;
+  };
   const local = all.filter(
     (k) => k.type === "amplify" && k.duration === "always",
   );
@@ -134,15 +162,16 @@ export function amplifyPlan(
   const localMultiplier = (type: KeywordType, includeAll = true) =>
     Math.min(
       32,
-      local.reduce(
-        (n, k) =>
-          n *
-          (k.type === "amplify" &&
-          (k.effect === type || (includeAll && k.effect === "all"))
-            ? 2
-            : 1),
-        1,
-      ),
+      fieldMultiplier(type, includeAll) *
+        local.reduce(
+          (n, k) =>
+            n *
+            (k.type === "amplify" &&
+            (k.effect === type || (includeAll && k.effect === "all"))
+              ? 2
+              : 1),
+          1,
+        ),
     );
   const queuedMultiplier = (
     type: KeywordType,
@@ -239,7 +268,11 @@ export function amplifyPlan(
     spent,
     queues,
     comboPips,
-    amplified: local.length > 0 || spent.length > 0 || !!stone.runtimeEffects,
+    amplified:
+      fieldAmplified ||
+      local.length > 0 ||
+      spent.length > 0 ||
+      !!stone.runtimeEffects,
   };
 }
 export function validAmplifyQueue(value: unknown): value is AmplifyQueue[] {
@@ -312,22 +345,16 @@ export function validRuntimeEffects(value: unknown): value is BasicKeyword[] {
           }));
         }
       if (k.type === "trap" && k.trap && typeof k.trap === "object") {
-        const trap = k.trap as { effects?: { amount: number }[] };
-        if (
-          !Array.isArray(trap.effects) ||
-          trap.effects.some(
-            (e) =>
-              !e ||
-              !Number.isInteger(e.amount) ||
-              Math.abs(e.amount) > 99 ||
-              e.amount === 0,
-          )
-        )
-          return null;
-        trap.effects = trap.effects.map((e) => ({
-          ...e,
-          amount: Math.max(-5, Math.min(5, e.amount)),
-        }));
+        if (!validTrap(k.trap, true)) return null;
+        const trap = k.trap as Trap;
+        trap.effects = trap.effects.map((e) =>
+          isTrapPipEffect(e)
+            ? {
+                ...e,
+                amount: Math.max(-5, Math.min(5, e.amount)),
+              }
+            : e,
+        );
       }
       if (k.environment && typeof k.environment === "object") {
         const env = k.environment as Record<string, unknown>;

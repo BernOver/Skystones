@@ -1,9 +1,19 @@
 import { useState } from "react";
-import type { Board, Element, Owner } from "./game";
-import { ELEMENTS } from "./game";
+import type { Board, Element, Owner, Side } from "./game";
+import { ELEMENTS, KEYWORD_RULES } from "./game";
 import { pendingAmplify } from "./amplify";
-import { DEFAULT_TRAPS, readTraps, saveTrap, trapText } from "./traps";
-import type { Trap, TrapState } from "./traps";
+import {
+  DEFAULT_TRAPS,
+  readTraps,
+  saveTrap,
+  trapText,
+  TRAP_EFFECTS,
+  TRAP_AMPLIFY_TARGETS,
+  defaultTrapEffect,
+  isTrapPipEffect,
+  trapEffectSides,
+} from "./traps";
+import type { Trap, TrapState, TrapEffect, TrapAmplifyTarget } from "./traps";
 import { TribeSelect } from "./TribeEditor";
 import "./traps.css";
 export function TrapCrystal({ trap }: { trap: Trap }) {
@@ -31,13 +41,36 @@ export function TrapCrystal({ trap }: { trap: Trap }) {
     </svg>
   );
 }
-export function TrapPanel({state,board,owner}:{state?:TrapState;board:Board;owner:Owner}) {
-  return <><section className="trap-panel" aria-label="Shared Trap slot">
-    {state?.active&&<TrapCrystal trap={state.active.trap}/>}
-    <div><strong>{state?.active?.trap.name||'No active Trap'}</strong>
-      <p>{state?.active?trapText(state.active.trap):'Play a stone with a Trap keyword to place a crystal. Only one shared Trap can be active.'}</p>
-      {state?.active?.source&&<small>Placed by {state.active.source}. A new stone’s Trap replaces it.</small>}
-    </div></section><AmplifyStatus board={board} owner={owner}/></>;
+export function TrapPanel({
+  state,
+  board,
+  owner,
+}: {
+  state?: TrapState;
+  board: Board;
+  owner: Owner;
+}) {
+  return (
+    <>
+      <section className="trap-panel" aria-label="Shared Trap slot">
+        {state?.active && <TrapCrystal trap={state.active.trap} />}
+        <div>
+          <strong>{state?.active?.trap.name || "No active Trap"}</strong>
+          <p>
+            {state?.active
+              ? trapText(state.active.trap)
+              : "Play a stone with a Trap keyword to place a crystal. Only one shared Trap can be active."}
+          </p>
+          {state?.active?.source && (
+            <small>
+              Placed by {state.active.source}. A new stone’s Trap replaces it.
+            </small>
+          )}
+        </div>
+      </section>
+      <AmplifyStatus board={board} owner={owner} />
+    </>
+  );
 }
 export function AmplifyStatus({
   board,
@@ -172,101 +205,86 @@ export function TrapCollection() {
             />
             Affect cards outside the matching group
           </label>
+          <p>
+            Choose up to eight effects. Pip additions apply first, then pip
+            transformations in the listed order. Attack and defense bonuses
+            apply afterward. All effects follow the element and tribe filters
+            above.
+          </p>
           {draft.effects.map((effect, i) => (
             <fieldset key={i}>
               <legend>Effect {i + 1}</legend>
-              <label>
-                Kind
-                <select
-                  aria-label={`Trap effect ${i + 1}`}
-                  value={effect.kind}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      effects: draft.effects.map((old, j) =>
-                        j === i
-                          ? {
-                              ...old,
-                              kind: e.target.value as typeof effect.kind,
-                            }
-                          : old,
-                      ),
-                    })
-                  }
-                >
-                  <option value="pips">Ordinary pips</option>
-                  <option value="attack">Attack only</option>
-                  <option value="defense">Defense only</option>
-                </select>
-              </label>
-              <label>
-                Direction
-                <select
-                  aria-label={`Trap direction ${i + 1}`}
-                  value={effect.side}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      effects: draft.effects.map((old, j) =>
-                        j === i
-                          ? {
-                              ...old,
-                              side:
-                                e.target.value === "all"
-                                  ? "all"
-                                  : (Number(e.target.value) as 0 | 1 | 2 | 3),
-                            }
-                          : old,
-                      ),
-                    })
-                  }
-                >
-                  <option value="all">Every side</option>
-                  {["North", "East", "South", "West"].map((s, n) => (
-                    <option key={s} value={n}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Pips
-                <input
-                  aria-label={`Trap pips ${i + 1}`}
-                  type="number"
-                  min={-5}
-                  max={5}
-                  value={effect.amount}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      effects: draft.effects.map((old, j) =>
-                        j === i
-                          ? { ...old, amount: Number(e.target.value) }
-                          : old,
-                      ),
-                    })
-                  }
-                />
-              </label>
-              {draft.effects.length > 1 && (
+              <TrapEffectFields
+                effect={effect}
+                index={i}
+                onChange={(updated) =>
+                  setDraft({
+                    ...draft,
+                    effects: draft.effects.map((old, j) =>
+                      j === i ? updated : old,
+                    ),
+                  })
+                }
+              />
+              <div className="trap-effect-actions">
                 <button
                   type="button"
+                  disabled={i === 0}
+                  aria-label={`Move Trap effect ${i + 1} up`}
                   onClick={() =>
                     setDraft({
                       ...draft,
-                      effects: draft.effects.filter((_, j) => i !== j),
+                      effects: draft.effects.map((e, j) =>
+                        j === i
+                          ? draft.effects[i - 1]
+                          : j === i - 1
+                            ? effect
+                            : e,
+                      ),
                     })
                   }
                 >
-                  Remove effect
+                  Move up
                 </button>
-              )}
+                <button
+                  type="button"
+                  disabled={i === draft.effects.length - 1}
+                  aria-label={`Move Trap effect ${i + 1} down`}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      effects: draft.effects.map((e, j) =>
+                        j === i
+                          ? draft.effects[i + 1]
+                          : j === i + 1
+                            ? effect
+                            : e,
+                      ),
+                    })
+                  }
+                >
+                  Move down
+                </button>
+                {draft.effects.length > 1 && (
+                  <button
+                    type="button"
+                    aria-label={`Remove Trap effect ${i + 1}`}
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        effects: draft.effects.filter((_, j) => i !== j),
+                      })
+                    }
+                  >
+                    Remove effect
+                  </button>
+                )}
+              </div>
             </fieldset>
           ))}
           <button
             type="button"
-            disabled={draft.effects.length >= 4}
+            disabled={draft.effects.length >= 8}
             onClick={() =>
               setDraft({
                 ...draft,
@@ -316,5 +334,176 @@ export function TrapCollection() {
         ))}
       </div>
     </section>
+  );
+}
+
+function TrapEffectFields({
+  effect,
+  index,
+  onChange,
+}: {
+  effect: TrapEffect;
+  index: number;
+  onChange: (effect: TrapEffect) => void;
+}) {
+  const number = index + 1;
+  return (
+    <>
+      <label>
+        Kind
+        <select
+          aria-label={`Trap effect ${number}`}
+          value={effect.kind}
+          onChange={(e) => {
+            const next = defaultTrapEffect(
+              e.target.value as TrapEffect["kind"],
+            );
+            if ("side" in next && "side" in effect) {
+              next.side = effect.side;
+              next.sides = effect.sides;
+            }
+            if (isTrapPipEffect(next) && isTrapPipEffect(effect))
+              next.amount = effect.amount;
+            onChange(next);
+          }}
+        >
+          {Object.entries(TRAP_EFFECTS).map(([id, meta]) => (
+            <option key={id} value={id}>
+              {meta.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {"side" in effect && (
+        <>
+          <label>
+            Direction
+            <select
+              aria-label={`Trap direction ${number}`}
+              value={effect.sides ? "selected" : effect.side}
+              onChange={(e) =>
+                onChange({
+                  ...effect,
+                  side:
+                    e.target.value === "all" || e.target.value === "selected"
+                      ? "all"
+                      : (Number(e.target.value) as Side),
+                  sides: e.target.value === "selected" ? [0] : undefined,
+                })
+              }
+            >
+              <option value="all">Every side</option>
+              {["North", "East", "South", "West"].map((s, n) => (
+                <option key={s} value={n}>
+                  {s}
+                </option>
+              ))}
+              <option value="selected">Selected sides</option>
+            </select>
+          </label>
+          {effect.sides && (
+            <div
+              className="trap-side-options"
+              role="group"
+              aria-label={`Affected sides ${number}`}
+            >
+              {["North", "East", "South", "West"].map((s, n) => (
+                <label key={s}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Trap ${s} ${number}`}
+                    checked={trapEffectSides(effect).includes(n as Side)}
+                    disabled={
+                      effect.sides?.length === 1 &&
+                      effect.sides.includes(n as Side)
+                    }
+                    onChange={(e) =>
+                      onChange({
+                        ...effect,
+                        sides: e.target.checked
+                          ? ([...effect.sides!, n as Side].sort() as Side[])
+                          : effect.sides!.filter((side) => side !== n),
+                      })
+                    }
+                  />
+                  {s}
+                </label>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {isTrapPipEffect(effect) && (
+        <label>
+          Pips
+          <input
+            aria-label={`Trap pips ${number}`}
+            type="number"
+            min={-5}
+            max={5}
+            value={effect.amount}
+            onChange={(e) =>
+              onChange({ ...effect, amount: Number(e.target.value) })
+            }
+          />
+        </label>
+      )}
+      {effect.kind === "amplify" && (
+        <label>
+          Keyword to double
+          <select
+            aria-label={`Trap doubled keyword ${number}`}
+            value={effect.effect}
+            onChange={(e) =>
+              onChange({
+                ...effect,
+                effect: e.target.value as TrapAmplifyTarget,
+              })
+            }
+          >
+            {TRAP_AMPLIFY_TARGETS.map((type) => (
+              <option key={type} value={type}>
+                {type === "all"
+                  ? "All eligible keywords"
+                  : KEYWORD_RULES[type].name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {effect.kind === "ceiling" && (
+        <label>
+          Maximum ordinary pips
+          <input
+            aria-label={`Trap pip ceiling ${number}`}
+            type="number"
+            min={0}
+            max={5}
+            value={effect.maximum}
+            onChange={(e) =>
+              onChange({ ...effect, maximum: Number(e.target.value) })
+            }
+          />
+        </label>
+      )}
+      {effect.kind === "steady" && (
+        <label>
+          Minimum Dizzy roll
+          <input
+            aria-label={`Trap minimum Dizzy roll ${number}`}
+            type="number"
+            min={1}
+            max={5}
+            value={effect.minimum}
+            onChange={(e) =>
+              onChange({ ...effect, minimum: Number(e.target.value) })
+            }
+          />
+        </label>
+      )}
+      <p className="trap-effect-help">
+        {TRAP_EFFECTS[effect.kind].description}
+      </p>
+    </>
   );
 }

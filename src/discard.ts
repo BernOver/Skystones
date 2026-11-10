@@ -1,3 +1,5 @@
+import { boardTrap, trapKeywordMultiplier } from "./traps.ts";
+import type { Trap } from "./traps.ts";
 import { scaleEffect } from "./amplify.ts";
 import { placedKeywords as liveKeywords, finishingCard } from "./game.ts";
 import type { Board, Edges, Owner, Side, Stone, StoneKeyword } from "./game.ts";
@@ -29,6 +31,7 @@ export interface DiscardChoice {
   cardIds: string[];
 }
 export interface DiscardPending {
+  trap?: Trap;
   keywordIndex: number;
   owner: Owner;
   count: number;
@@ -139,7 +142,7 @@ function addBuffs(
     ) as Edges,
   };
 }
-export function discardPriority(stone: Stone): number {
+export function discardPriority(stone: Stone, trap?: Trap): number {
   const multiplier = (stone.keywords || []).reduce(
     (n, k) =>
       n *
@@ -157,7 +160,9 @@ export function discardPriority(stone: Stone): number {
       ...(stone.keywords || []).map((keyword) =>
         keyword.type === "discard-priority" ? (keyword.priority ?? 1) : 0,
       ),
-    ) * multiplier,
+    ) *
+      multiplier *
+      trapKeywordMultiplier(trap, stone, "discard-priority"),
   );
 }
 export function finishCardsRequired(
@@ -301,6 +306,7 @@ export function resolveDiscards(
               requested: keyword.count,
               required: required[owner],
               cards: disposable(),
+              ...(boardTrap(nextBoard) ? { trap: boardTrap(nextBoard) } : {}),
             },
           };
         if (choice) {
@@ -346,9 +352,14 @@ export function resolveDiscards(
           const safe = available.filter(
             (c) => !finishingCard(c) || finishingChosen < excess(),
           );
-          const priority = Math.max(...safe.map(discardPriority)),
+          const priority = Math.max(
+              ...safe.map((card) =>
+                discardPriority(card, boardTrap(nextBoard)),
+              ),
+            ),
             candidates = safe.filter(
-              (card) => discardPriority(card) === priority,
+              (card) =>
+                discardPriority(card, boardTrap(nextBoard)) === priority,
             ),
             chosen = candidates[Math.floor(random() * candidates.length)];
           ids.push(chosen.id);
@@ -380,7 +391,15 @@ export function resolveDiscards(
             : [],
         );
         for (const observer of observers)
-          buffBoard(observer.target, observer.ability, observer.name, record);
+          for (const ability of scaleEffect(
+            observer.ability,
+            trapKeywordMultiplier(
+              boardTrap(nextBoard),
+              nextBoard[observer.target]!.stone,
+              "scavenge",
+            ),
+          ))
+            buffBoard(observer.target, ability, observer.name, record);
         const giftMultiplier = (card.keywords || []).reduce(
           (n, k) =>
             n *
@@ -393,7 +412,18 @@ export function resolveDiscards(
         );
         for (const gift of (card.keywords || []).flatMap((k) =>
           k.type === "parting-gift"
-            ? scaleEffect(k, Math.min(32, giftMultiplier))
+            ? scaleEffect(
+                k,
+                Math.min(
+                  32,
+                  giftMultiplier *
+                    trapKeywordMultiplier(
+                      boardTrap(nextBoard),
+                      card,
+                      "parting-gift",
+                    ),
+                ),
+              )
             : [],
         )) {
           if (gift.type !== "parting-gift") continue;

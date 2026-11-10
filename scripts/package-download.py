@@ -261,9 +261,16 @@ cards. Combo can grant it too. Copies use saved character defaults or the fixed
 base for that mode. They arrive after captures and can be played on later turns.
 Creating cards does not activate their keywords or spend Next Play bonuses.
 NEW: TRAPS, UNIQUE CARDS, PARTS AND AMPLIFY
-Collection > Traps: choose from 11 shared crystals or make your own. Only one
+Collection > Traps: choose from 18 shared crystals or make your own. Only one
 is active, affecting both players. The slot starts empty. A stone with the
 Trap keyword places its crystal before captures. A later stone replaces it.
+Traps can select multiple sides for pip, attack, defense, doubling, and ceiling
+rules. Double a chosen keyword or all eligible keywords (excluding Amplify,
+Flash, and Trap itself). Try mirrored opposite sides, equalized pips, or a
+minimum Dizzy roll. Mix up to eight effects and reorder pip transformations.
+Pip additions apply first; transformations run in order; attack/defense bonuses
+apply afterward. Keyword doubling stacks with Amplify when effects trigger.
+Shield doubling follows the active Trap, excluding potion/discard counters.
 There is no free Trap activation button.
 Card studio: Unique cards can enter decks but normal Conjure cannot create them.
 Use the explicit Unique Conjure source. Card exports bundle their dependencies.

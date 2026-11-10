@@ -225,4 +225,35 @@
     grid-template-columns: 1fr;
   }
 }
-.recipe-preview > .stone-card { height: 264px; }
+.recipe-preview > .stone-card {
+  height: 264px;
+}
+
+.trap-effect-help {
+  flex-basis: 100%;
+  color: #5c5567;
+}
+.trap-side-options,
+.trap-effect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.trap-side-options {
+  flex-basis: 100%;
+}
+.trap-side-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.trap-effect-actions {
+  flex-basis: 100%;
+}
+.trap-effect-actions button {
+  padding: 6px 10px;
+}
+.trap-editor select {
+  max-width: 100%;
+}

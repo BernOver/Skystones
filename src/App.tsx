@@ -84,6 +84,7 @@ import {
   coordinate,
   boardSize,
   cardEdges,
+  keywordShieldEdges,
   handSize,
   ELEMENTS,
   EMPTY_BOARD,
@@ -692,6 +693,7 @@ export default function App() {
           inheritedPips: cell.inheritedPips,
           activeKeywords: cell.activeKeywords || [],
           shields: cell.shields,
+          keywordShields: keywordShieldEdges(cell),
           comboActive: cell.comboActive,
           comboStates: cell.comboStates,
           comboPrevious: cell.comboPrevious,
@@ -1555,6 +1557,7 @@ export default function App() {
                                 environment={cell.environment}
                                 trap={activeTrap}
                                 shields={cell.shields}
+                                keywordShields={keywordShieldEdges(cell)}
                                 silenced={cell.silenced}
                                 compact
                               />
@@ -2839,6 +2842,8 @@ export default function App() {
                 grantedKeywords={dialog.inspection.grantedKeywords}
                 edges={dialog.inspection.edges}
                 shields={dialog.inspection.shields}
+                keywordShields={dialog.inspection.keywordShields}
+                trap={dialog.inspection.trap}
                 environment={dialog.inspection.environment}
                 silenced={dialog.inspection.silenced}
               />

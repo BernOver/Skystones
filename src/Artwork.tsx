@@ -1,5 +1,5 @@
 import { readTokens } from "./tokens";
-import { trapBonus } from "./traps";
+import { trapBonus, trapDizzyMinimum } from "./traps";
 import type { Trap } from "./traps";
 import { swapIdentity, keywordHalf, isSwapForce } from "./swapForce";
 import { stoneTribes, tribeName } from "./tribes";
@@ -28,6 +28,7 @@ import {
   dizzySides,
   SIDE_NAMES,
   shieldEdges,
+  trapAdjustedShields,
 } from "./game";
 import {
   withCharacterPortrait,
@@ -575,6 +576,7 @@ export const StoneCard = memo(
     edges = stone.edges,
     silenced = false,
     shields = shieldEdges(stone, silenced),
+    keywordShields,
     played = false,
     grantedKeywords = [],
     environment,
@@ -588,6 +590,7 @@ export const StoneCard = memo(
     edges?: Edges;
     silenced?: boolean;
     shields?: Edges;
+    keywordShields?: Edges;
     played?: boolean;
     grantedKeywords?: import("./game").BasicKeyword[];
     environment?: TileEnvironment;
@@ -602,11 +605,15 @@ export const StoneCard = memo(
       !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
     const trapDefense = trapBonus(trap, stone, "defense"),
       trapAttack = trapBonus(trap, stone, "attack");
-    const visibleShields = shields.map(
+    const visibleShields = trapAdjustedShields(
+      stone,
+      shields,
+      trap,
+      silenced,
+      keywordShields,
+    ).map(
       (pips, s) =>
-        (silenced ? 0 : pips) +
-        environmentDefense(environment, stone) +
-        trapDefense[s],
+        pips + environmentDefense(environment, stone) + trapDefense[s],
     );
     const attackBonus = trapAttack.map(
       (n) => n + environmentAttack(environment, stone),
@@ -692,7 +699,7 @@ export const StoneCard = memo(
               {unknownSides.includes(i as 0 | 1 | 2 | 3) && (
                 <small
                   className="dizzy-pip"
-                  aria-label={`${SIDE_NAMES[i]} rolls 0 to 5 before captures`}
+                  aria-label={`${SIDE_NAMES[i]} rolls ${trapDizzyMinimum(trap, stone)} to 5 before captures`}
                 >
                   ?
                 </small>

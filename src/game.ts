@@ -5,6 +5,8 @@ import {
   withTrap,
   boardTrap,
   validTrap,
+  trapKeywordMultiplier,
+  trapDizzyMinimum,
 } from "./traps.ts";
 import type { Trap } from "./traps.ts";
 import { amplifyPlan, validRuntimeEffects } from "./amplify.ts";
@@ -652,6 +654,30 @@ export function shieldEdges(
   }
   return shields.map((n) => Math.min(198, n)) as Edges;
 }
+// Only keyword Shield is doubled by a Trap; potion and discard shield counters stay separate.
+export function keywordShieldEdges(cell: PlacedStone): Edges {
+  return shieldEdges(
+    { ...cell.stone, discardBuffs: undefined, keywords: placedKeywords(cell) },
+    !!cell.silenced,
+  );
+}
+export function trapAdjustedShields(
+  stone: Stone,
+  shields: Edges,
+  trap?: Trap,
+  silenced = false,
+  native?: Edges,
+): Edges {
+  const keywordShields =
+    native ||
+    (shields.map((n, s) =>
+      Math.max(0, n - (stone.discardBuffs?.shields[s] || 0)),
+    ) as Edges);
+  const times = trapKeywordMultiplier(trap, stone, "shield");
+  return shields.map((n, s) =>
+    silenced ? 0 : n + keywordShields[s] * (times - 1),
+  ) as Edges;
+}
 export function arenaEdges(
   edges: Edges,
   element: Element,
@@ -692,11 +718,18 @@ export function defenseEdges(cell: PlacedStone): Edges {
     ? [0, 0, 0, 0]
     : cell.shields || shieldEdges(cell.stone, false, cell.grantedKeywords);
   const trap = trapBonus(cell.trap, cell.stone, "defense");
+  const adjustedShields = trapAdjustedShields(
+    cell.stone,
+    shields as Edges,
+    cell.trap,
+    !!cell.silenced,
+    keywordShieldEdges(cell),
+  );
   return cardEdges(cell).map((edge, side) =>
     Math.max(
       0,
       edge +
-        shields[side] +
+        adjustedShields[side] +
         environmentDefense(cell.environment, cell.stone) +
         trap[side],
     ),
@@ -1003,16 +1036,26 @@ export function chooseKeywordTargets(
   stone = withNextKeywords(coverStone(board, index, stone), board, owner);
   const targets: KeywordTarget[] = [];
   const resolved = evaluateKeywords(stone, board, owner).edges;
-  const sides = [
-    ...new Set(
-      effectiveKeywords(stone, board, owner).flatMap((keyword) =>
-        keyword.type === "dizzy" ? dizzySides(keyword) : [],
-      ),
-    ),
-  ];
-  const edges = sides.length
-    ? rollDizzy(resolved, placementSeed(board, index, owner), 0, sides)
-    : resolved;
+  let edges = resolved;
+  const minimum = trapDizzyMinimum(
+    effectiveKeywords(stone, board, owner)
+      .filter((k) => k.type === "trap")
+      .at(-1)?.trap || boardTrap(board),
+    stone,
+  );
+  effectiveKeywords(stone, board, owner)
+    .filter((k) => k.type === "dizzy")
+    .forEach((keyword, n) => {
+      if (keyword.type === "dizzy")
+        edges = rollDizzy(
+          edges,
+          n === 0
+            ? placementSeed(board, index, owner)
+            : placementSeed(board, index, owner) ^ Math.imul(n, 0x9e3779b1),
+          minimum,
+          dizzySides(keyword),
+        );
+    });
   let state = prepareTargeting(board, original, targets, owner, index);
   while (state.pending) {
     let { options } = state.pending;
@@ -1264,7 +1307,13 @@ export function placeStone(
           after = rollDizzy(
             after,
             n === 0 ? seed : seed ^ Math.imul(n, 0x9e3779b1),
-            options.minimumDizzyPips,
+            Math.max(
+              options.minimumDizzyPips || 0,
+              trapDizzyMinimum(
+                next[index]?.placedTrap || options.trap || boardTrap(board),
+                stone,
+              ),
+            ),
             dizzySides(keyword),
           );
       });

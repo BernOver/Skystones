@@ -1,7 +1,7 @@
 import { keywordHalf, isSwapForce } from "./swapForce";
 import { readTokens } from "./tokens";
 import { amplifyText } from "./amplify";
-import { trapText, trapKeywordText } from "./traps";
+import { trapText, trapKeywordText, trapBonus } from "./traps";
 import type { Trap } from "./traps";
 import { SwapDetails } from "./SwapDetails";
 import { TribeBadges } from "./TribeEditor";
@@ -32,6 +32,8 @@ import {
   KEYWORD_RULES,
   SIDE_NAMES,
   keywordGroups,
+  shieldEdges,
+  trapAdjustedShields,
 } from "./game";
 import type {
   ActiveKeyword,
@@ -84,6 +86,7 @@ export interface Inspection {
   };
   size?: BoardSize;
   shields?: Edges;
+  keywordShields?: Edges;
   comboActive?: boolean;
   comboStates?: boolean[];
   comboPrevious?: Element;
@@ -1003,6 +1006,21 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
     effects,
     dizzy,
   } = inspection;
+  const defenseBonus = trapAdjustedShields(
+    stone,
+    inspection.shields || shieldEdges(stone),
+    inspection.trap,
+    !!silenced,
+    inspection.keywordShields,
+  ).map(
+    (n, s) =>
+      n +
+      environmentDefense(inspection.environment, stone) +
+      trapBonus(inspection.trap, stone, "defense")[s],
+  );
+  const attackBonus = trapBonus(inspection.trap, stone, "attack").map(
+    (n) => n + environmentAttack(inspection.environment, stone),
+  );
   return (
     <>
       <div className="inspection-context">
@@ -1070,26 +1088,18 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           >
             <small>{side}</small>
             <strong>{edges[index]}</strong>
-            {!!(
-              (silenced ? 0 : inspection.shields?.[index] || 0) +
-              environmentDefense(inspection.environment, stone)
-            ) && (
+            {!!defenseBonus[index] && (
               <span className="defense-stat">
-                Defense +
-                {(silenced ? 0 : inspection.shields?.[index] || 0) +
-                  environmentDefense(inspection.environment, stone)}{" "}
-                · defends{" "}
-                {edges[index] +
-                  (silenced ? 0 : inspection.shields?.[index] || 0) +
-                  environmentDefense(inspection.environment, stone)}
+                Defense {defenseBonus[index] > 0 ? "+" : ""}
+                {defenseBonus[index]} · defends{" "}
+                {Math.max(0, edges[index] + defenseBonus[index])}
               </span>
             )}
-            {!!environmentAttack(inspection.environment, stone) && (
+            {!!attackBonus[index] && (
               <span className="attack-stat">
-                Attack +{environmentAttack(inspection.environment, stone)} ·
-                attacks{" "}
-                {edges[index] +
-                  environmentAttack(inspection.environment, stone)}
+                Attack {attackBonus[index] > 0 ? "+" : ""}
+                {attackBonus[index]} · attacks{" "}
+                {Math.max(0, edges[index] + attackBonus[index])}
               </span>
             )}
             {edges[index] !== stone.edges[index] && (
@@ -1299,6 +1309,7 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
           edges={inspection.edges}
           silenced={inspection.silenced}
           shields={inspection.shields}
+          keywordShields={inspection.keywordShields}
           trap={inspection.trap}
           environment={inspection.environment}
         />

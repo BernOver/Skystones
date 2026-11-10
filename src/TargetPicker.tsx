@@ -4,6 +4,7 @@ import { StoneCard } from "./Artwork";
 import {
   coordinate,
   cardEdges,
+  keywordShieldEdges,
   boardSize,
   KEYWORD_RULES,
   SIDE_NAMES,
@@ -162,6 +163,8 @@ export function TargetPicker({
               edges={cardEdges(selectedCard)}
               silenced={selectedCard.silenced}
               shields={selectedCard.shields}
+              keywordShields={keywordShieldEdges(selectedCard)}
+              trap={selectedCard.trap}
               environment={selectedCard.environment}
               owner={selectedCard.owner}
             />
@@ -248,7 +251,9 @@ export function TargetPicker({
                       owner={cell.owner}
                       edges={cardEdges(cell)}
                       silenced={cell.silenced}
+                      trap={cell.trap}
                       shields={cell.shields}
+                      keywordShields={keywordShieldEdges(cell)}
                       environment={cell.environment}
                       compact
                     />
