@@ -1,3 +1,5 @@
+import { trapImageLayout } from "./imageLayout";
+import { ImageLayoutControls } from "./ImageLayoutControls";
 import { useId, useState } from "react";
 import type { Board, Element, Owner, Side } from "./game";
 import { ELEMENTS } from "./game";
@@ -58,11 +60,7 @@ export function TrapCrystal({ trap }: { trap: Trap }) {
           <image
             className="trap-portrait"
             href={trap.image}
-            x="25"
-            y="28"
-            width="50"
-            height="50"
-            preserveAspectRatio="xMidYMid slice"
+            {...trapImageLayout(trap.imageTransform)}
             clipPath={`url(#${cropId})`}
           />
         </>
@@ -205,28 +203,34 @@ export function TrapCollection() {
                       await picture.decode();
                       // Keep the shared image small: it is included in saved card and battlefield snapshots.
                       const canvas = document.createElement("canvas");
-                      canvas.width = canvas.height = 256;
+                      const resize =
+                        256 /
+                        Math.max(picture.naturalWidth, picture.naturalHeight);
+                      canvas.width = Math.max(
+                        1,
+                        Math.round(picture.naturalWidth * resize),
+                      );
+                      canvas.height = Math.max(
+                        1,
+                        Math.round(picture.naturalHeight * resize),
+                      );
                       const context = canvas.getContext("2d");
                       if (!context) throw new Error("Picture unavailable");
-                      const edge = Math.min(
-                        picture.naturalWidth,
-                        picture.naturalHeight,
-                      );
                       context.drawImage(
                         picture,
-                        (picture.naturalWidth - edge) / 2,
-                        (picture.naturalHeight - edge) / 2,
-                        edge,
-                        edge,
                         0,
                         0,
-                        256,
-                        256,
+                        canvas.width,
+                        canvas.height,
                       );
                       const cropped = canvas.toDataURL("image/webp", 0.84);
                       setDraft((current) =>
                         current?.id === editingId
-                          ? { ...current, image: cropped }
+                          ? {
+                              ...current,
+                              image: cropped,
+                              imageTransform: undefined,
+                            }
                           : current,
                       );
                       setError("");
@@ -241,14 +245,20 @@ export function TrapCollection() {
                 />
               </label>
               <p>
-                The center of your picture is cropped into a circle. PNG, JPG,
-                or WebP, up to 2 MB. The picture travels with this Trap when
-                shared.
+                Adjust the picture inside the circle using the controls below.
+                PNG, JPG, or WebP, up to 2 MB. The picture travels with this
+                Trap when shared.
               </p>
               {draft.image && (
                 <button
                   type="button"
-                  onClick={() => setDraft({ ...draft, image: undefined })}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      image: undefined,
+                      imageTransform: undefined,
+                    })
+                  }
                 >
                   Remove Trap picture
                 </button>
@@ -256,6 +266,16 @@ export function TrapCollection() {
             </div>
           </div>
 
+          {draft.image && (
+            <ImageLayoutControls
+              label="Trap"
+              defaultFit="cover"
+              value={draft.imageTransform}
+              onChange={(imageTransform) =>
+                setDraft({ ...draft, imageTransform })
+              }
+            />
+          )}
           <label>
             Name
             <input

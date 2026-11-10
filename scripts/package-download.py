@@ -275,6 +275,11 @@ apply afterward. Keyword doubling stacks with Amplify when effects trigger.
 Shield doubling follows the active Trap, excluding potion/discard counters.
 Upload a PNG, JPG, or WebP picture (up to 2 MB) for a circular portrait in the
 crystal’s center. Pictures are saved and included when a card shares its Trap.
+Card studio and Trap editors include Picture size (25-300%), Left / right,
+Up / down, Picture fit, and Reset picture controls. Previews update immediately.
+Choose Fit whole picture or Fill frame. Built-in stone portraits can resize too.
+Trap uploads keep the full picture for reframing inside the circle. Saved cards,
+card files, Adventure copies, and SWAP Force halves retain these adjustments.
 Double or nullify named keywords, attack/defense modifiers, tile effects, or
 an elemental arena bonus. Nullify overrides doubling. On-play keywords are
 checked when played; Shield, discard reactions, and battlefield effects follow

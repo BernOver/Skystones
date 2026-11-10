@@ -1,3 +1,5 @@
+import { validImageTransform } from "./imageLayout.ts";
+import type { ImageTransform } from "./imageLayout.ts";
 import type {
   Board,
   Edges,
@@ -173,6 +175,7 @@ export interface Trap {
   element: Element;
   description: string;
   image?: string;
+  imageTransform?: ImageTransform;
   affects?: { element?: Element; tribe?: Tribe; exclude?: boolean };
   effects: TrapEffect[];
 }
@@ -292,6 +295,7 @@ export function validTrap(value: unknown, runtime = false): value is Trap {
     elements.includes(t.element) &&
     typeof t.description === "string" &&
     t.description.length <= 200 &&
+    (t.imageTransform === undefined || validImageTransform(t.imageTransform)) &&
     (t.image === undefined ||
       (typeof t.image === "string" &&
         t.image.length < 3_000_000 &&

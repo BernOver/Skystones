@@ -13,6 +13,8 @@ Deck building and the New match dialog show larger cards with room for artwork a
 
 In **Collection → Traps**, upload a PNG, JPG, or WebP picture (up to 2 MB) for a circular portrait in the crystal’s center. The picture is included when the Trap is saved or shared inside a card. **Double a keyword or effect** supports named keywords, attack modifiers, defense modifiers, tile environment effects, and elemental arena bonuses. **Nullify a keyword or effect** overrides doubling. On-play keywords are checked when played; Shield, discard reactions, and battlefield modifiers follow the current crystal. A nullified effect does not spend a queued Amplify charge. Trap placement remains available so another crystal can replace it.
 
+**Resize artwork:** Card studio and the Trap editor have **Picture size** (25–300%), **Left / right**, **Up / down**, and **Picture fit** controls. Choose **Fit whole picture** or **Fill frame**, and use **Reset picture** to return to the original framing. Built-in portraits and uploaded stone images both support resizing. Trap uploads keep their full picture so you can reframe it inside the fixed circle. Adjustments are saved, shared in card files, and kept in Adventure and SWAP Force halves.
+
 These rules work on both board sizes in normal, Draft, and Adventure games. Existing Adventure copies retain their saved stats. Giants and Minis keep their protected base profiles.
 
 

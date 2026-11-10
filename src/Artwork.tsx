@@ -1,3 +1,4 @@
+import { imageLayoutStyle } from "./imageLayout";
 import { readTokens } from "./tokens";
 import { trapCombatBonuses, trapDizzyMinimum } from "./traps";
 import type { Trap } from "./traps";
@@ -618,6 +619,7 @@ export const StoneCard = memo(
           {stone.swapParts ? (
             <div
               className="swap-art"
+              style={imageLayoutStyle(stone.imageTransform)}
               role="img"
               aria-label={`SWAP Force portrait: ${stone.swapParts.top.name} top, ${stone.swapParts.bottom.name} bottom`}
             >
@@ -645,6 +647,12 @@ export const StoneCard = memo(
                       <img
                         src={src}
                         alt=""
+                        style={{
+                          ...imageLayoutStyle(part.imageTransform),
+                          ...(stone.imageTransform?.fit
+                            ? { objectFit: stone.imageTransform.fit }
+                            : {}),
+                        }}
                         className={`character-art ${statArt ? "swap-skystones-art" : ""}`}
                       />
                     ) : (
@@ -670,6 +678,7 @@ export const StoneCard = memo(
             <img
               src={artwork}
               alt=""
+              style={imageLayoutStyle(stone.imageTransform)}
               className={`uploaded-art ${statPicture ? (pictureMatchesStats(stone, edges) && !stone.image ? "skystones-original-art" : "skystones-portrait-art") : "character-art"}`}
             />
           ) : (

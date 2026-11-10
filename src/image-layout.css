@@ -1,0 +1,62 @@
+.image-layout-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-width: 0;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #c6becd;
+  border-radius: 10px;
+}
+.image-layout-controls legend {
+  padding: 0 5px;
+  color: #425852;
+  font-size: 13px;
+}
+.image-layout-controls label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+.image-layout-controls input[type="range"],
+.image-layout-controls select {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  accent-color: #586e67;
+}
+.image-layout-controls input[type="range"] {
+  padding: 0;
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+}
+.image-layout-controls select {
+  padding: 8px;
+  border: 1px solid #b6aabf;
+  border-radius: 6px;
+  background: #fff;
+}
+.image-layout-controls output {
+  font-variant-numeric: tabular-nums;
+  color: #6d627b;
+}
+.image-layout-controls > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.trap-editor .image-layout-controls {
+  display: grid;
+}
+.trap-picture-editor + .image-layout-controls {
+  margin-top: 0;
+}
+@media (max-width: 420px) {
+  .image-layout-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,3 +1,5 @@
+import { validImageTransform } from "./imageLayout.ts";
+import type { ImageTransform } from "./imageLayout.ts";
 import { validRecipe } from "./recipes.ts";
 import {
   trapEdges,
@@ -304,6 +306,7 @@ export interface Stone {
   description: string;
   custom?: boolean;
   image?: string;
+  imageTransform?: ImageTransform;
   origin?: "giants" | "skylanders";
   portrait?: string;
   characterKey?: string;
@@ -1618,6 +1621,7 @@ export function validateStone(value: unknown): value is Stone {
       (Array.isArray(s.baseEdges) &&
         s.baseEdges.length === 4 &&
         s.baseEdges.every((n) => Number.isInteger(n) && n >= 0 && n <= 5))) &&
+    (s.imageTransform === undefined || validImageTransform(s.imageTransform)) &&
     (s.image === undefined ||
       (typeof s.image === "string" &&
         /^data:image\/(png|jpeg|webp);base64,/.test(s.image) &&

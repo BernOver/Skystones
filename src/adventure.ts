@@ -2798,15 +2798,20 @@ function repairAdventureCards(run: Adventure): Adventure {
       !packed ||
       (packed.name === stone.name &&
         packed.portrait === stone.portrait &&
-        packed.image === stone.image)
+        packed.image === stone.image &&
+        JSON.stringify(packed.imageTransform) ===
+          JSON.stringify(stone.imageTransform))
     )
       return plain(stone);
-    const { image: _image, ...rest } = stone;
+    const { image: _image, imageTransform: _imageTransform, ...rest } = stone;
     return plain({
       ...rest,
       name: packed.name,
       portrait: packed.portrait,
       ...(packed.image ? { image: packed.image } : {}),
+      ...(packed.imageTransform
+        ? { imageTransform: packed.imageTransform }
+        : {}),
     });
   };
   const board = run.battle?.board.map((cell) => {

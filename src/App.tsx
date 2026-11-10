@@ -1,3 +1,4 @@
+import { ImageLayoutControls } from "./ImageLayoutControls";
 import {
   readRecipes,
   mergeRecipes,
@@ -1054,7 +1055,11 @@ export default function App() {
       const image = new Image();
       image.src = data;
       await image.decode();
-      setDraft((current) => ({ ...current, image: data }));
+      setDraft((current) => ({
+        ...current,
+        image: data,
+        imageTransform: undefined,
+      }));
     } catch {
       setToast(
         "That image could not be opened. Try another PNG, JPG, or WebP file.",
@@ -2553,6 +2558,7 @@ export default function App() {
                         portrait: portrait.id,
                         tribes: [...portraitTribes(portrait.id)],
                         image: undefined,
+                        imageTransform: undefined,
                         element: portrait.element,
                         name: portrait.name,
                         origin: original ? "giants" : "skylanders",
@@ -2585,6 +2591,13 @@ export default function App() {
                       <Upload size={14} />
                     </button>
                   </div>
+                  <ImageLayoutControls
+                    label="Stone"
+                    value={draft.imageTransform}
+                    onChange={(imageTransform) =>
+                      setDraft({ ...draft, imageTransform })
+                    }
+                  />
                   {draft.image && (
                     <button
                       type="button"
@@ -2593,6 +2606,7 @@ export default function App() {
                         setDraft({
                           ...draft,
                           image: undefined,
+                          imageTransform: undefined,
                           portrait: undefined,
                         })
                       }

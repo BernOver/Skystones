@@ -1,3 +1,5 @@
+import { validImageTransform } from "./imageLayout.ts";
+import type { ImageTransform } from "./imageLayout.ts";
 import { hasTribe, stoneTribes, validateTribes } from "./tribes.ts";
 import { CHARACTER_PORTRAITS } from "./characters.ts";
 import { ELEMENTS, validateKeywords, MAX_KEYWORDS } from "./game.ts";
@@ -12,6 +14,7 @@ export interface SwapIdentity {
   creature: Creature;
   portrait?: string;
   image?: string;
+  imageTransform?: ImageTransform;
   tribes: NonNullable<Stone["tribes"]>;
 }
 export interface SwapParts {
@@ -44,6 +47,9 @@ export function swapIdentity(stone: Stone, half: SwapHalf): SwapIdentity {
     creature: stone.creature,
     ...(stone.portrait ? { portrait: stone.portrait } : {}),
     ...(stone.image ? { image: stone.image } : {}),
+    ...(stone.imageTransform
+      ? { imageTransform: structuredClone(stone.imageTransform) }
+      : {}),
     tribes: [...stoneTribes(stone)],
   };
 }
@@ -110,6 +116,7 @@ function mixedCard(topCard: Stone, bottomCard: Stone): Stone {
     creature: top.creature,
     portrait: top.portrait,
     image: undefined,
+    imageTransform: undefined,
     tribes,
     keywords,
     swapParts: { top, bottom },
@@ -180,6 +187,8 @@ export function validSwapParts(value: unknown): value is SwapParts {
         CHARACTER_PORTRAITS.some(
           (portrait) => portrait.id === part.portrait,
         )) &&
+      (part.imageTransform === undefined ||
+        validImageTransform(part.imageTransform)) &&
       (part.image === undefined ||
         (typeof part.image === "string" &&
           part.image.length < 3_000_000 &&
