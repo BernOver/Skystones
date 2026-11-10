@@ -1,6 +1,7 @@
 import {
   boardTrap,
   trapKeywordMultiplier,
+  trapNullifies,
   isTrapPipEffect,
   validTrap,
 } from "./traps.ts";
@@ -52,6 +53,7 @@ export function pendingAmplify(board: Board, owner: Owner): AmplifyQueue[] {
     .filter((q) => q.count > 0);
 }
 export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
+  if (times <= 0) return [];
   if (times === 1) return [k];
   const out = structuredClone(k);
   switch (out.type) {
@@ -130,7 +132,7 @@ export function amplifyPlan(
   board: Board,
   owner?: Owner,
 ) {
-  const all = groups.flatMap((g) =>
+  const candidates = groups.flatMap((g) =>
     g.keyword.type === "combo"
       ? g.active
         ? g.keyword.keywords || []
@@ -138,7 +140,17 @@ export function amplifyPlan(
       : [g.keyword],
   );
   const trap =
-    all.filter((k) => k.type === "trap").at(-1)?.trap || boardTrap(board);
+    candidates.filter((k) => k.type === "trap").at(-1)?.trap ||
+    boardTrap(board);
+  const all = groups.flatMap((g) =>
+    g.keyword.type === "combo"
+      ? g.active
+        ? (g.keyword.keywords || []).filter(
+            (k) => k.type === "trap" || !trapNullifies(trap, stone, "combo"),
+          )
+        : []
+      : [g.keyword],
+  );
   // Reactive keywords read the field when they actually trigger, rather than locking it at placement.
   const reactive = new Set<KeywordType>([
     "shield",
@@ -155,9 +167,15 @@ export function amplifyPlan(
     return times;
   };
   const local = all.filter(
-    (k) => k.type === "amplify" && k.duration === "always",
+    (k) =>
+      k.type === "amplify" &&
+      k.duration === "always" &&
+      !trapNullifies(trap, stone, "amplify"),
   );
-  const queue = owner === undefined ? [] : pendingAmplify(board, owner),
+  const queue =
+      owner === undefined || trapNullifies(trap, stone, "amplify")
+        ? []
+        : pendingAmplify(board, owner),
     spent: AmplifySpent[] = [];
   const localMultiplier = (type: KeywordType, includeAll = true) =>
     Math.min(
@@ -197,6 +215,10 @@ export function amplifyPlan(
     comboPips: Edges = [0, 0, 0, 0],
     resolved: BasicKeyword[] = [];
   const resolve = (k: BasicKeyword, extra = 1, comboQueued = false) => {
+    if (!reactive.has(k.type) && trapNullifies(trap, stone, k.type)) {
+      fieldAmplified = true;
+      return;
+    }
     if (k.type === "amplify") {
       resolved.push(k);
       return;
@@ -241,6 +263,12 @@ export function amplifyPlan(
       continue;
     }
     if (!g.active) continue;
+    if (trapNullifies(trap, stone, "combo")) {
+      fieldAmplified = true;
+      for (const grant of k.keywords || [])
+        if (grant.type === "trap") resolve(grant);
+      continue;
+    }
     const queued = queuedMultiplier("combo"),
       localCombo = localMultiplier("combo", false);
     for (const p of k.pips || [])
@@ -259,7 +287,15 @@ export function amplifyPlan(
       );
   }
   const queues = all.flatMap((k) =>
-    k.type === "amplify" && k.duration === "next"
+    k.type === "amplify" &&
+    k.duration === "next" &&
+    !trapNullifies(trap, stone, "amplify") &&
+    !groups.some(
+      (g) =>
+        g.keyword.type === "combo" &&
+        g.keyword.keywords?.includes(k) &&
+        trapNullifies(trap, stone, "combo"),
+    )
       ? [{ effect: k.effect, count: k.count }]
       : [],
   );

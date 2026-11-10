@@ -1156,6 +1156,8 @@ export function adventureCardStrengths(
       trapEdges(result.edges, prepared, run.battle?.traps?.active?.trap),
       prepared.element,
       adventureArena(run)?.current,
+      run.battle?.traps?.active?.trap,
+      prepared,
     ),
   };
 }

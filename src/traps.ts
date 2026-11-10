@@ -7,6 +7,13 @@ import type {
   Side,
   Stone,
 } from "./game.ts";
+import {
+  environmentEdges,
+  environmentAttack,
+  environmentDefense,
+  underlyingSide,
+} from "./effects.ts";
+import type { TileEnvironment } from "./effects.ts";
 import { hasTribe, tribeName, validTribe } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
 export type TrapPipEffect = {
@@ -17,7 +24,8 @@ export type TrapPipEffect = {
 };
 export type TrapEffect =
   | TrapPipEffect
-  | { kind: "amplify"; effect: TrapAmplifyTarget }
+  | { kind: "amplify"; effect: TrapEffectTarget }
+  | { kind: "nullify"; effect: TrapNullifyTarget }
   | { kind: "multiply"; side: Side | "all"; sides?: Side[] }
   | { kind: "mirror" }
   | { kind: "equalizer" }
@@ -46,6 +54,40 @@ export const TRAP_AMPLIFY_TARGETS: TrapAmplifyTarget[] = [
   "discard-priority",
   "assemble",
 ];
+export const TRAP_BOARD_TARGETS = [
+  "attack-bonus",
+  "defense-bonus",
+  "terrain",
+  "arena",
+] as const;
+export type TrapBoardTarget = (typeof TRAP_BOARD_TARGETS)[number];
+export type TrapEffectTarget = TrapAmplifyTarget | TrapBoardTarget;
+export type TrapNullifyTarget = TrapEffectTarget | "flash" | "amplify";
+export const TRAP_EFFECT_TARGETS: TrapEffectTarget[] = [
+  ...TRAP_AMPLIFY_TARGETS,
+  ...TRAP_BOARD_TARGETS,
+];
+export const TRAP_NULLIFY_TARGETS: TrapNullifyTarget[] = [
+  ...TRAP_EFFECT_TARGETS,
+  "flash",
+  "amplify",
+];
+export function trapTargetName(target: TrapNullifyTarget): string {
+  const names: Partial<Record<TrapNullifyTarget, string>> = {
+    all: "All keyword effects",
+    "attack-bonus": "Attack modifiers",
+    "defense-bonus": "Defense modifiers",
+    terrain: "Tile environment effects",
+    arena: "Elemental arena bonus",
+  };
+  return (
+    names[target] ||
+    target
+      .split("-")
+      .map((word) => word[0].toUpperCase() + word.slice(1))
+      .join(" ")
+  );
+}
 export const TRAP_EFFECTS: Record<
   TrapEffect["kind"],
   { name: string; description: string }
@@ -63,9 +105,14 @@ export const TRAP_EFFECTS: Record<
     description: "Add or remove defensive pips on the selected sides.",
   },
   amplify: {
-    name: "Double a keyword",
+    name: "Double a keyword or effect",
     description:
-      "Double a chosen keyword when it triggers. All effects excludes Amplify, Flash, and Trap itself.",
+      "Double a chosen keyword when it triggers, or a live battlefield effect. All keyword effects excludes Amplify, Flash, and Trap itself.",
+  },
+  nullify: {
+    name: "Nullify a keyword or effect",
+    description:
+      "Prevent a chosen keyword from triggering, or disable a live battlefield effect. Nullify overrides doubling. Trap placement stays available so a new crystal can replace this one.",
   },
   multiply: {
     name: "Double pips",
@@ -108,6 +155,7 @@ export function defaultTrapEffect(kind: TrapEffect["kind"]): TrapEffect {
     case "steady":
       return { kind, minimum: 2 };
     case "amplify":
+    case "nullify":
       return { kind, effect: "conjure" };
     default:
       return { kind };
@@ -124,6 +172,7 @@ export interface Trap {
   name: string;
   element: Element;
   description: string;
+  image?: string;
   affects?: { element?: Element; tribe?: Tribe; exclude?: boolean };
   effects: TrapEffect[];
 }
@@ -243,6 +292,10 @@ export function validTrap(value: unknown, runtime = false): value is Trap {
     elements.includes(t.element) &&
     typeof t.description === "string" &&
     t.description.length <= 200 &&
+    (t.image === undefined ||
+      (typeof t.image === "string" &&
+        t.image.length < 3_000_000 &&
+        /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(t.image))) &&
     (!t.affects ||
       (typeof t.affects === "object" &&
         (!t.affects.element || elements.includes(t.affects.element)) &&
@@ -288,7 +341,8 @@ function validTrapEffect(
       e.amount !== 0 &&
       Math.abs(e.amount) <= (runtime ? 99 : 5)
     );
-  if (e.kind === "amplify") return TRAP_AMPLIFY_TARGETS.includes(e.effect);
+  if (e.kind === "amplify") return TRAP_EFFECT_TARGETS.includes(e.effect);
+  if (e.kind === "nullify") return TRAP_NULLIFY_TARGETS.includes(e.effect);
   if (e.kind === "ceiling")
     return Number.isInteger(e.maximum) && e.maximum >= 0 && e.maximum <= 5;
   if (e.kind === "steady")
@@ -361,12 +415,27 @@ export function trapEdges(edges: Edges, stone: Stone, trap?: Trap): Edges {
     }
   return out;
 }
+export function trapNullifies(
+  trap: Trap | undefined,
+  stone: Stone,
+  target: TrapNullifyTarget | "trap",
+  includeAll = true,
+): boolean {
+  if (!trap || !trapMatches(trap, stone) || target === "trap") return false;
+  const keyword = !TRAP_BOARD_TARGETS.includes(target as TrapBoardTarget);
+  return trap.effects.some(
+    (e) =>
+      e.kind === "nullify" &&
+      (e.effect === target || (includeAll && keyword && e.effect === "all")),
+  );
+}
 export function trapKeywordMultiplier(
   trap: Trap | undefined,
   stone: Stone,
   type: KeywordType,
   includeAll = true,
 ): number {
+  if (trapNullifies(trap, stone, type, includeAll)) return 0;
   if (
     !trap ||
     !trapMatches(trap, stone) ||
@@ -385,6 +454,64 @@ export function trapKeywordMultiplier(
       1,
     ),
   );
+}
+export function trapBoardMultiplier(
+  trap: Trap | undefined,
+  stone: Stone,
+  target: TrapBoardTarget,
+): number {
+  if (trapNullifies(trap, stone, target)) return 0;
+  if (!trap || !trapMatches(trap, stone)) return 1;
+  return Math.min(
+    32,
+    trap.effects.reduce(
+      (n, e) => n * (e.kind === "amplify" && e.effect === target ? 2 : 1),
+      1,
+    ),
+  );
+}
+export function trapEnvironmentEdges(
+  edges: Edges,
+  stone: Stone,
+  environment?: TileEnvironment,
+  trap?: Trap,
+): Edges {
+  let out = edges;
+  for (let n = 0; n < trapBoardMultiplier(trap, stone, "terrain"); n++)
+    out = environmentEdges(out, stone.element, environment, stone);
+  return out.map((p) => Math.min(99, p)) as Edges;
+}
+export function trapUnderlyingSide(
+  environment: TileEnvironment | undefined,
+  side: Side,
+  stone: Stone,
+  trap?: Trap,
+): Side {
+  for (let n = 0; n < trapBoardMultiplier(trap, stone, "terrain"); n++)
+    side = underlyingSide(environment, side, stone);
+  return side;
+}
+export function trapCombatBonuses(
+  stone: Stone,
+  shields: Edges,
+  trap?: Trap,
+  environment?: TileEnvironment,
+) {
+  const terrain = trapBoardMultiplier(trap, stone, "terrain");
+  const attack = trapBonus(trap, stone, "attack"),
+    defense = trapBonus(trap, stone, "defense");
+  return {
+    attack: attack.map(
+      (n) =>
+        (n + environmentAttack(environment, stone) * terrain) *
+        trapBoardMultiplier(trap, stone, "attack-bonus"),
+    ) as Edges,
+    defense: defense.map(
+      (n, s) =>
+        (n + shields[s] + environmentDefense(environment, stone) * terrain) *
+        trapBoardMultiplier(trap, stone, "defense-bonus"),
+    ) as Edges,
+  };
 }
 export function trapDizzyMinimum(trap: Trap | undefined, stone: Stone): number {
   return !trap || !trapMatches(trap, stone)
@@ -417,7 +544,9 @@ export function trapEffectText(e: TrapEffect): string {
     return `${e.amount > 0 ? "+" : ""}${e.amount} ${e.kind === "pips" ? "pip" : e.kind + " pip"}${Math.abs(e.amount) === 1 ? "" : "s"} ${where}`;
   switch (e.kind) {
     case "amplify":
-      return `double ${e.effect === "all" ? "all eligible keyword effects (excluding Amplify, Flash, and Trap)" : e.effect.replaceAll("-", " ") + " effects"} when they trigger`;
+      return `double ${e.effect === "all" ? "all eligible keyword effects (excluding Amplify, Flash, and Trap)" : trapTargetName(e.effect).toLowerCase()}${TRAP_BOARD_TARGETS.includes(e.effect as TrapBoardTarget) ? " while active" : " when they trigger"}`;
+    case "nullify":
+      return `nullify ${e.effect === "all" ? "all keywords except Trap placement" : trapTargetName(e.effect).toLowerCase()}${TRAP_BOARD_TARGETS.includes(e.effect as TrapBoardTarget) ? " while active" : " when they trigger"}`;
     case "multiply":
       return `double ordinary pips ${where}`;
     case "mirror":

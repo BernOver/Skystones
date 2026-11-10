@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Board, Element, Owner, Side } from "./game";
-import { ELEMENTS, KEYWORD_RULES } from "./game";
+import { ELEMENTS } from "./game";
 import { pendingAmplify } from "./amplify";
 import {
   DEFAULT_TRAPS,
@@ -8,15 +8,18 @@ import {
   saveTrap,
   trapText,
   TRAP_EFFECTS,
-  TRAP_AMPLIFY_TARGETS,
+  TRAP_EFFECT_TARGETS,
+  TRAP_NULLIFY_TARGETS,
+  trapTargetName,
   defaultTrapEffect,
   isTrapPipEffect,
   trapEffectSides,
 } from "./traps";
-import type { Trap, TrapState, TrapEffect, TrapAmplifyTarget } from "./traps";
+import type { Trap, TrapState, TrapEffect } from "./traps";
 import { TribeSelect } from "./TribeEditor";
 import "./traps.css";
 export function TrapCrystal({ trap }: { trap: Trap }) {
+  const cropId = useId();
   return (
     <svg
       className="trap-crystal"
@@ -37,7 +40,35 @@ export function TrapCrystal({ trap }: { trap: Trap }) {
         stroke="#ffffff80"
         strokeWidth="2"
       />
-      <path d="m50 31 12 19-12 19-12-19Z" fill="#fff9" />
+      {trap.image ? (
+        <>
+          <defs>
+            <clipPath id={cropId}>
+              <circle cx="50" cy="53" r="25" />
+            </clipPath>
+          </defs>
+          <circle
+            cx="50"
+            cy="53"
+            r="27"
+            fill="#f8f0dc"
+            stroke="#362a4b"
+            strokeWidth="2"
+          />
+          <image
+            className="trap-portrait"
+            href={trap.image}
+            x="25"
+            y="28"
+            width="50"
+            height="50"
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${cropId})`}
+          />
+        </>
+      ) : (
+        <path d="m50 31 12 19-12 19-12-19Z" fill="#fff9" />
+      )}
     </svg>
   );
 }
@@ -94,7 +125,8 @@ export function AmplifyStatus({
 export function TrapCollection() {
   const [cards, setCards] = useState(readTraps),
     [draft, setDraft] = useState<Trap | null>(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [pictureBusy, setPictureBusy] = useState(false);
   return (
     <section className="trap-collection">
       <p>
@@ -132,6 +164,98 @@ export function TrapCollection() {
           }}
         >
           <h2>Create or edit a Trap</h2>
+          <div className="trap-picture-editor">
+            <TrapCrystal trap={draft} />
+            <div>
+              <label>
+                Trap picture
+                <input
+                  aria-label="Trap picture"
+                  type="file"
+                  disabled={pictureBusy}
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    if (
+                      !["image/png", "image/jpeg", "image/webp"].includes(
+                        file.type,
+                      ) ||
+                      file.size > 2_000_000
+                    ) {
+                      setError(
+                        "Choose a PNG, JPG, or WebP picture smaller than 2 MB.",
+                      );
+                      return;
+                    }
+                    const editingId = draft.id;
+                    setPictureBusy(true);
+                    try {
+                      const data = await new Promise<string>(
+                        (resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onload = () => resolve(String(reader.result));
+                          reader.onerror = reject;
+                          reader.readAsDataURL(file);
+                        },
+                      );
+                      const picture = new Image();
+                      picture.src = data;
+                      await picture.decode();
+                      // Keep the shared image small: it is included in saved card and battlefield snapshots.
+                      const canvas = document.createElement("canvas");
+                      canvas.width = canvas.height = 256;
+                      const context = canvas.getContext("2d");
+                      if (!context) throw new Error("Picture unavailable");
+                      const edge = Math.min(
+                        picture.naturalWidth,
+                        picture.naturalHeight,
+                      );
+                      context.drawImage(
+                        picture,
+                        (picture.naturalWidth - edge) / 2,
+                        (picture.naturalHeight - edge) / 2,
+                        edge,
+                        edge,
+                        0,
+                        0,
+                        256,
+                        256,
+                      );
+                      const cropped = canvas.toDataURL("image/webp", 0.84);
+                      setDraft((current) =>
+                        current?.id === editingId
+                          ? { ...current, image: cropped }
+                          : current,
+                      );
+                      setError("");
+                    } catch {
+                      setError(
+                        "That picture could not be opened. Try another image.",
+                      );
+                    } finally {
+                      setPictureBusy(false);
+                    }
+                  }}
+                />
+              </label>
+              <p>
+                The center of your picture is cropped into a circle. PNG, JPG,
+                or WebP, up to 2 MB. The picture travels with this Trap when
+                shared.
+              </p>
+              {draft.image && (
+                <button
+                  type="button"
+                  onClick={() => setDraft({ ...draft, image: undefined })}
+                >
+                  Remove Trap picture
+                </button>
+              )}
+            </div>
+          </div>
+
           <label>
             Name
             <input
@@ -299,7 +423,9 @@ export function TrapCollection() {
           </button>
           <p>{trapText(draft)}</p>
           {error && <p role="alert">{error}</p>}
-          <button className="button button-dark">Save Trap</button>
+          <button className="button button-dark" disabled={pictureBusy}>
+            {pictureBusy ? "Loading picture…" : "Save Trap"}
+          </button>
           <button
             type="button"
             className="text-button"
@@ -448,24 +574,28 @@ function TrapEffectFields({
           />
         </label>
       )}
-      {effect.kind === "amplify" && (
+      {(effect.kind === "amplify" || effect.kind === "nullify") && (
         <label>
-          Keyword to double
+          {effect.kind === "amplify"
+            ? "Keyword or effect to double"
+            : "Keyword or effect to nullify"}
           <select
-            aria-label={`Trap doubled keyword ${number}`}
+            aria-label={
+              effect.kind === "amplify"
+                ? `Trap doubled keyword ${number}`
+                : `Trap nullified effect ${number}`
+            }
             value={effect.effect}
             onChange={(e) =>
-              onChange({
-                ...effect,
-                effect: e.target.value as TrapAmplifyTarget,
-              })
+              onChange({ ...effect, effect: e.target.value } as TrapEffect)
             }
           >
-            {TRAP_AMPLIFY_TARGETS.map((type) => (
+            {(effect.kind === "amplify"
+              ? TRAP_EFFECT_TARGETS
+              : TRAP_NULLIFY_TARGETS
+            ).map((type) => (
               <option key={type} value={type}>
-                {type === "all"
-                  ? "All eligible keywords"
-                  : KEYWORD_RULES[type].name}
+                {trapTargetName(type)}
               </option>
             ))}
           </select>

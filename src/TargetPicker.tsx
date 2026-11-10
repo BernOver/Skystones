@@ -1,3 +1,4 @@
+import { trapUnderlyingSide } from "./traps";
 import { useEffect, useRef, useState } from "react";
 import { Scissors, VolumeX } from "lucide-react";
 import { StoneCard } from "./Artwork";
@@ -18,12 +19,7 @@ import type {
   Side,
   Stone,
 } from "./game";
-import {
-  ENVIRONMENTS,
-  environmentText,
-  underlyingSide,
-  shiftEffectText,
-} from "./effects";
+import { ENVIRONMENTS, environmentText, shiftEffectText } from "./effects";
 import { TileMark } from "./BoardEffects";
 function strengthAfterSunder(
   cell: PlacedStone,
@@ -31,7 +27,12 @@ function strengthAfterSunder(
   amount: number,
 ): number {
   const edges = [...(cell.edges || cell.stone.edges)] as Edges;
-  const rawSide = underlyingSide(cell.environment, side, cell.stone);
+  const rawSide = trapUnderlyingSide(
+    cell.environment,
+    side,
+    cell.stone,
+    cell.trap,
+  );
   edges[rawSide] = Math.max(0, edges[rawSide] - amount);
   return cardEdges({ ...cell, edges })[side];
 }
@@ -176,10 +177,11 @@ export function TargetPicker({
           >
             {SIDE_NAMES.map((name, side) => {
               const pips = (selectedCard.edges || selectedCard.stone.edges)[
-                underlyingSide(
+                trapUnderlyingSide(
                   selectedCard.environment,
                   side as Side,
                   selectedCard.stone,
+                  selectedCard.trap,
                 )
               ];
               const visible = cardEdges(selectedCard)[side];

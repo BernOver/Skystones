@@ -1,3 +1,4 @@
+import { trapUnderlyingSide, trapEdges } from "./traps.ts";
 import {
   ELEMENTS,
   boardSize,
@@ -19,7 +20,7 @@ import type {
 } from "./game.ts";
 import { earnedGold, hasRelic, maxLives, potionPotency } from "./relics.ts";
 import type { Adventure } from "./adventure.ts";
-import { withTileEnvironments, underlyingSide } from "./effects.ts";
+import { withTileEnvironments } from "./effects.ts";
 
 export type Potion =
   | "power"
@@ -367,7 +368,7 @@ function damageCell(
   const rawSide =
     onlySide === undefined
       ? undefined
-      : underlyingSide(cell.environment, onlySide, cell.stone);
+      : trapUnderlyingSide(cell.environment, onlySide, cell.stone, cell.trap);
   const edges = before.map((edge, side) =>
     rawSide === undefined || side === rawSide
       ? Math.max(0, edge - amount)
@@ -408,7 +409,7 @@ export function potionSideOptions(
       : type === "shatter"
         ? !!cell &&
           (cell.edges || cell.stone.edges)[
-            underlyingSide(cell.environment, side, cell.stone)
+            trapUnderlyingSide(cell.environment, side, cell.stone, cell.trap)
           ] > 0
         : type === "resonance"
           ? !!stone &&
@@ -444,9 +445,15 @@ export function adventurePotionTargets(
         target: stone.id,
         stone,
         edges: arenaEdges(
-          evaluateKeywords(stone, battle.board, 0).edges,
+          trapEdges(
+            evaluateKeywords(stone, battle.board, 0).edges,
+            stone,
+            battle.traps?.active?.trap,
+          ),
           stone.element,
           battle.elementCycle?.[battle.turns % battle.elementCycle.length],
+          battle.traps?.active?.trap,
+          stone,
         ),
         label: `${type === "power" ? "Empower" : type === "sharpen" ? "Sharpen" : type === "compass" ? "Rotate" : type === "prism" ? "Recolor" : type === "resonance" ? "Enchant" : "Reshape"} ${stone.name}`,
       }));

@@ -1,5 +1,5 @@
 import { readTokens } from "./tokens";
-import { trapBonus, trapDizzyMinimum } from "./traps";
+import { trapCombatBonuses, trapDizzyMinimum } from "./traps";
 import type { Trap } from "./traps";
 import { swapIdentity, keywordHalf, isSwapForce } from "./swapForce";
 import { stoneTribes, tribeName } from "./tribes";
@@ -37,13 +37,7 @@ import {
 } from "./characters";
 import { portraitImage } from "./portraits";
 import type { ComboKeyword, Creature, Edges, Element, Stone } from "./game";
-import {
-  ENVIRONMENTS,
-  environmentAttack,
-  environmentDefense,
-  nextEffectText,
-  nextRequirementText,
-} from "./effects";
+import { ENVIRONMENTS, nextEffectText, nextRequirementText } from "./effects";
 import type { TileEnvironment } from "./effects";
 import { conjureSource, conjureBuffText } from "./conjure";
 import { buffText } from "./discard";
@@ -603,20 +597,11 @@ export const StoneCard = memo(
     const statPicture = hasSkystonesArtwork(stone);
     const unknownSides =
       !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
-    const trapDefense = trapBonus(trap, stone, "defense"),
-      trapAttack = trapBonus(trap, stone, "attack");
-    const visibleShields = trapAdjustedShields(
+    const { defense: visibleShields, attack: attackBonus } = trapCombatBonuses(
       stone,
-      shields,
+      trapAdjustedShields(stone, shields, trap, silenced, keywordShields),
       trap,
-      silenced,
-      keywordShields,
-    ).map(
-      (pips, s) =>
-        pips + environmentDefense(environment, stone) + trapDefense[s],
-    );
-    const attackBonus = trapAttack.map(
-      (n) => n + environmentAttack(environment, stone),
+      environment,
     );
     return (
       <div

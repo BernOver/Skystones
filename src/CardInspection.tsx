@@ -1,7 +1,7 @@
 import { keywordHalf, isSwapForce } from "./swapForce";
 import { readTokens } from "./tokens";
 import { amplifyText } from "./amplify";
-import { trapText, trapKeywordText, trapBonus } from "./traps";
+import { trapText, trapKeywordText, trapCombatBonuses } from "./traps";
 import type { Trap } from "./traps";
 import { SwapDetails } from "./SwapDetails";
 import { TribeBadges } from "./TribeEditor";
@@ -53,8 +53,6 @@ import {
   nextRequirementText,
   keywordNames,
   shiftEffectText,
-  environmentAttack,
-  environmentDefense,
   environmentAffects,
 } from "./effects";
 import type { TileEnvironment } from "./effects";
@@ -1006,20 +1004,17 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
     effects,
     dizzy,
   } = inspection;
-  const defenseBonus = trapAdjustedShields(
+  const { defense: defenseBonus, attack: attackBonus } = trapCombatBonuses(
     stone,
-    inspection.shields || shieldEdges(stone),
+    trapAdjustedShields(
+      stone,
+      inspection.shields || shieldEdges(stone),
+      inspection.trap,
+      !!silenced,
+      inspection.keywordShields,
+    ),
     inspection.trap,
-    !!silenced,
-    inspection.keywordShields,
-  ).map(
-    (n, s) =>
-      n +
-      environmentDefense(inspection.environment, stone) +
-      trapBonus(inspection.trap, stone, "defense")[s],
-  );
-  const attackBonus = trapBonus(inspection.trap, stone, "attack").map(
-    (n) => n + environmentAttack(inspection.environment, stone),
+    inspection.environment,
   );
   return (
     <>

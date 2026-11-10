@@ -261,6 +261,8 @@ cards. Combo can grant it too. Copies use saved character defaults or the fixed
 base for that mode. They arrive after captures and can be played on later turns.
 Creating cards does not activate their keywords or spend Next Play bonuses.
 NEW: TRAPS, UNIQUE CARDS, PARTS AND AMPLIFY
+Deck builder cards are larger, with room for art and keywords. New match shows
+your selected deck before play and updates when you switch saved decks.
 Collection > Traps: choose from 18 shared crystals or make your own. Only one
 is active, affecting both players. The slot starts empty. A stone with the
 Trap keyword places its crystal before captures. A later stone replaces it.
@@ -271,6 +273,13 @@ minimum Dizzy roll. Mix up to eight effects and reorder pip transformations.
 Pip additions apply first; transformations run in order; attack/defense bonuses
 apply afterward. Keyword doubling stacks with Amplify when effects trigger.
 Shield doubling follows the active Trap, excluding potion/discard counters.
+Upload a PNG, JPG, or WebP picture (up to 2 MB) for a circular portrait in the
+crystal’s center. Pictures are saved and included when a card shares its Trap.
+Double or nullify named keywords, attack/defense modifiers, tile effects, or
+an elemental arena bonus. Nullify overrides doubling. On-play keywords are
+checked when played; Shield, discard reactions, and battlefield effects follow
+the active crystal. Blocked effects do not spend queued Amplify charges.
+Trap placement remains available so a different crystal can replace it.
 There is no free Trap activation button.
 Card studio: Unique cards can enter decks but normal Conjure cannot create them.
 Use the explicit Unique Conjure source. Card exports bundle their dependencies.

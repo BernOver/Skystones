@@ -1339,6 +1339,7 @@ export default function App() {
             <span className="header-divider" />
             <button
               className="rules-button"
+              aria-label="How to play"
               onClick={() => setDialog({ kind: "rules" })}
             >
               <HelpCircle size={18} />
@@ -2056,7 +2057,7 @@ export default function App() {
                       aria-label={`Remove ${stone.name} from deck`}
                       onClick={() => toggleDeck(stone)}
                     >
-                      <StoneCard stone={stone} compact />
+                      <StoneCard stone={stone} />
                       <span className="remove-deck">
                         <X size={13} />
                       </span>
@@ -3204,6 +3205,35 @@ export default function App() {
               label="Match deck"
             />
           </div>
+          <section
+            className="match-deck-summary"
+            aria-label="Deck ready for this match"
+          >
+            <h3>
+              Your stones · {library.deck.length} / {capacity}
+            </h3>
+            <div className="match-deck-preview">
+              {Array.from({ length: capacity }, (_, index) => {
+                const stone = collection.find(
+                  (card) => card.id === library.deck[index],
+                );
+                return stone ? (
+                  <div
+                    className="match-deck-card"
+                    key={index}
+                    aria-label={`Deck card ${index + 1}: ${stone.name}`}
+                  >
+                    <StoneCard stone={stone} />
+                  </div>
+                ) : (
+                  <div className="match-deck-card empty-deck-slot" key={index}>
+                    <Plus size={21} />
+                    <span>Pick a stone</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
           <div className="mode-options">
             <button
               className={newMode === "computer" ? "active" : ""}

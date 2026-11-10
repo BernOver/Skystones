@@ -13,6 +13,7 @@ import "./adventure.css";
 import "./board-skins.css";
 import "./swap-force.css";
 import "./hand-cards.css";
+import "./deck-cards.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

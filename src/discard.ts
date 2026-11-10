@@ -1,4 +1,4 @@
-import { boardTrap, trapKeywordMultiplier } from "./traps.ts";
+import { boardTrap, trapKeywordMultiplier, trapNullifies } from "./traps.ts";
 import type { Trap } from "./traps.ts";
 import { scaleEffect } from "./amplify.ts";
 import { placedKeywords as liveKeywords, finishingCard } from "./game.ts";
@@ -148,6 +148,7 @@ export function discardPriority(stone: Stone, trap?: Trap): number {
       n *
       (k.type === "amplify" &&
       k.duration === "always" &&
+      !trapNullifies(trap, stone, "amplify") &&
       (k.effect === "all" || k.effect === "discard-priority")
         ? 2
         : 1),
@@ -405,6 +406,7 @@ export function resolveDiscards(
             n *
             (k.type === "amplify" &&
             k.duration === "always" &&
+            !trapNullifies(boardTrap(nextBoard), card, "amplify") &&
             (k.effect === "all" || k.effect === "parting-gift")
               ? 2
               : 1),

@@ -1,12 +1,15 @@
 import { validRecipe } from "./recipes.ts";
 import {
   trapEdges,
-  trapBonus,
   withTrap,
   boardTrap,
   validTrap,
   trapKeywordMultiplier,
   trapDizzyMinimum,
+  trapBoardMultiplier,
+  trapEnvironmentEdges,
+  trapUnderlyingSide,
+  trapCombatBonuses,
 } from "./traps.ts";
 import type { Trap } from "./traps.ts";
 import { amplifyPlan, validRuntimeEffects } from "./amplify.ts";
@@ -14,9 +17,6 @@ import type { AmplifyKeyword, AmplifyQueue, AmplifySpent } from "./amplify.ts";
 import { CHARACTER_STONES, CHARACTER_PORTRAITS } from "./characters.ts";
 import {
   boardEnvironments,
-  environmentEdges,
-  environmentAttack,
-  environmentDefense,
   nextPipModifiers,
   pendingPipEffects,
   nextEffectMatches,
@@ -26,7 +26,6 @@ import {
   validEffectSide,
   validPipAmount,
   withTileEnvironments,
-  underlyingSide,
 } from "./effects.ts";
 import type { EffectSide, QueuedPips, TileEnvironment } from "./effects.ts";
 import {
@@ -682,30 +681,39 @@ export function arenaEdges(
   edges: Edges,
   element: Element,
   active?: Element,
+  trap?: Trap,
+  stone?: Stone,
 ): Edges {
-  return edges.map((edge) => edge + (active === element ? 1 : 0)) as Edges;
+  const amount = stone ? trapBoardMultiplier(trap, stone, "arena") : 1;
+  return edges.map((edge) => edge + (active === element ? amount : 0)) as Edges;
 }
 export function cardEdges(cell: PlacedStone): Edges {
   return arenaEdges(
     trapEdges(
-      environmentEdges(
+      trapEnvironmentEdges(
         cell.edges || cell.stone.edges,
-        cell.stone.element,
-        cell.environment,
         cell.stone,
+        cell.environment,
+        cell.trap,
       ),
       cell.stone,
       cell.trap,
     ),
     cell.stone.element,
     cell.arenaElement,
+    cell.trap,
+    cell.stone,
   );
 }
 export function attackEdges(cell: PlacedStone): Edges {
-  const bonus = environmentAttack(cell.environment, cell.stone);
-  const trap = trapBonus(cell.trap, cell.stone, "attack");
+  const { attack } = trapCombatBonuses(
+    cell.stone,
+    [0, 0, 0, 0],
+    cell.trap,
+    cell.environment,
+  );
   return cardEdges(cell).map((value, s) =>
-    Math.max(0, value + bonus + trap[s]),
+    Math.max(0, value + attack[s]),
   ) as Edges;
 }
 export function withArenaElement(board: Board, element: Element): Board {
@@ -717,7 +725,6 @@ export function defenseEdges(cell: PlacedStone): Edges {
   const shields = cell.silenced
     ? [0, 0, 0, 0]
     : cell.shields || shieldEdges(cell.stone, false, cell.grantedKeywords);
-  const trap = trapBonus(cell.trap, cell.stone, "defense");
   const adjustedShields = trapAdjustedShields(
     cell.stone,
     shields as Edges,
@@ -725,14 +732,14 @@ export function defenseEdges(cell: PlacedStone): Edges {
     !!cell.silenced,
     keywordShieldEdges(cell),
   );
-  return cardEdges(cell).map((edge, side) =>
-    Math.max(
-      0,
-      edge +
-        adjustedShields[side] +
-        environmentDefense(cell.environment, cell.stone) +
-        trap[side],
-    ),
+  const { defense } = trapCombatBonuses(
+    cell.stone,
+    adjustedShields,
+    cell.trap,
+    cell.environment,
+  );
+  return cardEdges(cell).map((edge, s) =>
+    Math.max(0, edge + defense[s]),
   ) as Edges;
 }
 export function evaluateKeywords(stone: Stone, board: Board, player: Owner) {
@@ -818,6 +825,8 @@ export function prepareTargeting(
   const effects: TargetEffect[] = [];
   const used = new Set<number>();
   const keywords = effectiveKeywords(stone, board, owner);
+  const incomingTrap = keywords.filter((k) => k.type === "trap").at(-1)?.trap;
+  if (incomingTrap) next = withTrap(next, incomingTrap);
   // Repeated Sunder needs an occurrence index so inspection can distinguish
   // separate targets, including entries that had no valid target.
   const repeatedSunder =
@@ -877,12 +886,25 @@ export function prepareTargeting(
         const edges = cell.edges || cell.stone.edges;
         return keyword.side === "any"
           ? ([0, 1, 2, 3] as Side[]).flatMap((side) =>
-              edges[underlyingSide(cell.environment, side, cell.stone)] > 0
+              edges[
+                trapUnderlyingSide(
+                  cell.environment,
+                  side,
+                  cell.stone,
+                  cell.trap,
+                )
+              ] > 0
                 ? [{ keywordIndex, boardIndex, side: side as Side }]
                 : [],
             )
-          : edges[underlyingSide(cell.environment, keyword.side, cell.stone)] >
-              0
+          : edges[
+                trapUnderlyingSide(
+                  cell.environment,
+                  keyword.side,
+                  cell.stone,
+                  cell.trap,
+                )
+              ] > 0
             ? [{ keywordIndex, boardIndex }]
             : [];
       }
@@ -933,7 +955,12 @@ export function prepareTargeting(
       );
     } else if (keyword.type === "sunder") {
       const side = keyword.side === "any" ? choice.side! : keyword.side;
-      const rawSide = underlyingSide(cell.environment, side, cell.stone);
+      const rawSide = trapUnderlyingSide(
+        cell.environment,
+        side,
+        cell.stone,
+        cell.trap,
+      );
       const reductions = [...(cell.reductions || [0, 0, 0, 0])] as Edges;
       const edges = [...(cell.edges || cell.stone.edges)] as Edges;
       const removed = Math.min(keyword.amount ?? 1, edges[rawSide]);

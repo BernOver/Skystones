@@ -9,6 +9,10 @@ The latest build adds **Traps**, **Unique cards**, **Assemble / Parts / Flash Su
 - **Superchargers:** assembled vehicles use actual vehicle portraits and have **Flash**, which keeps the current player’s turn. Either player may place a stone over one and inherit its current ordinary pips and printed keywords except Flash; inherited effects trigger again. Live Trap, terrain, and boss bonuses are applied once. Vehicles must be covered before the board is full. These battle-only cards never enter saved decks or the Adventure pack.
 - **Amplify:** choose an effect type or “All effects,” then choose “Always on this card” or “Next matching effects you play” with 1–5 uses. The latter waits for a matching keyword after the source’s play and spends one use per matching effect, in printed order. Unrelated plays leave it ready. A new matching play is not doubled after its uses are spent. Numeric effects double their magnitude; positional effects resolve twice. Dizzy retains its 0–5 cap, and Flash does not create another turn. Base pips never double.
 
+Deck building and the New match dialog show larger cards with room for artwork and keywords. The pre-game preview follows your selected saved deck and board size.
+
+In **Collection → Traps**, upload a PNG, JPG, or WebP picture (up to 2 MB) for a circular portrait in the crystal’s center. The picture is included when the Trap is saved or shared inside a card. **Double a keyword or effect** supports named keywords, attack modifiers, defense modifiers, tile environment effects, and elemental arena bonuses. **Nullify a keyword or effect** overrides doubling. On-play keywords are checked when played; Shield, discard reactions, and battlefield modifiers follow the current crystal. A nullified effect does not spend a queued Amplify charge. Trap placement remains available so another crystal can replace it.
+
 These rules work on both board sizes in normal, Draft, and Adventure games. Existing Adventure copies retain their saved stats. Giants and Minis keep their protected base profiles.
 
 
