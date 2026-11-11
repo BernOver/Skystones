@@ -1,3 +1,4 @@
+import { boardContext } from "./playSources.ts";
 import { trapUnderlyingSide, trapEdges } from "./traps.ts";
 import {
   ELEMENTS,
@@ -723,7 +724,9 @@ export function useAdventurePotion(
       ? {
           battle: {
             ...next.battle,
-            board: withTileEnvironments(next.battle.board),
+            board: withTileEnvironments(
+              boardContext(next.battle.board, run.battle!.board),
+            ),
             potionsUsed: (run.battle?.potionsUsed || 0) + 1,
             ...(saved ? { potionSaved: true } : {}),
           },

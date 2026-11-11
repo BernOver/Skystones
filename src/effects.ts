@@ -1,3 +1,4 @@
+import { boardContext } from "./playSources.ts";
 import { playHistory } from "./game.ts";
 import { hasTribe, tribeName, validTribe } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
@@ -336,12 +337,15 @@ export function withTileEnvironments(
   )
     return board;
   const tiles = boardEnvironments(board, additional);
-  return board.map((cell, index) => {
-    if (!cell || cell.environment === tiles[index]) return cell;
-    if (tiles[index]) return { ...cell, environment: tiles[index] };
-    const { environment: _environment, ...rest } = cell;
-    return rest;
-  });
+  return boardContext(
+    board.map((cell, index) => {
+      if (!cell || cell.environment === tiles[index]) return cell;
+      if (tiles[index]) return { ...cell, environment: tiles[index] };
+      const { environment: _environment, ...rest } = cell;
+      return rest;
+    }),
+    board,
+  );
 }
 export function environmentEdges(
   edges: Edges,

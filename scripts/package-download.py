@@ -67,6 +67,19 @@ new games, new Draft pools, and newly generated Adventure cards. Existing
 games and copies in an Adventure keep their saved cards. Restore original
 default in the character details to reset it. Defaults save in this browser.
 
+Spells: Collection > Spells has six examples. In Card studio, choose Card type
+Spell or Spell - discard only. Save the template, then give a stone Conjure >
+Specified token or spell, or Random > Spells only. Spells only enter hands
+through Conjure during a battle; normal card/token pools exclude them.
+Click a castable spell in your hand to resolve its effects and keep your turn.
+It occupies no tile and does not trigger pip captures. Canceling a target or
+discard choice leaves the whole play unchanged. Casting is not discarding.
+DISCARD ONLY spells cannot be played. When discarded, their owner's effects
+trigger once, after Parting Gifts. Targets and chained discards are automatic.
+Discard-only triggers leave waiting Next Play gifts for a played card.
+Spells do not count as stones when protecting enough cards to finish a board.
+Spell queues, terrain, Traps, and histories survive Adventure saves/reloads.
+
 Use Card studio to make a stone. Selecting a portrait updates its name to
 that character; you can edit the name afterward. Save it, then add it to your
 deck in Collection.
@@ -207,12 +220,15 @@ These settings work through Combo and Conjure grants and in shared card files.
 Shift automatically affects only the card adjacent to its printed side.
 Choose its fixed movement direction (Up/Right/Down/Left) and whether it affects
 enemies, allies, or both in the studio. There is no target choice during play.
-It moves that neighbor one tile before captures, wrapping at the movement edge.
+Normal captures happen first; then Shift moves that neighbor one tile, wrapping
+at the movement edge. Eligibility uses ownership before captures, so an eligible
+enemy is captured first and then pushed with its new owner.
 Target adjacency does not wrap. Missing/ineligible neighbors do nothing;
 occupied destinations and the incoming card's tile block movement. Cards do
 not swap or push. Moved cards keep their owner and resolved effects without
 replaying keywords. Terrain stays on its tile; a chest follows its card.
-Later effects and captures use the new positions. One Shift per printed side
+Targeted effects use original positions before captures. Moving does not cause
+another capture. One Shift per printed side
 is allowed, including through Combo and Next Play, on both board sizes.
 
 Environment chooses any empty or occupied tile before captures. Seven terrains:

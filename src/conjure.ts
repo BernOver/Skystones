@@ -1,3 +1,4 @@
+import { playSource, updatePlaySource } from "./playSources.ts";
 import { readRecipes } from "./recipes.ts";
 import type { SuperchargerRecipe } from "./recipes.ts";
 import { readUniques, validUniqueKey, uniqueName } from "./unique.ts";
@@ -38,7 +39,7 @@ export type ConjureKeyword = {
       mode: "random";
       element?: Element;
       tribe?: Tribe;
-      pool?: "cards" | "tokens" | "all" | "unique" | "parts";
+      pool?: "cards" | "tokens" | "all" | "unique" | "parts" | "spells";
     }
 );
 export interface Conjuration {
@@ -105,9 +106,14 @@ export function validateConjure(
             : value.mode === "random" &&
               value.token === undefined &&
               (value.pool === undefined ||
-                ["cards", "tokens", "all", "unique", "parts"].includes(
-                  String(value.pool),
-                )) &&
+                [
+                  "cards",
+                  "tokens",
+                  "all",
+                  "unique",
+                  "parts",
+                  "spells",
+                ].includes(String(value.pool))) &&
               value.card === undefined &&
               (value.element === undefined ||
                 [
@@ -136,7 +142,7 @@ export function conjureSource(keyword: ConjureKeyword): string {
       ? conjureCardName(keyword.card)
       : keyword.mode === "token"
         ? `${tokenName(keyword.token)} · Token`
-        : `Random${keyword.element ? ` ${keyword.element[0].toUpperCase()}${keyword.element.slice(1)}` : ""}${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""}${keyword.pool === "unique" ? " Unique cards" : keyword.pool === "parts" ? " Parts" : keyword.pool === "tokens" ? " tokens" : keyword.pool === "all" ? " cards/tokens" : ""}`;
+        : `Random${keyword.element ? ` ${keyword.element[0].toUpperCase()}${keyword.element.slice(1)}` : ""}${keyword.tribe ? ` ${tribeName(keyword.tribe)}` : ""}${keyword.pool === "unique" ? " Unique cards" : keyword.pool === "spells" ? " spells" : keyword.pool === "parts" ? " Parts" : keyword.pool === "tokens" ? " tokens" : keyword.pool === "all" ? " cards/tokens" : ""}`;
 }
 export function conjureText(keyword: ConjureKeyword): string {
   const recipient =
@@ -187,7 +193,7 @@ export function applyConjure(
   uniques: readonly Stone[] | (() => readonly Stone[]) = readUniques,
   recipes: readonly SuperchargerRecipe[] = readRecipes(),
 ): { board: Board; hands: [Stone[], Stone[]]; conjurations: Conjuration[] } {
-  const cell = board[index];
+  const cell = playSource(board, index);
   if (!cell || cell.silenced || cell.conjurations)
     return { board, hands, conjurations: [] };
   const keywords = placedKeywords(cell);
@@ -220,12 +226,14 @@ export function applyConjure(
         ? uniquePool()
         : keyword.mode === "token" ||
             (keyword.mode === "random" &&
-              (keyword.pool === "tokens" || keyword.pool === "parts"))
+              (keyword.pool === "tokens" ||
+                keyword.pool === "parts" ||
+                keyword.pool === "spells"))
           ? getTokens()
           : keyword.mode === "random" && keyword.pool === "all"
             ? [
                 ...cards.filter((c) => !c.token && !c.unique),
-                ...getTokens().filter((c) => !c.part),
+                ...getTokens().filter((c) => !c.part && !c.spell),
               ]
             : cards;
     const pool = candidates.filter((card) =>
@@ -240,13 +248,15 @@ export function applyConjure(
             : (!card.unique || keyword.pool === "unique") &&
               (keyword.pool === "unique"
                 ? !!card.unique
-                : keyword.pool === "parts"
-                  ? !!card.part
-                  : keyword.pool === "tokens"
-                    ? !!card.token && !card.part
-                    : keyword.pool === "all"
-                      ? !card.part
-                      : !card.token) &&
+                : keyword.pool === "spells"
+                  ? !!card.spell
+                  : keyword.pool === "parts"
+                    ? !!card.part
+                    : keyword.pool === "tokens"
+                      ? !!card.token && !card.part && !card.spell
+                      : keyword.pool === "all"
+                        ? !card.part
+                        : !card.token) &&
               (!keyword.element || card.element === keyword.element) &&
               (!keyword.tribe || hasTribe(card, keyword.tribe)),
     );
@@ -304,8 +314,10 @@ export function applyConjure(
       records.push(record);
     }
   });
-  const nextBoard = [...board];
-  nextBoard[index] = { ...cell, conjurations: records };
+  const nextBoard = updatePlaySource(board, index, {
+    ...cell,
+    conjurations: records,
+  });
   return { board: nextBoard, hands: nextHands, conjurations: records };
 }
 

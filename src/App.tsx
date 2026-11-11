@@ -1,3 +1,4 @@
+import { DEFAULT_SPELLS } from "./spellCards.ts";
 import { ImageLayoutControls } from "./ImageLayoutControls";
 import {
   readRecipes,
@@ -327,7 +328,7 @@ function applyMove(
   hands[match.current].splice(cardIndex, 1);
   const conjured = applyConjure(
     move.board,
-    index,
+    move.sourceIndex ?? index,
     hands,
     () => CONJURE_CARDS.map((card) => characterDefault(card)),
     seed ^ 0x27d4eb2d,
@@ -337,7 +338,7 @@ function applyMove(
   );
   const assembled = assembleParts(
     conjured.board,
-    index,
+    move.sourceIndex ?? index,
     conjured.hands,
     seed ^ 0x71ab,
     undefined,
@@ -345,7 +346,7 @@ function applyMove(
   );
   const discarded = resolveDiscards(
     assembled.board,
-    index,
+    move.sourceIndex ?? index,
     assembled.hands,
     seed ^ 0x6d2b79f5,
     discardChoices,
@@ -384,11 +385,13 @@ function applyMove(
       {
         id: match.moves,
         owner: match.current,
-        text: `${stone.name} → ${coordinate(index, boardSize(match.board))}`,
+        text: `${stone.name} → ${stone.spell ? "Spell" : coordinate(index, boardSize(match.board))}`,
         captured: move.captured.length,
         effects: [
           ...assembled.messages,
-          ...(move.keepsTurn ? ["Flash: play again"] : []),
+          ...(move.keepsTurn
+            ? [stone.spell ? "Spell: play again" : "Flash: play again"]
+            : []),
           discardSummary(
             discarded.records,
             match.mode === "local"
@@ -529,9 +532,9 @@ export default function App() {
   const [onlyCustom, setOnlyCustom] = useState(false);
   const [onlyGiants, setOnlyGiants] = useState(false);
   const [onlyTokens, setOnlyTokens] = useState(false);
-  const [extraTab, setExtraTab] = useState<"" | "traps" | "unique" | "parts">(
-    "",
-  );
+  const [extraTab, setExtraTab] = useState<
+    "" | "traps" | "unique" | "parts" | "spells"
+  >("");
   const [draft, setDraft] = useState<Stone>(freshDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -572,7 +575,13 @@ export default function App() {
   const visible = collection.filter(
     (s) =>
       (extraTab !== "unique" || !!s.unique) &&
-      (extraTab === "parts" ? !!s.part : onlyTokens ? !!s.token : !s.token) &&
+      (extraTab === "spells"
+        ? !!s.spell
+        : extraTab === "parts"
+          ? !!s.part
+          : onlyTokens
+            ? !!s.token && !s.spell
+            : !s.token) &&
       (!onlyCustom || s.custom) &&
       (!onlyGiants || onlyCustom || s.origin === "giants") &&
       (elementFilter === "all" || s.element === elementFilter) &&
@@ -805,6 +814,15 @@ export default function App() {
     setDialog(null);
     navigate("studio");
   }
+  function openSpellStudio() {
+    openStudio();
+    setDraft({
+      ...freshDraft(),
+      token: true,
+      spell: "cast",
+      edges: [0, 0, 0, 0],
+    });
+  }
   function openPartStudio() {
     openStudio();
     setDraft({
@@ -870,10 +888,22 @@ export default function App() {
     setDialog(null);
     navigate("table");
   }
+  function castFromHand(cardIndex: number) {
+    if (aiTurn || done) return;
+    const stone = match.hands[match.current][cardIndex];
+    if (stone.spell !== "cast") return;
+    if (prepareTargeting(match.board, stone, [], match.current).pending)
+      setDialog({ kind: "target", index: -1, cardIndex, targets: [] });
+    else commitMove(-1, cardIndex);
+  }
   function playAt(index: number) {
     if (aiTurn || done || !canPlace(match.board, index) || selected === null)
       return;
     const stone = match.hands[match.current][selected];
+    if (stone.spell) {
+      castFromHand(selected);
+      return;
+    }
     if (
       prepareTargeting(match.board, stone, [], match.current, index).pending
     ) {
@@ -1088,9 +1118,11 @@ export default function App() {
       setEditingId(stone.id);
       setDraft(stone);
       setToast(
-        stone.token
-          ? `${stone.name} is saved as a token template. Use it in Conjure or the Adventure workshop.`
-          : `${stone.name} is saved to your collection. A little legend is born!`,
+        stone.spell
+          ? `${stone.name} is saved as a spell. Use Conjure to generate it during a battle.`
+          : stone.token
+            ? `${stone.name} is saved as a token template. Use it in Conjure or the Adventure workshop.`
+            : `${stone.name} is saved to your collection. A little legend is born!`,
       );
     }
   }
@@ -1787,8 +1819,13 @@ export default function App() {
                         className={`hand-card-button ${selected === index && !aiTurn ? "is-selected" : ""}`}
                         aria-label={`Select ${stone.name}, current strengths north, east, south, west: ${trapEdges(evaluateKeywords(stone, match.board, handOwner).edges, withNextKeywords(stone, match.board, handOwner), activeTrap).join(", ")}`}
                         aria-pressed={selected === index && !aiTurn}
-                        aria-disabled={aiTurn || done || !!stone.part}
-                        disabled={!!stone.part}
+                        aria-disabled={
+                          aiTurn ||
+                          done ||
+                          !!stone.part ||
+                          stone.spell === "discard"
+                        }
+                        disabled={!!stone.part || stone.spell === "discard"}
                         aria-describedby={
                           inspection?.sourceId === `hand-${stone.id}`
                             ? "card-inspector"
@@ -1819,7 +1856,9 @@ export default function App() {
                           !aiTurn &&
                           !done &&
                           !stone.part &&
-                          setSelected(selected === index ? null : index)
+                          (stone.spell === "cast"
+                            ? castFromHand(index)
+                            : setSelected(selected === index ? null : index))
                         }
                       >
                         <StoneCard
@@ -2059,19 +2098,23 @@ export default function App() {
                 <button
                   className="button button-dark"
                   onClick={() =>
-                    extraTab === "parts"
-                      ? openPartStudio()
-                      : onlyTokens
-                        ? openTokenStudio()
-                        : openStudio()
+                    extraTab === "spells"
+                      ? openSpellStudio()
+                      : extraTab === "parts"
+                        ? openPartStudio()
+                        : onlyTokens
+                          ? openTokenStudio()
+                          : openStudio()
                   }
                 >
                   <Plus size={17} />
-                  {extraTab === "parts"
-                    ? "Create a Part"
-                    : onlyTokens
-                      ? "Create a token"
-                      : "Create a stone"}
+                  {extraTab === "spells"
+                    ? "Create a spell"
+                    : extraTab === "parts"
+                      ? "Create a Part"
+                      : onlyTokens
+                        ? "Create a token"
+                        : "Create a stone"}
                 </button>
               </div>
             </div>
@@ -2199,6 +2242,18 @@ export default function App() {
                   Tokens<span>{tokens.length}</span>
                 </button>
                 <button
+                  className={extraTab === "spells" ? "active" : ""}
+                  onClick={() => {
+                    setExtraTab("spells");
+                    setOnlyTokens(false);
+                    setOnlyCustom(false);
+                    setOnlyGiants(false);
+                  }}
+                >
+                  Spells
+                  <span>{tokens.filter((card) => card.spell).length}</span>
+                </button>
+                <button
                   className={extraTab === "unique" ? "active" : ""}
                   onClick={() => {
                     setExtraTab("unique");
@@ -2315,7 +2370,13 @@ export default function App() {
                     <article className="collection-item" key={stone.id}>
                       <div className="collection-card-stage">
                         <span className="collection-badge">
-                          {stone.unique ? (
+                          {stone.spell ? (
+                            stone.spell === "discard" ? (
+                              "DISCARD SPELL"
+                            ) : (
+                              "SPELL"
+                            )
+                          ) : stone.unique ? (
                             "UNIQUE"
                           ) : stone.part ? (
                             "PART"
@@ -2460,6 +2521,58 @@ export default function App() {
                     </div>
                   </div>
                   {!editingDefaultKey && (
+                    <div className="field-group">
+                      <label>
+                        Card type
+                        <select
+                          aria-label="Card type"
+                          value={draft.spell || "stone"}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              spell:
+                                event.target.value === "stone"
+                                  ? undefined
+                                  : (event.target.value as "cast" | "discard"),
+                              token:
+                                event.target.value === "stone"
+                                  ? undefined
+                                  : true,
+                              unique: undefined,
+                              part: undefined,
+                              edges:
+                                event.target.value === "stone"
+                                  ? [2, 2, 2, 2]
+                                  : [0, 0, 0, 0],
+                              keywords:
+                                draft.spell && event.target.value !== "stone"
+                                  ? draft.keywords
+                                  : [],
+                            })
+                          }
+                        >
+                          <option value="stone">Stone</option>
+                          <option value="cast">
+                            Spell · cast without ending your turn
+                          </option>
+                          <option value="discard">
+                            Spell · discard only, cannot be played
+                          </option>
+                        </select>
+                      </label>
+                      {draft.spell && (
+                        <p>
+                          Spells are Conjure-only cards with no board pips.{" "}
+                          {draft.spell === "discard"
+                            ? "All its spell effects trigger when discarded; automatic targeting favors its owner."
+                            : "Click one in your hand to cast it, then continue your turn."}{" "}
+                          Use Next Play to grant pip or keyword buffs to another
+                          card.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {!editingDefaultKey && !draft.spell && (
                     <div className="field-group token-type-field">
                       <label>
                         <input
@@ -2486,11 +2599,15 @@ export default function App() {
                       </p>
                     </div>
                   )}
-                  <div className="field-group token-type-field">
+                  <div
+                    className="field-group token-type-field"
+                    hidden={!!draft.spell}
+                  >
                     <label>
                       <input
                         type="checkbox"
                         aria-label="Unique card · excluded from normal Conjure"
+                        hidden={!!draft.spell}
                         checked={!!draft.unique}
                         disabled={!!editingId?.startsWith(TOKEN_ID_PREFIX)}
                         onChange={(e) =>
@@ -2509,7 +2626,7 @@ export default function App() {
                       explicit Unique Conjure source.
                     </p>
                   </div>
-                  {draft.token && (
+                  {draft.token && !draft.spell && (
                     <div className="field-group token-type-field">
                       <label>
                         <input
@@ -2677,7 +2794,7 @@ export default function App() {
                   )}
                 </section>
 
-                <section className="studio-section">
+                <section className="studio-section" hidden={!!draft.spell}>
                   <div className="studio-section-heading">
                     <span className="step-number">03</span>
                     <div>
@@ -2770,9 +2887,11 @@ export default function App() {
                       ? "Save character default"
                       : editingId
                         ? "Save changes"
-                        : draft.token
-                          ? "Save token template"
-                          : "Save to collection"}
+                        : draft.spell
+                          ? "Save spell"
+                          : draft.token
+                            ? "Save token template"
+                            : "Save to collection"}
                   </button>
                 </div>
               </form>
@@ -2980,6 +3099,13 @@ export default function App() {
           </span>
           <div className="eyebrow">WELCOME TO THE TABLE</div>
           <p>
+            <strong>Spells:</strong> generate them with Conjure → Specified
+            token or spell, or Random → Spells only. Click a castable spell in
+            hand to resolve its effects and continue your turn. Discard-only
+            spells cannot be cast: their effects trigger on discard, with
+            automatic targets for their owner. Neither kind occupies a tile.
+          </p>
+          <p>
             <strong>Traps:</strong> one shared crystal affects both players’
             matching cards. The slot starts empty. Playing a stone with a Trap
             keyword places its chosen crystal before captures; a later stone’s
@@ -3142,11 +3268,13 @@ export default function App() {
             <ArrowRight size={19} />
             <p>
               <strong>Shift</strong> moves only the neighbor on its printed
-              side, one tile in its fixed direction, before captures. It can
-              affect enemies, allies, or both. Movement wraps at board edges;
-              target adjacency does not. Occupied destinations and the incoming
-              card’s tile block movement. No target choice is needed, and moved
-              cards keep their owner without replaying keywords.
+              side, one tile in its fixed direction, after captures. Eligibility
+              uses ownership before the capture, so captured enemies can still
+              be pushed. It can affect enemies, allies, or both. Movement wraps
+              at board edges; target adjacency does not. Occupied destinations
+              and the incoming card’s tile block movement. No target choice is
+              needed, and moved cards keep their owner without replaying
+              keywords.
             </p>
           </div>
           <div className="rule-line">
@@ -3484,8 +3612,11 @@ export default function App() {
             )}
             {dialog.stone.token && (
               <p className="tokens-note">
-                Token template · use with Conjure or custom enemy starting
-                hands.
+                {dialog.stone.spell
+                  ? dialog.stone.spell === "discard"
+                    ? "Discard-only spell · cannot be played. Its effects trigger when discarded."
+                    : "Spell · cast from your hand without occupying a tile or ending your turn."
+                  : "Token template · use with Conjure or custom enemy starting hands."}
               </p>
             )}
             {!dialog.stone.custom && (
@@ -3516,16 +3647,18 @@ export default function App() {
               </button>
             )}
             {dialog.stone.token &&
-              [...DEFAULT_TOKENS, ...DEFAULT_PARTS].some(
+              [...DEFAULT_TOKENS, ...DEFAULT_PARTS, ...DEFAULT_SPELLS].some(
                 (token) => token.id === dialog.stone.id,
               ) &&
               library.custom.some((card) => card.id === dialog.stone.id) && (
                 <button
                   className="text-button"
                   onClick={() => {
-                    const original = [...DEFAULT_TOKENS, ...DEFAULT_PARTS].find(
-                      (token) => token.id === dialog.stone.id,
-                    )!;
+                    const original = [
+                      ...DEFAULT_TOKENS,
+                      ...DEFAULT_PARTS,
+                      ...DEFAULT_SPELLS,
+                    ].find((token) => token.id === dialog.stone.id)!;
                     if (
                       saveLibrary({
                         ...library,
@@ -3560,7 +3693,7 @@ export default function App() {
               {downloadBusy ? "Preparing…" : "Save image"}
             </button>
             {dialog.stone.custom &&
-              ![...DEFAULT_TOKENS, ...DEFAULT_PARTS].some(
+              ![...DEFAULT_TOKENS, ...DEFAULT_PARTS, ...DEFAULT_SPELLS].some(
                 (token) => token.id === dialog.stone.id,
               ) && (
                 <button

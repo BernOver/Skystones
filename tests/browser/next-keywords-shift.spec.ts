@@ -221,7 +221,7 @@ test("studio saves, shares and imports keyword-only Next Play, nested Combo, and
 });
 
 for (const size of [3, 4] as const) {
-  test(`${size}×${size} received keywords preview in hand, target the shifted card before captures, cancel without spending, and survive reload`, async ({
+  test(`${size}×${size} received keywords preview in hand, target before captures, then capture and shift, cancel without spending, and survive reload`, async ({
     page,
   }) => {
     const run = enterAdventureNode(newAdventure(size, 81), "moss"),
@@ -271,7 +271,7 @@ for (const size of [3, 4] as const) {
     await page.locator(`#adventure-board-${size + 1}`).click();
     await expect(page.getByRole("dialog")).toContainText("Sunder");
     await expect(
-      page.getByRole("button", { name: /^Target A3:/ }),
+      page.getByRole("button", { name: /^Target A2:/ }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "Cancel play", exact: true })
@@ -280,11 +280,12 @@ for (const size of [3, 4] as const) {
     if ((await hand.getAttribute("aria-pressed")) !== "true")
       await hand.click();
     await page.locator(`#adventure-board-${size + 1}`).click();
-    await page.getByRole("button", { name: /^Target A3:/ }).click();
+    await page.getByRole("button", { name: /^Target A2:/ }).click();
     const after = await stored(page),
       cell = after.battle!.board[size + 1]!;
     expect(after.battle!.board[1]).toBeNull();
     expect(after.battle!.board[2]!.stone.name).toBe("North Guard");
+    expect(after.battle!.board[2]!.owner).toBe(0);
     expect(after.battle!.board[2]!.edges![0]).toBe(1);
     expect(cell.stone.receivedKeywords).toEqual(gifts);
     expect(cell.edges).toEqual([2, 1, 1, 1]);
@@ -306,7 +307,7 @@ for (const size of [3, 4] as const) {
     ).toBe(true);
   });
 
-  test(`${size}×${size} fixed Shift automatically moves only its printed-side enemy and wraps without a target dialog`, async ({
+  test(`${size}×${size} fixed Shift captures its printed-side enemy, then pushes it with the new owner and capture marker`, async ({
     page,
   }) => {
     const run = enterAdventureNode(newAdventure(size, 81), "moss");
@@ -322,7 +323,7 @@ for (const size of [3, 4] as const) {
     const shifter = {
       ...run.inventory[0],
       name: "Fixed Shifter",
-      edges: [0, 0, 0, 0] as Stone["edges"],
+      edges: [0, 2, 0, 0] as Stone["edges"],
       keywords: [
         {
           type: "shift" as const,
@@ -344,7 +345,8 @@ for (const size of [3, 4] as const) {
       destination = size * (size - 1) + 1;
     expect(after.board[1]).toBeNull();
     expect(after.board[destination]!.stone.name).toBe("North Guard");
-    expect(after.board[destination]!.owner).toBe(1);
+    expect(after.board[destination]!.owner).toBe(0);
+    expect(after.lastCaptured).toContain(destination);
     expect(after.board[0]!.effects![0]).toMatchObject({
       type: "shift",
       target: 1,
@@ -364,27 +366,29 @@ for (const size of [3, 4] as const) {
 test("normal local games preview queued Shift and resolve its automatic wrap without selecting a target", async ({
   page,
 }) => {
-  const custom = STARTER_STONES.slice(0, 5).map((card, i): Stone => ({
-    ...card,
-    id: `custom-wind-${i}`,
-    name: i === 0 ? "Wind Tutor" : `Receiver ${i}`,
-    custom: true,
-    edges: [0, 0, 0, 0],
-    keywords:
-      i === 0
-        ? [
-            {
-              type: "next-play",
-              side: 0,
-              amount: 0,
-              recipient: "self",
-              keywords: [
-                { type: "shift", side: 1, direction: 0, affects: "enemies" },
-              ],
-            },
-          ]
-        : [],
-  }));
+  const custom = STARTER_STONES.slice(0, 5).map(
+    (card, i): Stone => ({
+      ...card,
+      id: `custom-wind-${i}`,
+      name: i === 0 ? "Wind Tutor" : `Receiver ${i}`,
+      custom: true,
+      edges: [0, 0, 0, 0],
+      keywords:
+        i === 0
+          ? [
+              {
+                type: "next-play",
+                side: 0,
+                amount: 0,
+                recipient: "self",
+                keywords: [
+                  { type: "shift", side: 1, direction: 0, affects: "enemies" },
+                ],
+              },
+            ]
+          : [],
+    }),
+  );
   await page.addInitScript(
     (library) =>
       localStorage.setItem("skystones-library-v1", JSON.stringify(library)),

@@ -1,3 +1,4 @@
+import { boardContext } from "./playSources.ts";
 import { validImageTransform } from "./imageLayout.ts";
 import type { ImageTransform } from "./imageLayout.ts";
 import { validRecipe } from "./recipes.ts";
@@ -210,7 +211,10 @@ export const KEYWORD_RULES = {
   },
   environment: { name: "Environment", condition: "choose any tile" },
   conjure: { name: "Conjure", condition: "add cards to a hand" },
-  shift: { name: "Shift", condition: "move the printed-side neighbor" },
+  shift: {
+    name: "Shift",
+    condition: "capture, then move the printed-side neighbor",
+  },
   discard: { name: "Discard", condition: "after captures and Conjure" },
   scavenge: { name: "Scavenge", condition: "gain buffs from discards" },
   "parting-gift": {
@@ -318,6 +322,7 @@ export interface Stone {
   tribes?: Tribe[];
   conjured?: true;
   token?: true;
+  spell?: "cast" | "discard";
   unique?: true;
   part?: true;
   partKey?: string;
@@ -370,8 +375,9 @@ export interface PlacedStone {
   discards?: DiscardRecord[];
   discardBuffs?: DiscardBuffs;
 }
-export type Board = (PlacedStone | null)[];
+export type Board = (PlacedStone | null)[] & { spellHistory?: PlacedStone[] };
 export interface Move {
+  sourceIndex?: number;
   keepsTurn?: boolean;
   board: Board;
   captured: number[];
@@ -426,6 +432,7 @@ export function withNextKeywords(
   board: Board,
   owner: Owner,
 ): Stone {
+  if (stone.spell === "discard") return stone;
   if (
     stone.receivedKeywords?.length ||
     stone.receivedElement ||
@@ -507,9 +514,10 @@ export function previousElement(
   return previousStone(board, player)?.element;
 }
 export function playHistory(board: Board): PlacedStone[] {
-  return board
-    .flatMap((cell) => (cell ? [...(cell.history || []), cell] : []))
-    .sort((a, b) => (a.playedOrder || 0) - (b.playedOrder || 0));
+  return [
+    ...board.flatMap((cell) => (cell ? [...(cell.history || []), cell] : [])),
+    ...(board.spellHistory || []),
+  ].sort((a, b) => (a.playedOrder || 0) - (b.playedOrder || 0));
 }
 export function previousStone(board: Board, player: Owner): Stone | undefined {
   return playHistory(board)
@@ -617,10 +625,10 @@ export function boardFinished(board: Board): boolean {
   return board.every((c) => !!c && !c.stone.supercharger);
 }
 export function finishingCard(stone: Stone): boolean {
-  return !stone.part && !stone.supercharger;
+  return !stone.part && !stone.supercharger && !stone.spell;
 }
 export function playableHand(hand: Stone[]): boolean {
-  return hand.some((c) => !c.part);
+  return hand.some((c) => !c.part && c.spell !== "discard");
 }
 export function coverStone(board: Board, index: number, stone: Stone): Stone {
   const cell = board[index];
@@ -721,8 +729,9 @@ export function attackEdges(cell: PlacedStone): Edges {
   ) as Edges;
 }
 export function withArenaElement(board: Board, element: Element): Board {
-  return board.map((cell) =>
-    cell ? { ...cell, arenaElement: element } : null,
+  return boardContext(
+    board.map((cell) => (cell ? { ...cell, arenaElement: element } : null)),
+    board,
   );
 }
 export function defenseEdges(cell: PlacedStone): Edges {
@@ -817,7 +826,7 @@ export function prepareTargeting(
   owner?: Owner,
   placementIndex?: number,
 ) {
-  if (placementIndex !== undefined)
+  if (placementIndex !== undefined && placementIndex >= 0)
     stone = coverStone(board, placementIndex, stone);
   if (owner !== undefined) stone = withNextKeywords(stone, board, owner);
   if (
@@ -843,40 +852,8 @@ export function prepareTargeting(
           .some((previous) => keywordKey(previous) === keywordKey(keyword)),
     );
   for (const [keywordIndex, keyword] of keywords.entries()) {
-    if (keyword.type === "shift") {
-      if (placementIndex === undefined || owner === undefined) continue;
-      const size = boardSize(board),
-        target = adjacentTile(placementIndex, keyword.side, size);
-      const cell = next[target],
-        to = target >= 0 ? wrappedTile(target, keyword.direction, size) : -1;
-      const eligible =
-        !!cell &&
-        (keyword.affects === "both" ||
-          (keyword.affects === "allies"
-            ? cell.owner === owner
-            : cell.owner !== owner));
-      const moved = eligible && to !== placementIndex && !next[to];
-      if (moved) {
-        next = [...next];
-        next[target] = null;
-        next[to] = cell;
-        next = withTileEnvironments(next);
-      }
-      effects.push({
-        type: "shift",
-        keywordIndex,
-        target,
-        to,
-        side: keyword.side,
-        direction: keyword.direction,
-        affects: keyword.affects,
-        moved,
-        ...(!moved
-          ? { reason: eligible ? ("blocked" as const) : ("no-target" as const) }
-          : {}),
-      });
-      continue;
-    }
+    // Shift waits until placement captures finish. Targeted effects still see the original positions.
+    if (keyword.type === "shift") continue;
     if (
       keyword.type !== "sunder" &&
       keyword.type !== "silence" &&
@@ -970,8 +947,11 @@ export function prepareTargeting(
       const removed = Math.min(keyword.amount ?? 1, edges[rawSide]);
       reductions[rawSide] += removed;
       edges[rawSide] -= removed;
-      next = next.map((target, index) =>
-        index === choice.boardIndex ? { ...cell, edges, reductions } : target,
+      next = boardContext(
+        next.map((target, index) =>
+          index === choice.boardIndex ? { ...cell, edges, reductions } : target,
+        ),
+        next,
       );
       effects.push({
         type: "sunder",
@@ -989,17 +969,20 @@ export function prepareTargeting(
             (cell.reductions?.[side] || 0),
         ),
       ) as Edges;
-      next = next.map((target, index) =>
-        index === choice.boardIndex
-          ? {
-              ...cell,
-              edges,
-              silenced: true,
-              activeKeywords: [],
-              shields: [0, 0, 0, 0],
-              grantedKeywords: [],
-            }
-          : target,
+      next = boardContext(
+        next.map((target, index) =>
+          index === choice.boardIndex
+            ? {
+                ...cell,
+                edges,
+                silenced: true,
+                activeKeywords: [],
+                shields: [0, 0, 0, 0],
+                grantedKeywords: [],
+              }
+            : target,
+        ),
+        next,
       );
       effects.push({
         type: "silence",
@@ -1146,7 +1129,10 @@ export function chooseKeywordTargets(
         arenaElement,
       };
       const value =
-        capturesAt(preview.board, index, owner, attackEdges(incoming)).length *
+        (stone.spell
+          ? 0
+          : capturesAt(preview.board, index, owner, attackEdges(incoming))
+              .length) *
           10 +
         weakening +
         (option.boardIndex === index ? 0.1 : 0);
@@ -1221,6 +1207,144 @@ export function stoneDizzySides(
   ];
 }
 
+// Affinity uses pre-capture ownership, so an eligible enemy can be captured and then pushed.
+// Ownership flags and capture markers travel with cards through successive printed Shifts.
+function shiftAfterCaptures(
+  board: Board,
+  index: number,
+  owner: Owner,
+  keywords: BasicKeyword[],
+  beforeCaptureOwners: (Owner | undefined)[],
+  captured: number[],
+) {
+  let next = board;
+  const eligibility = [...beforeCaptureOwners],
+    shiftedCaptures = [...captured],
+    effects: TargetEffect[] = [];
+  for (const [keywordIndex, keyword] of keywords.entries()) {
+    if (keyword.type !== "shift") continue;
+    const size = boardSize(next),
+      target = adjacentTile(index, keyword.side, size);
+    const cell = next[target],
+      to = target >= 0 ? wrappedTile(target, keyword.direction, size) : -1;
+    const eligible =
+      !!cell &&
+      (keyword.affects === "both" ||
+        (keyword.affects === "allies"
+          ? eligibility[target] === owner
+          : eligibility[target] !== owner));
+    const moved = eligible && to !== index && !next[to];
+    if (moved) {
+      next = boardContext([...next], next);
+      next[target] = null;
+      next[to] = cell;
+      eligibility[to] = eligibility[target];
+      eligibility[target] = undefined;
+      const captureIndex = shiftedCaptures.indexOf(target);
+      if (captureIndex >= 0) shiftedCaptures[captureIndex] = to;
+    }
+    effects.push({
+      type: "shift",
+      keywordIndex,
+      target,
+      to,
+      side: keyword.side,
+      direction: keyword.direction,
+      affects: keyword.affects,
+      moved,
+      ...(!moved
+        ? { reason: eligible ? ("blocked" as const) : ("no-target" as const) }
+        : {}),
+    });
+  }
+  return {
+    board: effects.some((e) => e.type === "shift" && e.moved)
+      ? withTileEnvironments(next)
+      : next,
+    captured: shiftedCaptures,
+    effects,
+  };
+}
+
+export function castSpell(
+  board: Board,
+  original: Stone,
+  owner: Owner,
+  targets: KeywordTarget[] = [],
+  discarded = false,
+): Move {
+  if (board.length !== 9 && board.length !== 16)
+    throw new Error("Choose a 3×3 or 4×4 board.");
+  if (!original.spell) throw new Error("Choose a spell.");
+  if (original.spell === "discard" && !discarded)
+    throw new Error(
+      "This spell cannot be played. Its effects trigger only when discarded.",
+    );
+  if (!discarded && !original.conjured && !original.encounterStart)
+    throw new Error("Conjure this spell before casting it.");
+  if ((board.spellHistory?.length || 0) >= 1000)
+    throw new Error("This battle has reached its spell limit.");
+  const stone = withNextKeywords(original, board, owner);
+  const plan = effectPlan(stone, board, owner);
+  const targeted = prepareTargeting(board, original, targets, owner);
+  if (targeted.pending) throw new Error("Choose the spell’s targets first.");
+  const order =
+    1 + Math.max(0, ...playHistory(board).map((cell) => cell.playedOrder || 0));
+  const queuedPips: QueuedPips[] = plan.effects.flatMap((keyword) =>
+    keyword.type === "next-play"
+      ? [
+          {
+            recipient:
+              keyword.recipient === "self" ? owner : ((1 - owner) as Owner),
+            side: keyword.side,
+            amount: keyword.amount,
+            ...(keyword.element ? { element: keyword.element } : {}),
+            ...(keyword.tribe ? { tribe: keyword.tribe } : {}),
+            ...(keyword.changeElement
+              ? { changeElement: keyword.changeElement }
+              : {}),
+            ...(keyword.keywords?.length
+              ? { keywords: structuredClone(keyword.keywords) }
+              : {}),
+          },
+        ]
+      : [],
+  );
+  const placedTrap = plan.effects
+    .filter((keyword) => keyword.type === "trap")
+    .at(-1)?.trap;
+  const cell: PlacedStone = {
+    stone,
+    owner,
+    ...(discarded ? {} : { playedBy: owner }),
+    playedOrder: order,
+    playedElement: stone.receivedElement?.before || stone.element,
+    resolvedEffects: plan.effects,
+    ...(queuedPips.length ? { queuedPips } : {}),
+    ...(plan.spent.length ? { amplifySpent: plan.spent } : {}),
+    ...(plan.queues.length
+      ? {
+          queuedAmplify: plan.queues.map((queue, i) => ({
+            ...queue,
+            id: `${order}-${i}`,
+            owner,
+          })),
+        }
+      : {}),
+    ...(placedTrap ? { placedTrap: structuredClone(placedTrap) } : {}),
+    ...(targeted.effects.length ? { effects: targeted.effects } : {}),
+  };
+  const next = boardContext([...targeted.board], targeted.board);
+  next.spellHistory = [...(board.spellHistory || []), cell];
+  return {
+    board: withTrap(withTileEnvironments(next), placedTrap || boardTrap(next)),
+    captured: [],
+    effects: targeted.effects,
+    keepsTurn: true,
+    sourceIndex: -order,
+  };
+}
+
 export function placeStone(
   board: Board,
   index: number,
@@ -1234,6 +1358,7 @@ export function placeStone(
     trap?: Trap;
   } = {},
 ): Move {
+  if (stone.spell) return castSpell(board, stone, owner, targets);
   if (stone.part)
     throw new Error(
       "Parts automatically combine in pairs; they cannot be played alone.",
@@ -1256,7 +1381,10 @@ export function placeStone(
   const targeted = prepareTargeting(board, original, targets, owner, index);
   if (targeted.pending)
     throw new Error("Choose a target before placing this card.");
-  let next = targeted.board.map((cell) => (cell ? { ...cell } : null));
+  let next = boardContext(
+    targeted.board.map((cell) => (cell ? { ...cell } : null)),
+    targeted.board,
+  );
   const queuedPips: QueuedPips[] = effectiveKeywords(
     stone,
     board,
@@ -1363,14 +1491,26 @@ export function placeStone(
     withTileEnvironments(next),
     next[index]?.placedTrap || options.trap || boardTrap(board),
   );
+  const beforeCaptureOwners = next.map((cell) => cell?.owner);
   const captured = capturesAt(next, index, owner, attackEdges(next[index]!));
   for (const neighbor of captured)
     next[neighbor] = { ...next[neighbor]!, owner };
   if (old && old.owner !== owner) captured.push(index);
-  return {
-    board: next,
+  const shifted = shiftAfterCaptures(
+    next,
+    index,
+    owner,
+    effectiveKeywords(stone, board, owner),
+    beforeCaptureOwners,
     captured,
-    effects: targeted.effects,
+  );
+  const effects = [...targeted.effects, ...shifted.effects];
+  if (effects.length)
+    shifted.board[index] = { ...shifted.board[index]!, effects };
+  return {
+    board: shifted.board,
+    captured: shifted.captured,
+    effects,
     ...(plan.effects.some((k) => k.type === "flash")
       ? { keepsTurn: true }
       : {}),
@@ -1395,6 +1535,19 @@ export function chooseMove(
   owner: Owner,
   arena: { current?: Element; next?: Element; trap?: Trap } = {},
 ): { index: number; cardIndex: number; targets: KeywordTarget[] } {
+  const spellIndex = hand.findIndex((card) => card.spell === "cast");
+  if (spellIndex >= 0)
+    return {
+      index: -1,
+      cardIndex: spellIndex,
+      targets: chooseKeywordTargets(
+        board,
+        -1,
+        hand[spellIndex],
+        owner,
+        arena.current,
+      ),
+    };
   let best = {
     index: -1,
     cardIndex: -1,
@@ -1403,7 +1556,7 @@ export function chooseMove(
   };
   hand.forEach((stone, cardIndex) =>
     board.forEach((_cell, index) => {
-      if (!canPlace(board, index) || stone.part) return;
+      if (!canPlace(board, index) || stone.part || stone.spell) return;
       const targets = chooseKeywordTargets(
         board,
         index,
@@ -1421,7 +1574,7 @@ export function chooseMove(
       let worstReply = 0;
       rivalHand.forEach((rival) =>
         replyBoard.forEach((_target, spot) => {
-          if (canPlace(replyBoard, spot) && !rival.part)
+          if (canPlace(replyBoard, spot) && !rival.part && !rival.spell)
             worstReply = Math.max(
               worstReply,
               placeStone(
@@ -1577,6 +1730,12 @@ export function validateStone(value: unknown): value is Stone {
     (s.tribes === undefined || validateTribes(s.tribes)) &&
     (s.conjured === undefined || s.conjured === true) &&
     (s.token === undefined || s.token === true) &&
+    (s.spell === undefined ||
+      (["cast", "discard"].includes(String(s.spell)) &&
+        s.token === true &&
+        !s.part &&
+        !s.supercharger &&
+        !s.swapParts)) &&
     (s.unique === undefined || (s.unique === true && !s.token)) &&
     (s.partKey === undefined ||
       (s.part === true &&

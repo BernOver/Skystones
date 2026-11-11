@@ -1,3 +1,4 @@
+import { boardContext } from "./playSources.ts";
 import { validImageTransform } from "./imageLayout.ts";
 import type { ImageTransform } from "./imageLayout.ts";
 import type {
@@ -526,16 +527,23 @@ export function trapDizzyMinimum(trap: Trap | undefined, stone: Stone): number {
       );
 }
 export function withTrap(board: Board, trap?: Trap): Board {
-  return board.map((cell) => {
-    if (!cell) return null;
-    if (trap) return { ...cell, trap };
-    if (!cell.trap) return cell;
-    const { trap: _trap, ...rest } = cell;
-    return rest;
-  });
+  const next = boardContext(
+    board.map((cell) => {
+      if (!cell) return null;
+      if (trap) return { ...cell, trap };
+      if (!cell.trap) return cell;
+      const { trap: _trap, ...rest } = cell;
+      return rest;
+    }),
+    board,
+  );
+  return next;
 }
 export function boardTrap(board: Board): Trap | undefined {
-  return board.find((cell) => cell?.trap)?.trap;
+  return (
+    board.find((cell) => cell?.trap)?.trap ||
+    board.spellHistory?.filter((cell) => cell.placedTrap).at(-1)?.placedTrap
+  );
 }
 const sideNames = ["North", "East", "South", "West"];
 export function trapEffectText(e: TrapEffect): string {
@@ -596,8 +604,10 @@ export function saveTrap(trap: Trap) {
 }
 export function trapStateFromBoard(board: Board): TrapState | undefined {
   // Derive the active crystal from resolved stone plays, including covered vehicles.
-  const plays = board
-    .flatMap((c) => (c ? [...(c.history || []), c] : []))
+  const plays = [
+    ...board.flatMap((c) => (c ? [...(c.history || []), c] : [])),
+    ...(board.spellHistory || []),
+  ]
     .filter((c) => !!c.placedTrap)
     .sort((a, b) => (a.playedOrder || 0) - (b.playedOrder || 0));
   const last = plays.at(-1);

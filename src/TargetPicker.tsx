@@ -89,7 +89,7 @@ export function TargetPicker({
         )}
       </span>
       <div className="eyebrow">
-        {stone.name} → {coordinate(placement, size)}
+        {stone.name} → {stone.spell ? "Spell" : coordinate(placement, size)}
       </div>
       <h2 aria-live="polite">
         {KEYWORD_RULES[keyword.type].name}: choose{" "}

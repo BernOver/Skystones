@@ -65,7 +65,13 @@ export function cardDependencies(
         const pool =
           k.pool === "unique"
             ? uniques
-            : tokens.filter((t) => (k.pool === "parts" ? !!t.part : !t.part));
+            : tokens.filter((t) =>
+                k.pool === "spells"
+                  ? !!t.spell
+                  : k.pool === "parts"
+                    ? !!t.part
+                    : !t.part && !t.spell,
+              );
         pool
           .filter(
             (t) =>

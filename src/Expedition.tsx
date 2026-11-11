@@ -1234,8 +1234,18 @@ function ExpeditionView({
                 key={stone.id}
                 aria-label={`Select ${stone.name}, adventure card ${index + 1}`}
                 aria-pressed={selected === index}
-                disabled={ai || !!stone.part}
-                onClick={() => setSelected(selected === index ? null : index)}
+                disabled={ai || !!stone.part || stone.spell === "discard"}
+                onClick={() => {
+                  if (stone.spell === "cast") {
+                    if (prepareTargeting(battle.board, stone, [], 0).pending)
+                      setTarget({
+                        placement: -1,
+                        cardIndex: index,
+                        targets: [],
+                      });
+                    else commitAdventurePlay(-1, index);
+                  } else setSelected(selected === index ? null : index);
+                }}
                 onPointerEnter={(event) =>
                   event.pointerType !== "touch" &&
                   look(stone, event.currentTarget)

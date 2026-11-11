@@ -616,6 +616,13 @@ export const StoneCard = memo(
         }
       >
         <div className="stone-art">
+          {stone.spell && (
+            <span
+              className={`spell-badge ${stone.spell === "discard" ? "discard-only" : ""}`}
+            >
+              {stone.spell === "discard" ? "DISCARD ONLY" : "SPELL · FREE CAST"}
+            </span>
+          )}
           {stone.swapParts ? (
             <div
               className="swap-art"
@@ -684,51 +691,52 @@ export const StoneCard = memo(
           ) : (
             <CreatureArt creature={stone.creature} element={stone.element} />
           )}
-          {edges.map((edge, i) => (
-            <span
-              className={`edge edge-${i} ${visibleShields[i] && attackBonus[i] ? "has-both-pips" : ""} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
-              key={i}
-            >
-              <b>{edge}</b>
-              {unknownSides.includes(i as 0 | 1 | 2 | 3) && (
-                <small
-                  className="dizzy-pip"
-                  aria-label={`${SIDE_NAMES[i]} rolls ${trapDizzyMinimum(trap, stone)} to 5 before captures`}
-                >
-                  ?
-                </small>
-              )}
-              {!!visibleShields[i] && (
-                <small
-                  className="shield-pip"
-                  aria-label={`${visibleShields[i]} defense-only shield pips`}
-                >
-                  <Shield size={12} fill="currentColor" />
-                  <strong>
-                    {visibleShields[i] > 0 ? "+" : ""}
-                    {visibleShields[i]}
-                  </strong>
-                </small>
-              )}
-              {!!attackBonus[i] && (
-                <small
-                  className="attack-pip"
-                  aria-label={`${attackBonus[i]} attack-only pips`}
-                >
-                  <Swords size={11} />
-                  <strong>
-                    {attackBonus[i] > 0 ? "+" : ""}
-                    {attackBonus[i]}
-                  </strong>
-                </small>
-              )}
-              <span className="edge-spikes">
-                {Array.from({ length: edge }, (_, n) => (
-                  <i key={n} />
-                ))}
+          {!stone.spell &&
+            edges.map((edge, i) => (
+              <span
+                className={`edge edge-${i} ${visibleShields[i] && attackBonus[i] ? "has-both-pips" : ""} ${edge > stone.edges[i] ? "edge-buffed" : edge < stone.edges[i] ? "edge-reduced" : ""}`}
+                key={i}
+              >
+                <b>{edge}</b>
+                {unknownSides.includes(i as 0 | 1 | 2 | 3) && (
+                  <small
+                    className="dizzy-pip"
+                    aria-label={`${SIDE_NAMES[i]} rolls ${trapDizzyMinimum(trap, stone)} to 5 before captures`}
+                  >
+                    ?
+                  </small>
+                )}
+                {!!visibleShields[i] && (
+                  <small
+                    className="shield-pip"
+                    aria-label={`${visibleShields[i]} defense-only shield pips`}
+                  >
+                    <Shield size={12} fill="currentColor" />
+                    <strong>
+                      {visibleShields[i] > 0 ? "+" : ""}
+                      {visibleShields[i]}
+                    </strong>
+                  </small>
+                )}
+                {!!attackBonus[i] && (
+                  <small
+                    className="attack-pip"
+                    aria-label={`${attackBonus[i]} attack-only pips`}
+                  >
+                    <Swords size={11} />
+                    <strong>
+                      {attackBonus[i] > 0 ? "+" : ""}
+                      {attackBonus[i]}
+                    </strong>
+                  </small>
+                )}
+                <span className="edge-spikes">
+                  {Array.from({ length: edge }, (_, n) => (
+                    <i key={n} />
+                  ))}
+                </span>
               </span>
-            </span>
-          ))}
+            ))}
         </div>
         {!!stone.keywords?.length && (
           <div className="stone-keywords">
@@ -831,15 +839,19 @@ export const StoneCard = memo(
           className="stone-tribes"
           title={stoneTribes(stone).map(tribeName).join(" · ")}
         >
-          {stone.supercharger
-            ? "Supercharger · "
-            : stone.part
-              ? "Part · "
-              : stone.unique
-                ? "Unique · "
-                : stone.token
-                  ? "Token · "
-                  : ""}
+          {stone.spell
+            ? stone.spell === "discard"
+              ? "Discard only · "
+              : "Spell · "
+            : stone.supercharger
+              ? "Supercharger · "
+              : stone.part
+                ? "Part · "
+                : stone.unique
+                  ? "Unique · "
+                  : stone.token
+                    ? "Token · "
+                    : ""}
           {stone.conjured ? "Conjured · " : ""}
           {stone.encounterStart ? "Encounter · " : ""}
           {stoneTribes(stone).map(tribeName).join(" · ") || "No tribes"}

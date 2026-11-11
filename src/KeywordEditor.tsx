@@ -143,11 +143,26 @@ function BuffFields({
     </fieldset>
   );
 }
+const SPELL_EFFECT_TYPES = new Set([
+  "sunder",
+  "silence",
+  "environment",
+  "trap",
+  "conjure",
+  "assemble",
+  "discard",
+  "next-play",
+  "amplify",
+  "combo",
+  "parting-gift",
+  "discard-priority",
+]);
 function Fields({
   keyword,
   label,
   element,
   allowCombo = true,
+  spellOnly = false,
   allowHandOnly = true,
   depth = 0,
   onChange,
@@ -156,6 +171,7 @@ function Fields({
   label: string;
   element: Element;
   allowCombo?: boolean;
+  spellOnly?: boolean;
   allowHandOnly?: boolean;
   depth?: number;
   onChange: (value: StoneKeyword) => void;
@@ -180,6 +196,7 @@ function Fields({
             }
           >
             {Object.entries(KEYWORD_RULES)
+              .filter(([type]) => !spellOnly || SPELL_EFFECT_TYPES.has(type))
               .filter(([type]) => allowCombo || type !== "combo")
               .filter(
                 ([type]) =>
@@ -667,7 +684,7 @@ function Fields({
               }}
             >
               <option value="specific">Specified card</option>
-              <option value="token">Specified token</option>
+              <option value="token">Specified token or spell</option>
               <option value="unique">Specified Unique card</option>
               <option value="random">Random cards</option>
             </select>
@@ -715,7 +732,7 @@ function Fields({
             </label>
           ) : keyword.mode === "token" ? (
             <label>
-              Specified token
+              Specified token or spell
               <select
                 aria-label={`Specified token · ${label}`}
                 value={keyword.token}
@@ -731,6 +748,7 @@ function Fields({
                 {readTokens().map((token) => (
                   <option key={token.id} value={token.id}>
                     {token.name}
+                    {token.spell ? " · Spell" : ""}
                   </option>
                 ))}
               </select>
@@ -750,7 +768,8 @@ function Fields({
                         | "tokens"
                         | "all"
                         | "unique"
-                        | "parts",
+                        | "parts"
+                        | "spells",
                     })
                   }
                 >
@@ -759,6 +778,7 @@ function Fields({
                   <option value="all">Cards and tokens</option>
                   <option value="unique">Unique cards only (explicit)</option>
                   <option value="parts">Parts only</option>
+                  <option value="spells">Spells only</option>
                 </select>
               </label>
               <label>
@@ -1006,10 +1026,12 @@ function Fields({
             </select>
           </label>
           <small>
-            Only the neighbor on the printed side is affected, before captures.
-            It moves one tile in this fixed direction, wrapping at the board
-            edge. Occupied destinations and the tile you are playing on block
-            movement. No target or direction choice during play.
+            Captures happen first, then only the neighbor on the printed side
+            moves. Eligibility uses pre-capture ownership, so captured enemies
+            are still pushed. It moves one tile in this fixed direction,
+            wrapping at the board edge. Occupied destinations and the tile you
+            are playing on block movement. No target or direction choice during
+            play.
           </small>
         </div>
       )}
@@ -1726,6 +1748,7 @@ export function KeywordEditor({
             >
               <Fields
                 keyword={keyword}
+                spellOnly={!!stone.spell}
                 label={`Keyword ${index + 1}`}
                 element={stone.element}
                 onChange={(value) => update(index, value)}
@@ -1762,7 +1785,9 @@ export function KeywordEditor({
         className="button button-outline add-keyword"
         disabled={keywords.length >= MAX_KEYWORDS}
         onClick={() => {
-          for (const type of Object.keys(KEYWORD_RULES) as KeywordType[])
+          for (const type of (
+            Object.keys(KEYWORD_RULES) as KeywordType[]
+          ).filter((type) => !stone.spell || SPELL_EFFECT_TYPES.has(type)))
             for (const side of [0, 1, 2, 3] as Side[]) {
               const initial = defaultKeyword(type, side, stone.element);
               const value = isSwapForce(stone)
@@ -1825,8 +1850,8 @@ export function KeywordEditor({
           </p>
           <p>
             <strong>Shift</strong> moves only the neighbor on its printed side
-            in a fixed direction, for enemies, allies, or both. Movement wraps
-            at board edges; occupied destinations block it.
+            in a fixed direction after captures, for enemies, allies, or both.
+            Movement wraps at board edges; occupied destinations block it.
           </p>
           <p>
             <strong>Shield</strong> adds directional defense pips, never attack

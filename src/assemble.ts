@@ -1,3 +1,4 @@
+import { playSource } from "./playSources.ts";
 import { readRecipes, matchingRecipe, partIdentity } from "./recipes.ts";
 import type { SuperchargerRecipe } from "./recipes.ts";
 import { SUPERCHARGER_VEHICLES } from "./superchargers.ts";
@@ -175,7 +176,7 @@ export function assembleParts(
   tokens = readTokens(),
   recipes: readonly SuperchargerRecipe[] = readRecipes(),
 ): { board: Board; hands: [Stone[], Stone[]]; messages: string[] } {
-  const cell = board[index];
+  const cell = playSource(board, index);
   if (!cell) return { board, hands, messages: [] };
   const owner = cell.playedBy ?? cell.owner,
     pool = tokens.filter((c) => c.part),

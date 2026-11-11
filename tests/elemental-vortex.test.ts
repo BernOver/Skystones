@@ -188,7 +188,10 @@ for (const size of [3, 4] as const) {
         .every((cell) => cell!.arenaElement === "life"),
     );
     assert.equal(JSON.stringify(run.inventory), original);
-    const wrap = { ...run, battle: { ...run.battle!, turns: 9 } };
+    const wrap = {
+      ...run,
+      battle: { ...run.battle!, turns: 9, turnNumber: 9 },
+    };
     assert.deepEqual(adventureArena(wrap), { current: "dark", next: "fire" });
   });
   test(`${size}×${size} victory gives boss rewards and opens Act II, losing the score permits retry`, () => {

@@ -1,3 +1,4 @@
+import { DEFAULT_SPELLS } from "./spellCards.ts";
 import { DEFAULT_PARTS } from "./assemble.ts";
 import { validateStone } from "./game.ts";
 import { cardDependencies } from "./cardDependencies.ts";
@@ -117,7 +118,10 @@ export function tokenDefinition(value: unknown): value is Stone {
 }
 export function tokenCatalogue(custom: readonly Stone[] = []): Stone[] {
   const byId = new Map(
-    [...DEFAULT_TOKENS, ...DEFAULT_PARTS].map((card) => [card.id, card]),
+    [...DEFAULT_TOKENS, ...DEFAULT_PARTS, ...DEFAULT_SPELLS].map((card) => [
+      card.id,
+      card,
+    ]),
   );
   for (const card of custom) if (tokenDefinition(card)) byId.set(card.id, card);
   return [...byId.values()];
@@ -146,6 +150,7 @@ export function tokenName(key: string): string {
 export function deckEligible(card: Stone): boolean {
   return (
     !card.token &&
+    !card.spell &&
     !card.conjured &&
     !card.part &&
     !card.supercharger &&

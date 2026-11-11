@@ -4996,3 +4996,23 @@ button:disabled:hover {
     transform: none;
   }
 }
+.spell-badge {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border: 1px solid #d5b9ed;
+  border-radius: 12px;
+  background: #382443ef;
+  color: #fff1ff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.spell-badge.discard-only {
+  background: #56332bef;
+  border-color: #deb19c;
+}

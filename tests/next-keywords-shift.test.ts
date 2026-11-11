@@ -375,7 +375,7 @@ test("Shift affinity is fixed on the card, and occupied destinations, the incomi
     /target/i,
   );
 });
-test("Shift resolves before captures, preserves resolved history and terrain positions, and lets later targeted keywords use the moved card's new tile", () => {
+test("Shift waits for captures, preserves history and terrain, and leaves targeted keywords using the original tile", () => {
   let board = placeStone(
     EMPTY_BOARD(),
     1,
@@ -396,12 +396,14 @@ test("Shift resolves before captures, preserves resolved history and terrain pos
   const history = structuredClone(board[1]!);
   const player = stone([shift(), { type: "sunder", side: 0 }], [5, 5, 5, 5]);
   const preview = prepareTargeting(board, player, [], 0, 4);
-  assert.equal(preview.board[1], null);
-  assert.ok(preview.pending!.options.some((option) => option.boardIndex === 2));
+  assert.ok(preview.board[1]);
+  assert.equal(preview.board[2], null);
+  assert.ok(preview.pending!.options.some((option) => option.boardIndex === 1));
   const moved = placeStone(board, 4, player, 0, [
-    { keywordIndex: 1, boardIndex: 2 },
+    { keywordIndex: 1, boardIndex: 1 },
   ]);
-  assert.deepEqual(moved.captured, []);
+  assert.deepEqual(moved.captured, [2]);
+  assert.equal(moved.board[2]!.owner, 0);
   assert.equal(moved.board[2]!.stone.name, "Mover");
   assert.deepEqual(moved.board[2]!.queuedPips, history.queuedPips);
   assert.equal(moved.board[2]!.environment, undefined);

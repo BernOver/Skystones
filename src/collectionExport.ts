@@ -1,3 +1,4 @@
+import { DEFAULT_SPELLS } from "./spellCards.ts";
 import { readRecipes } from "./recipes.ts";
 import { readTraps } from "./traps.ts";
 import { DEFAULT_PARTS } from "./assemble.ts";
@@ -55,7 +56,7 @@ export function collectionExport(
     originalCards: originals.filter(
       (card) => card.portrait && Object.hasOwn(defaults, card.portrait),
     ),
-    originalTokens: [...DEFAULT_TOKENS, ...DEFAULT_PARTS],
+    originalTokens: [...DEFAULT_TOKENS, ...DEFAULT_PARTS, ...DEFAULT_SPELLS],
     traps: readTraps(),
     recipes: readRecipes(),
     customTribes,

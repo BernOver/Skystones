@@ -1,3 +1,4 @@
+import { DEFAULT_SPELLS } from "../../src/spellCards.ts";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -155,7 +156,7 @@ test("export all includes edited built-ins, their originals, custom cards, token
     builtInCards: 221,
     editedCharacters: 2,
     customCards: 1,
-    tokenTemplates: 13,
+    tokenTemplates: 13 + DEFAULT_SPELLS.length,
   });
   expect(payload.cards).toHaveLength(222);
   expect(new Set(payload.cards.map((card: Stone) => card.id)).size).toBe(222);
@@ -199,7 +200,7 @@ test("export all includes edited built-ins, their originals, custom cards, token
   expect(JSON.stringify(payload)).not.toContain("DO-NOT-EXPORT-THIS");
   expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(before);
   await expect(page.locator(".toast")).toContainText(
-    "222 cards and 13 token templates",
+    `222 cards and ${13 + DEFAULT_SPELLS.length} token templates`,
   );
 });
 
@@ -211,7 +212,10 @@ test("a fresh collection exports every built-in and starter token in one file", 
   await page.getByRole("button", { name: /^Tokens/ }).click();
   const payload = await downloadCollection(page);
   expect(payload.cards).toHaveLength(221);
-  expect(payload.tokens).toHaveLength(12);
+  expect(payload.tokens).toHaveLength(12 + DEFAULT_SPELLS.length);
+  expect(payload.tokens.filter((card: Stone) => !!card.spell)).toHaveLength(
+    DEFAULT_SPELLS.length,
+  );
   expect(payload.summary.editedCharacters).toBe(0);
   expect(payload.customTribes).toEqual([]);
   expect(payload.characterDefaults).toEqual({});

@@ -184,13 +184,13 @@ export function KeywordDetails({
                 <div className="keyword-rule-heading">
                   <ArrowUpRight size={15} />
                   <strong>Shift</strong>
-                  <span>Before captures</span>
+                  <span>After captures</span>
                 </div>
                 {keywords.map(
                   (keyword, index) =>
                     keyword.type === "shift" && (
                       <p key={index}>
-                        Only the card next to this card’s{" "}
+                        After normal captures, only the card next to this card’s{" "}
                         <strong>{SIDE_NAMES[keyword.side]}</strong> side moves
                         one tile{" "}
                         <strong>
@@ -202,11 +202,12 @@ export function KeywordDetails({
                           : keyword.affects === "allies"
                             ? "Allies only."
                             : "Enemies only."}{" "}
-                        Targets use ownership before placement. Movement wraps
-                        across the board edge. An occupied destination or this
-                        card’s placement tile blocks it. No eligible neighbor
-                        means no movement. This never chooses a direction during
-                        play or triggers the moved card’s keywords.
+                        Eligibility uses ownership before captures, so a
+                        captured enemy is still pushed. Movement wraps across
+                        the board edge. An occupied destination or this card’s
+                        placement tile blocks it. No eligible neighbor means no
+                        movement. This never chooses a direction during play or
+                        triggers the moved card’s keywords.
                       </p>
                     ),
                 )}
@@ -902,7 +903,9 @@ export function KeywordDetails({
       )}
       {!stone.keywords?.length && (
         <p className="no-keywords">
-          No keywords. This stone uses its printed edge strengths.
+          {stone.spell
+            ? "This spell has no effects."
+            : "No keywords. This stone uses its printed edge strengths."}
         </p>
       )}
       {!!stone.keywords?.length && (
@@ -911,7 +914,8 @@ export function KeywordDetails({
           Dizzy rolls marked edges before captures. Other keywords check before
           placement. Ties block Head Start and Comeback only. Bonuses remain
           through captures and score changes unless removed by Silence. Targeted
-          effects resolve in listed order before captures.
+          effects resolve in listed order before captures; Shift moves eligible
+          neighbors afterward.
         </p>
       )}
     </div>
@@ -1052,6 +1056,14 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           <span> · Controlled by {controllerName}</span>
         )}
       </div>
+      {stone.spell && (
+        <p className="inspection-note">
+          {stone.spell === "discard"
+            ? "Discard-only spell · cannot be played. Its effects trigger when discarded. Board targets and further discards resolve automatically for its owner."
+            : "Spell · cast from your hand without occupying a tile or ending your turn. Casting consumes this card; it does not count as discarding it."}{" "}
+          Spells enter hands through Conjure.
+        </p>
+      )}
       <TribeBadges stone={stone} />
       <SwapDetails stone={stone} edges={edges} />
       {stone.unique && (
@@ -1076,7 +1088,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
           Active Trap · {inspection.trap.name}: {trapText(inspection.trap)}
         </p>
       )}
-      {stone.token && (
+      {stone.token && !stone.spell && (
         <p className="conjured-notice">
           Token · available through Conjure or a custom enemy’s starting hand.
         </p>

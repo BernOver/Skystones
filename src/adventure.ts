@@ -456,6 +456,7 @@ export interface AdventureBattle {
   recipes?: SuperchargerRecipe[];
   turnNumber?: number;
   board: Board;
+  spellHistory?: import("./game.ts").PlacedStone[];
   hands: [Stone[], Stone[]];
   current: Owner;
   turns: number;
@@ -1122,6 +1123,7 @@ export function adventureStoneForPlay(
   return run.phase === "battle" &&
     !!run.battle &&
     owner === 0 &&
+    !stone.spell &&
     hasRelic(run, "vanguard-banner") &&
     !run.battle?.vanguardUsed
     ? { ...stone, edges: stone.edges.map((edge) => edge + 1) as Edges }
@@ -1134,8 +1136,8 @@ export function adventureArena(
   const cycle = battle?.elementCycle;
   return battle && cycle?.length
     ? {
-        current: cycle[battle.turns % cycle.length],
-        next: cycle[(battle.turns + 1) % cycle.length],
+        current: cycle[(battle.turnNumber ?? battle.turns) % cycle.length],
+        next: cycle[((battle.turnNumber ?? battle.turns) + 1) % cycle.length],
       }
     : null;
 }
@@ -1296,7 +1298,7 @@ export function playAdventureCard(
   const recipes = battle.recipes || readRecipes();
   const conjured = applyConjure(
     move.board,
-    index,
+    move.sourceIndex ?? index,
     hands,
     () =>
       ADVENTURE_CHARACTERS.map((card) => {
@@ -1317,7 +1319,7 @@ export function playAdventureCard(
   );
   const assembled = assembleParts(
     conjured.board,
-    index,
+    move.sourceIndex ?? index,
     conjured.hands,
     run.seed ^ Math.imul(battle.turns + 1, 0x71ab),
     undefined,
@@ -1325,7 +1327,7 @@ export function playAdventureCard(
   );
   const discarded = resolveDiscards(
     assembled.board,
-    index,
+    move.sourceIndex ?? index,
     assembled.hands,
     run.seed ^ Math.imul(battle.turns + 1, 0x6d2b79f5) ^ index,
     discardChoices,
@@ -1359,9 +1361,15 @@ export function playAdventureCard(
       ...battle,
       ...(objective !== undefined ? { objective } : {}),
       board: arena
-        ? withArenaElement(discarded.board, arena.next)
+        ? withArenaElement(
+            discarded.board,
+            move.keepsTurn ? arena.current : arena.next,
+          )
         : discarded.board,
       hands: discarded.hands,
+      ...(discarded.board.spellHistory
+        ? { spellHistory: discarded.board.spellHistory }
+        : {}),
       recipes,
       ...(trapStateFromBoard(discarded.board)
         ? { traps: trapStateFromBoard(discarded.board) }
@@ -1376,10 +1384,12 @@ export function playAdventureCard(
       bracerUsed: battle.bracerUsed || bracer,
       vanguardUsed:
         battle.vanguardUsed ||
-        (battle.current === 0 && hasRelic(run, "vanguard-banner")),
+        (battle.current === 0 &&
+          !stone.spell &&
+          hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
-        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${coordinate(index, run.size)} · ${move.captured.length} captured${assembled.messages.length ? ` · ${assembled.messages.join(", ")}` : ""}${move.keepsTurn ? " · Flash: play again" : ""}${discarded.records.length ? ` · ${discardSummary(discarded.records, ["You", "Keeper"])}` : ""}${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
+        `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${stone.spell ? "Spell" : coordinate(index, run.size)} · ${move.captured.length} captured${assembled.messages.length ? ` · ${assembled.messages.join(", ")}` : ""}${move.keepsTurn ? (stone.spell ? " · Spell: play again" : " · Flash: play again") : ""}${discarded.records.length ? ` · ${discardSummary(discarded.records, ["You", "Keeper"])}` : ""}${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
           .filter((effect) => effect.type === "shift")
           .map((effect) =>
             effect.type === "shift"
@@ -2108,6 +2118,12 @@ function validBattleCard(value: unknown): value is Stone {
     ) &&
     (stone.tribes === undefined || validateTribes(stone.tribes)) &&
     (stone.conjured === undefined || stone.conjured === true) &&
+    (stone.spell === undefined ||
+      (["cast", "discard"].includes(stone.spell) &&
+        stone.token === true &&
+        !stone.part &&
+        !stone.supercharger &&
+        !stone.swapParts)) &&
     (stone.encounterStart === undefined ||
       (stone.encounterStart === true &&
         stone.id.startsWith("custom-encounter-"))) &&
@@ -2539,9 +2555,17 @@ export function validateAdventure(value: unknown): value is Adventure {
     )
       return false;
     if (
+      (battle.spellHistory !== undefined &&
+        (!Array.isArray(battle.spellHistory) ||
+          battle.spellHistory.length > 1000 ||
+          !battle.spellHistory.every(
+            (cell) => !!cell?.stone.spell && validPlaced(cell, run.size ** 2),
+          ))) ||
       !Array.isArray(battle.board) ||
       battle.board.length !== run.size ** 2 ||
-      !battle.board.every((cell) => validPlaced(cell, run.size ** 2)) ||
+      !battle.board.every(
+        (cell) => !cell?.stone.spell && validPlaced(cell, run.size ** 2),
+      ) ||
       !Array.isArray(battle.hands) ||
       battle.hands.length !== 2 ||
       !battle.hands.every(
@@ -2616,7 +2640,11 @@ export function restoreAdventure(value: unknown): Adventure | null {
   let run = repairAdventureCards(value);
   if (run.battle) {
     const { traps: _legacy, ...battle } = run.battle,
-      state = trapStateFromBoard(battle.board);
+      state = trapStateFromBoard(
+        battle.spellHistory
+          ? Object.assign(battle.board, { spellHistory: battle.spellHistory })
+          : battle.board,
+      );
     run = {
       ...run,
       battle: {
@@ -2683,6 +2711,8 @@ export function restoreAdventure(value: unknown): Adventure | null {
       },
     };
   }
+  if (run.battle?.spellHistory)
+    run.battle.board.spellHistory = run.battle.spellHistory;
   const arena = adventureArena(run);
   if (arena && run.battle)
     run = {
@@ -2871,7 +2901,13 @@ function repairAdventureCards(run: Adventure): Adventure {
       ? {
           battle: {
             ...run.battle,
-            board: withTileEnvironments(board!),
+            board: withTileEnvironments(
+              run.battle.spellHistory
+                ? Object.assign(board!, {
+                    spellHistory: run.battle.spellHistory,
+                  })
+                : board!,
+            ),
             hands: [
               run.battle.hands[0].map(appearance),
               run.battle.customEncounter

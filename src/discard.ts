@@ -1,3 +1,8 @@
+import { characterDefault } from "./cardDefaults.ts";
+import { applyConjure, CONJURE_CARDS } from "./conjure.ts";
+import { assembleParts } from "./assemble.ts";
+import { castSpell, chooseKeywordTargets } from "./game.ts";
+import { boardContext, playSource, updatePlaySource } from "./playSources.ts";
 import type { TileEnvironment } from "./effects.ts";
 import { boardTrap, trapKeywordMultiplier, trapNullifies } from "./traps.ts";
 import type { Trap } from "./traps.ts";
@@ -85,6 +90,7 @@ export interface DiscardRecord {
   keywordIndex: number;
   owner: Owner;
   requested: number;
+  spells?: string[];
   cards: { id: string; name: string }[];
   skipped: number;
   buffs: {
@@ -346,13 +352,17 @@ export function resolveDiscards(
   automatic = true,
   passEmptyHands = false,
   manualGiftOwners?: Owner[],
+  spellDepth = 0,
+  nextTurnOwner?: Owner,
 ): {
   board: Board;
   hands: [Stone[], Stone[]];
   records: DiscardRecord[];
   pending?: DiscardPending;
 } {
-  const caster = board[index];
+  if (spellDepth > 24)
+    throw new Error("Too many chained discard spells in one play.");
+  const caster = playSource(board, index);
   if (!caster || caster.discards) return { board, hands, records: [] };
   const keywords = placedKeywords(caster),
     actor = caster.playedBy ?? caster.owner;
@@ -360,12 +370,19 @@ export function resolveDiscards(
     if (choices.length) throw new Error("This card has no discard choices.");
     return { board, hands, records: [] };
   }
+  // A discard reaction does not create a new turn: every nested spell must
+  // protect placements for the player who follows the original play.
+  const nextPlayer =
+    nextTurnOwner ??
+    ((caster.stone.spell || keywords.some((k) => k.type === "flash")
+      ? actor
+      : 1 - actor) as Owner);
   const required = finishCardsRequired(
     board,
-    (keywords.some((k) => k.type === "flash") ? actor : 1 - actor) as Owner,
+    nextPlayer,
     passEmptyHands ? hands : undefined,
   );
-  let nextBoard = [...board];
+  let nextBoard = boardContext([...board], board);
   const nextHands: [Stone[], Stone[]] = [[...hands[0]], [...hands[1]]],
     records: DiscardRecord[] = [],
     used = new Set<DiscardChoice>();
@@ -777,13 +794,52 @@ export function resolveDiscards(
             });
           }
         }
+        if (card.spell === "discard") {
+          const targets = chooseKeywordTargets(nextBoard, -1, card, owner);
+          const triggered = castSpell(nextBoard, card, owner, targets, true);
+          const sourceIndex = triggered.sourceIndex!;
+          const conjured = applyConjure(
+            triggered.board,
+            sourceIndex,
+            nextHands,
+            () => CONJURE_CARDS.map((card) => characterDefault(card)),
+            seed ^
+              Math.imul(spellDepth + 1, 0x27d4eb2d) ^
+              (triggered.board.spellHistory?.length || 0),
+          );
+          const assembled = assembleParts(
+            conjured.board,
+            sourceIndex,
+            conjured.hands,
+            seed ^ 0x71ab,
+          );
+          const nested = resolveDiscards(
+            assembled.board,
+            sourceIndex,
+            assembled.hands,
+            seed ^ 0x61ab ^ (triggered.board.spellHistory?.length || 0),
+            [],
+            true,
+            passEmptyHands,
+            [],
+            spellDepth + 1,
+            nextPlayer,
+          );
+          nextBoard = nested.board;
+          nextHands[0] = nested.hands[0];
+          nextHands[1] = nested.hands[1];
+          (record.spells ||= []).push(card.name);
+        }
       }
       records.push(record);
     }
   }
   if (choices.some((choice) => !used.has(choice)))
     throw new Error("Unexpected discard choice.");
-  nextBoard[index] = { ...nextBoard[index]!, discards: records };
+  nextBoard = updatePlaySource(nextBoard, index, {
+    ...playSource(nextBoard, index)!,
+    discards: records,
+  });
   return { board: nextBoard, hands: nextHands, records };
 }
 export function discardSummary(
@@ -793,7 +849,7 @@ export function discardSummary(
   return records
     .map(
       (record) =>
-        `${names[record.owner]} discarded ${record.cards.length}${record.cards.length ? `: ${record.cards.map((card) => card.name).join(", ")}` : ""}${record.skipped ? ` · ${record.skipped} protected to finish the board` : ""}${record.buffs.length ? ` · ${record.buffs.length} buffs` : ""}`,
+        `${names[record.owner]} discarded ${record.cards.length}${record.cards.length ? `: ${record.cards.map((card) => card.name).join(", ")}` : ""}${record.skipped ? ` · ${record.skipped} protected to finish the board` : ""}${record.buffs.length ? ` · ${record.buffs.length} buffs` : ""}${record.spells?.length ? ` · Discard spells: ${record.spells.join(", ")}` : ""}`,
     )
     .join(" · ");
 }
@@ -902,6 +958,12 @@ export function validateDiscardRecords(
         Number.isInteger(record.skipped) &&
         record.skipped >= 0 &&
         record.skipped + record.cards.length === record.requested &&
+        (record.spells === undefined ||
+          (Array.isArray(record.spells) &&
+            record.spells.length <= 20 &&
+            record.spells.every(
+              (name: unknown) => typeof name === "string" && name.length <= 40,
+            ))) &&
         Array.isArray(record.buffs) &&
         record.buffs.length <= 32768 &&
         record.buffs.every(
