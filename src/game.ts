@@ -215,7 +215,7 @@ export const KEYWORD_RULES = {
   scavenge: { name: "Scavenge", condition: "gain buffs from discards" },
   "parting-gift": {
     name: "Parting Gift",
-    condition: "buff allies when discarded",
+    condition: "gifts and hexes when discarded",
   },
   "discard-priority": {
     name: "Discard Priority",
@@ -255,7 +255,8 @@ export function repeatableKeyword(type: KeywordType): boolean {
     type === "next-play" ||
     type === "environment" ||
     type === "conjure" ||
-    type === "discard"
+    type === "discard" ||
+    type === "parting-gift"
   );
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
@@ -1725,7 +1726,7 @@ export function validateKeywords(
       ["discard", "scavenge", "parting-gift", "discard-priority"].includes(
         keyword.type,
       ) &&
-      !validDiscardKeyword(keyword)
+      !validDiscardKeyword(keyword, depth)
     )
       return false;
     if (

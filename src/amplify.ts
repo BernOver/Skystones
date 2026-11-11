@@ -101,8 +101,26 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
       for (const kind of ["pips", "shields"] as const)
         out[kind] = out[kind]?.map((p) => ({
           ...p,
-          amount: Math.min(99, p.amount * times),
+          amount: Math.max(-99, Math.min(99, p.amount * times)),
         }));
+      if (out.type === "parting-gift") {
+        out.keywords = out.keywords?.flatMap<StoneKeyword>((g) =>
+          g.type === "combo"
+            ? [
+                {
+                  ...structuredClone(g),
+                  pips: g.pips?.map((p) => ({
+                    ...p,
+                    amount: Math.min(99, p.amount * times),
+                  })),
+                  keywords: g.keywords?.flatMap((grant) =>
+                    scaleEffect(grant, times),
+                  ),
+                } as ComboKeyword,
+              ]
+            : scaleEffect(g, times),
+        );
+      }
       break;
     case "trap":
       out.trap.effects = out.trap.effects.map((e) =>
@@ -374,9 +392,11 @@ export function validRuntimeEffects(value: unknown): value is BasicKeyword[] {
             ...p,
             amount:
               Number.isInteger(p?.amount) &&
-              Number(p.amount) > 0 &&
+              Number(p.amount) !== 0 &&
+              Number(p.amount) >=
+                (k.type === "parting-gift" && key === "pips" ? -99 : 1) &&
               Number(p.amount) <= 99
-                ? Math.min(5, Number(p.amount))
+                ? Math.max(-5, Math.min(5, Number(p.amount)))
                 : NaN,
           }));
         }

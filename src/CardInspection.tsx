@@ -283,7 +283,19 @@ export function KeywordDetails({
                   keyword.type === "scavenge" ||
                   keyword.type === "parting-gift" ||
                   keyword.type === "discard-priority" ? (
-                    <p key={index}>{discardText(keyword)}</p>
+                    <div key={index}>
+                      <p>{discardText(keyword)}</p>
+                      {keyword.type === "parting-gift" &&
+                        !!keyword.keywords?.length && (
+                          <div className="next-granted-rules">
+                            <strong>Keywords given to recipients</strong>
+                            <KeywordDetails
+                              stone={{ ...stone, keywords: keyword.keywords }}
+                              size={size}
+                            />
+                          </div>
+                        )}
+                    </div>
                   ) : null,
                 )}
                 {type === "discard" && (
@@ -306,12 +318,22 @@ export function KeywordDetails({
                         <p>{discardSummary([record], playerNames)}</p>
                         {record.buffs.map((buff, i) => (
                           <p key={i}>
-                            {buff.source} → {buff.target}:{" "}
+                            {buff.source} → {buff.target}
+                            {buff.owner === undefined
+                              ? ""
+                              : ` (${playerNames[buff.owner]} · ${buff.location || "board"})`}
+                            :{" "}
                             {buff.pips
                               .flatMap((n, side) =>
-                                n ? [`${SIDE_NAMES[side]} +${n}`] : [],
+                                n
+                                  ? [
+                                      `${SIDE_NAMES[side]} ${n > 0 ? "+" : ""}${n}`,
+                                    ]
+                                  : [],
                               )
                               .join(" · ")}
+                            {!!buff.keywords?.length &&
+                              ` · Gains ${keywordNames(buff.keywords)}`}
                             {buff.shields.some(Boolean)
                               ? ` · Shield ${buff.shields.join("/")} (N/E/S/W)`
                               : ""}
@@ -1126,7 +1148,9 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
             <p key={name} className="next-play-inspection-note">
               <strong>{name}</strong> ·{" "}
               {buff.pips
-                .flatMap((n, side) => (n ? [`${SIDE_NAMES[side]} +${n}`] : []))
+                .flatMap((n, side) =>
+                  n ? [`${SIDE_NAMES[side]} ${n > 0 ? "+" : ""}${n}`] : [],
+                )
                 .join(" · ")}
               {buff.shields.some(Boolean)
                 ? ` · Shield ${buff.shields.join("/")} (N/E/S/W)`

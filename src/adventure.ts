@@ -1271,6 +1271,7 @@ export function playAdventureCard(
   targets: KeywordTarget[] = [],
   discardChoices: DiscardChoice[] = [],
   manualDiscard = false,
+  manualGiftOwners?: Owner[],
 ): Adventure {
   if (run.phase !== "battle" || !run.battle)
     throw new Error("There is no active battle.");
@@ -1330,8 +1331,13 @@ export function playAdventureCard(
     discardChoices,
     !manualDiscard,
     !!battle.customEncounter,
+    manualGiftOwners,
   );
-  if (discarded.pending) throw new DiscardSelectionRequired(discarded.pending);
+  if (discarded.pending) {
+    const error = new DiscardSelectionRequired(discarded.pending);
+    error.move = { index, cardIndex, targets };
+    throw error;
+  }
   const bracer =
     battle.current === 0 &&
     move.captured.length > 0 &&
@@ -1425,14 +1431,25 @@ export function swapAdventureCards(
     },
   };
 }
-export function adventureEnemyMove(run: Adventure): Adventure {
+export function adventureEnemyMove(
+  run: Adventure,
+  manualGiftOwners?: Owner[],
+): Adventure {
   if (run.phase !== "battle" || run.battle?.current !== 1) return run;
   const battle = run.battle;
   const move = chooseMove(battle.board, battle.hands[1], battle.hands[0], 1, {
     ...(adventureArena(run) || {}),
     trap: battle.traps?.active?.trap,
   });
-  return playAdventureCard(run, move.index, move.cardIndex, move.targets);
+  return playAdventureCard(
+    run,
+    move.index,
+    move.cardIndex,
+    move.targets,
+    [],
+    false,
+    manualGiftOwners,
+  );
 }
 export function claimAdventureReward(
   run: Adventure,

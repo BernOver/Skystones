@@ -6,13 +6,22 @@ import { discardPriority } from "./discard";
 import type { DiscardPending } from "./discard";
 import type { Edges } from "./game";
 import "./discard.css";
-export function DiscardPicker({
+export function DiscardPicker(props: Parameters<typeof DiscardCardsPicker>[0]) {
+  return props.pending.gift ? (
+    <PartingGiftPicker {...props} />
+  ) : (
+    <DiscardCardsPicker {...props} />
+  );
+}
+function DiscardCardsPicker({
   pending,
   names,
   onConfirm,
   onCancel,
+  cancelLabel = "Cancel play",
 }: {
   pending: DiscardPending;
+  cancelLabel?: string;
   names: string[];
   onConfirm: (ids: string[]) => void;
   onCancel: () => void;
@@ -59,7 +68,10 @@ export function DiscardPicker({
               trap={pending.trap}
               edges={trapEdges(
                 card.edges.map((n, side) =>
-                  Math.min(99, n + (card.discardBuffs?.pips[side] || 0)),
+                  Math.max(
+                    0,
+                    Math.min(99, n + (card.discardBuffs?.pips[side] || 0)),
+                  ),
                 ) as Edges,
                 card,
                 pending.trap,
@@ -81,7 +93,7 @@ export function DiscardPicker({
       )}
       <div className="detail-actions">
         <button className="button button-outline" onClick={onCancel}>
-          Cancel play
+          {cancelLabel}
         </button>
         <button
           className="button button-dark"
@@ -94,6 +106,89 @@ export function DiscardPicker({
       <p className="dialog-small-note">
         Nothing is committed until every discard choice is complete. Canceling
         leaves the turn unchanged.
+      </p>
+    </div>
+  );
+}
+
+function PartingGiftPicker({
+  pending,
+  names,
+  onConfirm,
+  onCancel,
+  cancelLabel = "Cancel play",
+}: Parameters<typeof DiscardCardsPicker>[0]) {
+  const [ids, setIds] = useState<string[]>([]);
+  const gift = pending.gift!;
+  return (
+    <div className="discard-picker parting-gift-picker">
+      <span className="eyebrow">PARTING GIFT · {names[pending.owner]}</span>
+      <h2>
+        Choose {pending.count} gift target{pending.count === 1 ? "" : "s"}.
+      </h2>
+      <p>
+        <strong>{gift.source}</strong> · {gift.text}
+      </p>
+      <p className="discard-choice-count" role="status">
+        {ids.length} / {pending.count} selected
+      </p>
+      <div
+        className="discard-card-grid"
+        role="group"
+        aria-label="Eligible Parting Gift targets"
+      >
+        {gift.options.map((option) => (
+          <button
+            type="button"
+            key={option.id}
+            className={`discard-card-button ${ids.includes(option.id) ? "selected" : ""}`}
+            aria-label={`Gift to ${option.stone.name}, ${names[option.owner]}, ${option.location}${option.boardIndex === undefined ? "" : ", square " + (option.boardIndex + 1)}`}
+            aria-pressed={ids.includes(option.id)}
+            disabled={!ids.includes(option.id) && ids.length >= pending.count}
+            onClick={() =>
+              setIds(
+                ids.includes(option.id)
+                  ? ids.filter((id) => id !== option.id)
+                  : [...ids, option.id],
+              )
+            }
+          >
+            <small>
+              {names[option.owner]} ·{" "}
+              {option.location === "hand"
+                ? "Hand"
+                : "Board · square " + (option.boardIndex! + 1)}
+            </small>
+            <StoneCard
+              stone={option.stone}
+              edges={
+                option.location === "hand"
+                  ? trapEdges(option.edges, option.stone, pending.trap)
+                  : option.edges
+              }
+              shields={option.shields}
+              keywordShields={option.keywordShields}
+              environment={option.environment}
+              trap={pending.trap}
+              played={option.location === "board"}
+            />
+          </button>
+        ))}
+      </div>
+      <div className="detail-actions">
+        <button className="button button-outline" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button
+          className="button button-dark"
+          disabled={ids.length !== pending.count}
+          onClick={() => onConfirm(ids)}
+        >
+          Apply Parting Gift
+        </button>
+      </div>
+      <p className="dialog-small-note">
+        Nothing is committed until every discard and gift choice is complete.
       </p>
     </div>
   );

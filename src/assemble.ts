@@ -139,10 +139,13 @@ export function combineParts(
     if (first.discardBuffs || second.discardBuffs)
       charger.discardBuffs = {
         pips: first.edges.map((_, s) =>
-          Math.min(
-            99,
-            (first.discardBuffs?.pips[s] || 0) +
-              (second.discardBuffs?.pips[s] || 0),
+          Math.max(
+            -99,
+            Math.min(
+              99,
+              (first.discardBuffs?.pips[s] || 0) +
+                (second.discardBuffs?.pips[s] || 0),
+            ),
           ),
         ) as Edges,
         shields: first.edges.map((_, s) =>
@@ -153,6 +156,13 @@ export function combineParts(
           ),
         ) as Edges,
       };
+    if (
+      charger.discardBuffs &&
+      ![...charger.discardBuffs.pips, ...charger.discardBuffs.shields].some(
+        Boolean,
+      )
+    )
+      delete charger.discardBuffs;
     out.splice(a, 0, charger);
   }
   return out;

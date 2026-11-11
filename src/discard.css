@@ -114,3 +114,32 @@
     flex-wrap: wrap;
   }
 }
+
+.parting-gift-picker .discard-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+  align-items: start;
+  justify-items: center;
+}
+.parting-gift-picker .discard-card-button {
+  width: 100%;
+  max-width: 192px;
+}
+.parting-gift-picker .discard-card-button > small {
+  display: block;
+  margin: 4px 0 8px;
+  font-size: 11px;
+  color: #6c6277;
+}
+.parting-gift-picker .stone-card {
+  min-height: 240px;
+  aspect-ratio: auto;
+}
+.parting-gift-picker .stone-art {
+  flex: 1 0 145px;
+  min-height: 145px;
+}
+.parting-gift-picker .stone-keyword,
+.parting-gift-picker .stone-keyword b {
+  font-size: 8px;
+  line-height: 1.35;
+}

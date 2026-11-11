@@ -310,6 +310,7 @@ function applyMove(
   targets: KeywordTarget[] = [],
   discardChoices: DiscardChoice[] = [],
   manualDiscard = false,
+  manualGiftOwners?: Owner[],
 ): Match {
   const stone = match.hands[match.current][cardIndex];
   const seed =
@@ -349,8 +350,14 @@ function applyMove(
     seed ^ 0x6d2b79f5,
     discardChoices,
     !manualDiscard,
+    false,
+    manualGiftOwners,
   );
-  if (discarded.pending) throw new DiscardSelectionRequired(discarded.pending);
+  if (discarded.pending) {
+    const error = new DiscardSelectionRequired(discarded.pending);
+    error.move = { index, cardIndex, targets };
+    throw error;
+  }
   let nextOwner: Owner = move.keepsTurn
     ? match.current
     : ((1 - match.current) as Owner);
@@ -604,28 +611,50 @@ export default function App() {
   }, [toast]);
 
   useEffect(() => {
-    if (!aiTurn) return;
-    const id = match.id;
+    if (!aiTurn || dialog) return;
     const timer = setTimeout(() => {
-      setMatch((current) => {
-        if (
-          current.id !== id ||
-          current.current !== 1 ||
-          boardFinished(current.board)
-        )
-          return current;
+      try {
         const move = chooseMove(
-          current.board,
-          current.hands[1],
-          current.hands[0],
+          match.board,
+          match.hands[1],
+          match.hands[0],
           1,
-          { trap: current.traps?.active?.trap },
+          { trap: match.traps?.active?.trap },
         );
-        return applyMove(current, move.index, move.cardIndex, move.targets);
-      });
+        const next = applyMove(
+          match,
+          move.index,
+          move.cardIndex,
+          move.targets,
+          [],
+          false,
+          [0],
+        );
+        setMatch((current) =>
+          current.id === match.id && current.moves === match.moves
+            ? next
+            : current,
+        );
+      } catch (error) {
+        if (error instanceof DiscardSelectionRequired && error.move)
+          setDialog({
+            kind: "discard",
+            index: error.move.index,
+            cardIndex: error.move.cardIndex,
+            targets: error.move.targets,
+            choices: [],
+            pending: error.pending,
+          });
+        else
+          setToast(
+            error instanceof Error
+              ? error.message
+              : "The opponent could not finish that play.",
+          );
+      }
     }, 850);
     return () => clearTimeout(timer);
-  }, [aiTurn, match.id, match.moves]);
+  }, [aiTurn, match.id, match.moves, dialog]);
 
   useEffect(() => {
     const key = `${match.id}-${match.moves}`;
@@ -860,7 +889,17 @@ export default function App() {
     choices: DiscardChoice[] = [],
   ) {
     try {
-      setMatch(applyMove(match, index, cardIndex, targets, choices, true));
+      setMatch(
+        applyMove(
+          match,
+          index,
+          cardIndex,
+          targets,
+          choices,
+          !aiTurn,
+          match.mode === "local" ? [0, 1] : [0],
+        ),
+      );
       setSelected(null);
       setDialog(null);
     } catch (error) {
@@ -880,6 +919,27 @@ export default function App() {
             : "That card could not be played.",
         );
     }
+  }
+  function cancelDiscardChoice() {
+    if (dialog?.kind === "discard" && aiTurn && dialog.pending.gift) {
+      try {
+        setMatch(
+          applyMove(
+            match,
+            dialog.index,
+            dialog.cardIndex,
+            dialog.targets,
+            dialog.choices,
+            false,
+            [],
+          ),
+        );
+      } catch (error) {
+        setToast((error as Error).message);
+        return;
+      }
+    }
+    setDialog(null);
   }
   function chooseTarget(boardIndex: number, side?: Side) {
     if (dialog?.kind !== "target") return;
@@ -2821,15 +2881,24 @@ export default function App() {
 
       {dialog?.kind === "discard" && (
         <Dialog
-          title="Choose cards to discard"
-          onClose={() => setDialog(null)}
+          title={
+            dialog.pending.gift
+              ? "Choose Parting Gift targets"
+              : "Choose cards to discard"
+          }
+          onClose={cancelDiscardChoice}
           className="discard-dialog"
         >
           <DiscardPicker
-            key={`${dialog.pending.keywordIndex}-${dialog.pending.owner}`}
+            key={`${dialog.pending.keywordIndex}-${dialog.pending.owner}-${dialog.pending.gift?.id || "discard"}`}
             pending={dialog.pending}
             names={names}
-            onCancel={() => setDialog(null)}
+            onCancel={cancelDiscardChoice}
+            cancelLabel={
+              aiTurn && dialog.pending.gift
+                ? "Choose automatically"
+                : "Cancel play"
+            }
             onConfirm={(cardIds) =>
               commitMove(dialog.index, dialog.cardIndex, dialog.targets, [
                 ...dialog.choices,
@@ -2837,6 +2906,9 @@ export default function App() {
                   keywordIndex: dialog.pending.keywordIndex,
                   owner: dialog.pending.owner,
                   cardIds,
+                  ...(dialog.pending.gift
+                    ? { giftId: dialog.pending.gift.id }
+                    : {}),
                 },
               ])
             }
@@ -3119,10 +3191,12 @@ export default function App() {
               captures and Conjure. Each player keeps enough cards for all
               remaining turns; unsafe discards are skipped.{" "}
               <strong>Scavenge</strong> gains pips or Shield per actual discard.{" "}
-              <strong>Parting Gift</strong> grants buffs when discarded.{" "}
-              <strong>Discard Priority</strong> makes a card get selected first
-              by random discards, with higher ranks first. Discard buffs last
-              for this battle and are disabled by Silence on board cards.
+              <strong>Parting Gift</strong> changes pips or gives keywords to
+              selected, random, or all matching hand or board cards when
+              discarded. <strong>Discard Priority</strong> makes a card get
+              selected first by random discards, with higher ranks first.
+              Discard buffs last for this battle and are disabled by Silence on
+              board cards.
             </p>
           </div>
           <div className="rule-line">

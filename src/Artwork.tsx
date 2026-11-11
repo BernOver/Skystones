@@ -41,7 +41,7 @@ import type { ComboKeyword, Creature, Edges, Element, Stone } from "./game";
 import { ENVIRONMENTS, nextEffectText, nextRequirementText } from "./effects";
 import type { TileEnvironment } from "./effects";
 import { conjureSource, conjureBuffText } from "./conjure";
-import { buffText } from "./discard";
+import { buffText, partingGiftSummary } from "./discard";
 
 export const ELEMENT_ICONS = {
   fire: Flame,
@@ -811,7 +811,7 @@ export const StoneCard = memo(
                                                 ? `${keyword.from} · ${buffText(keyword)}`
                                                 : keyword.type ===
                                                     "parting-gift"
-                                                  ? `${keyword.target} · ${buffText(keyword)}`
+                                                  ? partingGiftSummary(keyword)
                                                   : keyword.type ===
                                                       "discard-priority"
                                                     ? `${keyword.priority ?? 1}`

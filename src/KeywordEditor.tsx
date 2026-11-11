@@ -34,7 +34,7 @@ import { TribeSelect } from "./TribeEditor";
 import type { ComboCondition } from "./tribes";
 import { CONJURE_CARDS, MAX_HAND_CARDS } from "./conjure";
 import { readTokens } from "./tokens";
-import type { BuffSpec } from "./discard";
+import type { BuffSpec, PartingGiftKeyword } from "./discard";
 import "./discard.css";
 
 export function defaultKeyword(
@@ -82,14 +82,18 @@ function BuffFields({
   spec,
   label,
   onChange,
+  signed = false,
 }: {
+  signed?: boolean;
   spec: BuffSpec;
   label: string;
   onChange: (spec: BuffSpec) => void;
 }) {
   return (
     <fieldset className="discard-buff-fields">
-      <legend>Pips and Shield buffs</legend>
+      <legend>
+        {signed ? "Pip changes and Shield" : "Pips and Shield buffs"}
+      </legend>
       {(["pips", "shields"] as const).map((kind) => (
         <div key={kind} className="discard-buff-grid">
           {SIDE_NAMES.map((name, side) => (
@@ -116,9 +120,13 @@ function BuffFields({
                 }}
               >
                 <option value="0">None</option>
-                {[1, 2, 3, 4, 5].map((amount) => (
+                {(signed && kind === "pips"
+                  ? [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
+                  : [1, 2, 3, 4, 5]
+                ).map((amount) => (
                   <option key={amount} value={amount}>
-                    +{amount}
+                    {amount > 0 ? "+" : ""}
+                    {amount}
                   </option>
                 ))}
               </select>
@@ -127,7 +135,9 @@ function BuffFields({
         </div>
       ))}
       <small>
-        Choose at least one bonus. Each actual discard grants these buffs once.
+        {signed
+          ? "Choose pip changes, keywords below, or both. Negative pips stop at zero."
+          : "Choose at least one bonus. Each actual discard grants these buffs once."}
         Ordinary pips cap at 99.
       </small>
     </fieldset>
@@ -463,24 +473,85 @@ function Fields({
               onChange={(event) =>
                 onChange({
                   ...keyword,
-                  target: event.target.value as "discarder" | "allies" | "hand",
+                  target: event.target.value as PartingGiftKeyword["target"],
+                  ...(event.target.value === "discarder"
+                    ? { mode: undefined, count: undefined }
+                    : {}),
                 })
               }
             >
               <option value="allies">Its owner’s board cards</option>
               <option value="hand">Its owner’s remaining hand</option>
+              <option value="enemies">Opponent’s board cards</option>
+              <option value="enemy-hand">Opponent’s hand</option>
+              <option value="board">Both players’ board cards</option>
+              <option value="hands">Both remaining hands</option>
               <option value="discarder">The card causing the discard</option>
             </select>
           </label>
+          {keyword.target !== "discarder" && (
+            <>
+              <label>
+                Target selection
+                <select
+                  aria-label={`Parting Gift selection · ${label}`}
+                  value={keyword.mode || "all"}
+                  onChange={(e) =>
+                    onChange({
+                      ...keyword,
+                      mode: e.target.value as "all" | "chosen" | "random",
+                      count:
+                        e.target.value === "all"
+                          ? undefined
+                          : keyword.count || 1,
+                    })
+                  }
+                >
+                  <option value="all">All matching cards</option>
+                  <option value="chosen">Choose cards</option>
+                  <option value="random">Random cards</option>
+                </select>
+              </label>
+              {keyword.mode && keyword.mode !== "all" && (
+                <label>
+                  Number of targets
+                  <select
+                    aria-label={`Parting Gift targets · ${label}`}
+                    value={keyword.count || 1}
+                    onChange={(e) =>
+                      onChange({ ...keyword, count: Number(e.target.value) })
+                    }
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </>
+          )}
           <BuffFields
             spec={keyword}
             label={`Parting Gift · ${label}`}
+            signed
             onChange={(spec) => onChange({ ...keyword, ...spec })}
+          />
+          <GrantKeywordFields
+            keyword={keyword}
+            element={element}
+            label={label}
+            depth={depth}
+            onChange={onChange}
           />
           <small>
             Triggers from the actual hand card when discarded, including random
             discards. Conjured cards can receive this keyword. It does not
             trigger on play, and never changes your permanent card templates.
+            Its owner chooses chosen targets. Gifts to hand cards work when
+            played or discarded; board gifts activate passive abilities without
+            replaying on-play effects.
           </small>
         </div>
       )}
@@ -1234,7 +1305,10 @@ function GrantKeywordFields({
   depth,
   onChange,
 }: {
-  keyword: Extract<StoneKeyword, { type: "next-play" | "conjure" }>;
+  keyword: Extract<
+    StoneKeyword,
+    { type: "next-play" | "conjure" | "parting-gift" }
+  >;
   element: Element;
   label: string;
   depth: number;
@@ -1242,7 +1316,8 @@ function GrantKeywordFields({
 }) {
   const grants = keyword.keywords || [];
   const conjure = keyword.type === "conjure";
-  const kind = conjure ? "Conjure" : "Next Play";
+  const parting = keyword.type === "parting-gift";
+  const kind = parting ? "Parting Gift" : conjure ? "Conjure" : "Next Play";
   const update = (keywords: StoneKeyword[]) =>
     onChange({
       ...keyword,
@@ -1253,7 +1328,12 @@ function GrantKeywordFields({
                 ? keyword.amount
                 : 1,
           }
-        : {}),
+        : keyword.type === "parting-gift" &&
+            !keywords.length &&
+            !keyword.pips?.length &&
+            !keyword.shields?.length
+          ? { pips: [{ side: 0 as Side, amount: 1 }] }
+          : {}),
       keywords: keywords.length ? keywords : undefined,
     });
   return (
@@ -1262,14 +1342,18 @@ function GrantKeywordFields({
       aria-label={`${kind} keywords · ${label}`}
     >
       <legend>
-        {conjure
-          ? "Keywords for each generated card"
-          : "Keywords for the next card"}
+        {parting
+          ? "Keywords for gift recipients"
+          : conjure
+            ? "Keywords for each generated card"
+            : "Keywords for the next card"}
       </legend>
       <p>
-        {conjure
-          ? "Every copy gains these keywords when generated. They activate only when that copy is played. Use keywords alone or combine them with extra pips. "
-          : "They are added before its on-play checks and captures. Choose None to omit a pip change. "}
+        {parting
+          ? "Hand recipients gain these abilities for their later plays and discards. Board recipients gain passive abilities immediately; on-play effects do not replay. "
+          : conjure
+            ? "Every copy gains these keywords when generated. They activate only when that copy is played. Use keywords alone or combine them with extra pips. "
+            : "They are added before its on-play checks and captures. Choose None to omit a pip change. "}
         Unique keywords already on the same edge are kept; extra grants stop at
         the card’s 24-keyword limit.
       </p>
@@ -1284,7 +1368,11 @@ function GrantKeywordFields({
             >
               <Fields
                 keyword={grant}
-                allowHandOnly={conjure}
+                allowHandOnly={
+                  conjure ||
+                  (parting &&
+                    ["hand", "enemy-hand", "hands"].includes(keyword.target))
+                }
                 label={grantLabel}
                 element={element}
                 depth={depth + 1}

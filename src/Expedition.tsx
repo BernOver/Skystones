@@ -343,24 +343,44 @@ function ExpeditionView({
     }
   }, [run, testMode]);
   useEffect(() => {
-    if (!run || setup || run.phase !== "battle" || run.battle?.current !== 1)
+    if (
+      !run ||
+      setup ||
+      discardTarget ||
+      run.phase !== "battle" ||
+      run.battle?.current !== 1
+    )
       return;
     const floor = run.floor,
       turn = run.battle.turns;
-    const timer = setTimeout(
-      () =>
+    const timer = setTimeout(() => {
+      try {
+        const next = adventureEnemyMove(run, [0]);
         setRun((current) =>
-          current &&
-          current.floor === floor &&
-          current.phase === "battle" &&
-          current.battle?.turns === turn
-            ? adventureEnemyMove(current)
+          current?.floor === floor && current.battle?.turns === turn
+            ? next
             : current,
-        ),
-      550,
-    );
+        );
+      } catch (error) {
+        if (error instanceof DiscardSelectionRequired && error.move)
+          setDiscardTarget({
+            placement: error.move.index,
+            cardIndex: error.move.cardIndex,
+            targets: error.move.targets,
+            choices: [],
+            pending: error.pending,
+          });
+        else
+          setError(
+            error instanceof Error
+              ? error.message
+              : "The opponent could not finish that play.",
+          );
+      }
+    }, 550);
     return () => clearTimeout(timer);
-  }, [run, setup]);
+  }, [run, setup, discardTarget]);
+
   useEffect(() => {
     setInspection(null);
     setSelected(null);
@@ -580,7 +600,8 @@ function ExpeditionView({
         cardIndex,
         targets,
         choices,
-        true,
+        run.battle?.current === 0,
+        [0],
       );
       setRun(next);
       setError("");
@@ -605,6 +626,31 @@ function ExpeditionView({
             : "That card could not be played.",
         );
     }
+  }
+  function cancelDiscardChoice() {
+    if (
+      discardTarget &&
+      run?.battle?.current === 1 &&
+      discardTarget.pending.gift
+    ) {
+      try {
+        setRun(
+          playAdventureCard(
+            run,
+            discardTarget.placement,
+            discardTarget.cardIndex,
+            discardTarget.targets,
+            discardTarget.choices,
+            false,
+            [],
+          ),
+        );
+      } catch (error) {
+        setError((error as Error).message);
+        return;
+      }
+    }
+    setDiscardTarget(null);
   }
   function chooseTarget(boardIndex: number, chosenSide?: Side) {
     if (!target || !battle) return;
@@ -1816,14 +1862,23 @@ function ExpeditionView({
       )}
       {discardTarget && battle && (
         <RunDialog
-          title="Choose cards to discard"
-          onClose={() => setDiscardTarget(null)}
+          title={
+            discardTarget.pending.gift
+              ? "Choose Parting Gift targets"
+              : "Choose cards to discard"
+          }
+          onClose={cancelDiscardChoice}
         >
           <DiscardPicker
-            key={`${discardTarget.pending.keywordIndex}-${discardTarget.pending.owner}`}
+            key={`${discardTarget.pending.keywordIndex}-${discardTarget.pending.owner}-${discardTarget.pending.gift?.id || "discard"}`}
             pending={discardTarget.pending}
             names={["You", "Keeper"]}
-            onCancel={() => setDiscardTarget(null)}
+            onCancel={cancelDiscardChoice}
+            cancelLabel={
+              battle.current === 1 && discardTarget.pending.gift
+                ? "Choose automatically"
+                : "Cancel play"
+            }
             onConfirm={(cardIds) =>
               commitAdventurePlay(
                 discardTarget.placement,
@@ -1835,6 +1890,9 @@ function ExpeditionView({
                     keywordIndex: discardTarget.pending.keywordIndex,
                     owner: discardTarget.pending.owner,
                     cardIds,
+                    ...(discardTarget.pending.gift
+                      ? { giftId: discardTarget.pending.gift.id }
+                      : {}),
                   },
                 ],
               )

@@ -141,10 +141,16 @@ Discard abilities: add them in Card studio > Add keyword.
 - Scavenge: board cards gain configured pips and/or Shield for each actual
   discard from your hand, the opponent's, or either hand. Buffs do not repeat
   captures. Skipped discards grant nothing.
-- Parting Gift: when discarded, buff its owner's board cards, remaining hand,
-  or the card causing the discard. Choose pips and/or Shield on specified sides.
-  Hand gifts apply when those cards are played. Permanent card templates and
-  the Adventure pack stay unchanged. Silence disables board discard bonuses.
+- Parting Gift: when discarded, add or remove pips, add Shield, and/or give up
+  to five keywords. Target either player's hand or board, both hands or boards,
+  or the card causing the discard. Affect all cards, 1-5 chosen cards, or 1-5
+  random cards. Its owner chooses chosen targets, even during an enemy turn;
+  Choose automatically resolves a reaction without making a manual choice.
+  Pips stay between zero and 99. Hand gifts work on later plays or discards.
+  Board gifts activate passive abilities without replaying on-play effects or
+  captures. Add multiple Parting Gift entries for different targets or effects.
+  Changes last for this battle and survive reloads. Permanent card templates
+  and the Adventure pack stay unchanged. Silence disables board discard gifts.
 - Discard Priority: random discards select the highest priority first (1-99).
   Unmarked cards rank zero; equal priorities are random. Chosen discards ignore
   priority. These hand-only abilities can be printed or granted by Conjure.
