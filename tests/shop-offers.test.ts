@@ -1,3 +1,4 @@
+import { KEYWORD_RULES } from "../src/game.ts";
 import { hasSkystonesArtwork } from "../src/characters.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -31,7 +32,7 @@ test("shops roll all keyword types and four directions, with complete valid offe
       if (!("side" in offer.keyword))
         assert.equal("side" in offer.keyword, false);
     }
-  assert.equal(types.size, 20);
+  assert.equal(types.size, Object.keys(KEYWORD_RULES).length);
   assert.equal(directions.size, 4);
   assert.equal(pipDirections.size, 4);
   assert.ok(

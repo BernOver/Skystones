@@ -85,6 +85,8 @@ export type KeywordType =
   | "sunder"
   | "silence"
   | "dizzy"
+  | "shuffle"
+  | "enchant"
   | "shield"
   | "combo"
   | "next-play"
@@ -119,6 +121,7 @@ export type BasicKeyword =
   | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | { type: "resonance"; side: Side; element: Element; tribe?: Tribe }
   | { type: "dizzy"; sides?: Side[] }
+  | { type: "shuffle"; sides: Side[] }
   | { type: "shield"; side: Side; amount?: number }
   | {
       type: "next-play";
@@ -203,6 +206,14 @@ export const KEYWORD_RULES = {
   sunder: { name: "Sunder", condition: "on play" },
   silence: { name: "Silence", condition: "on play" },
   dizzy: { name: "Dizzy", condition: "before captures" },
+  enchant: {
+    name: "Enchant",
+    condition: "grant keywords to hand or board cards",
+  },
+  shuffle: {
+    name: "Shuffle",
+    condition: "rearrange selected pips before captures",
+  },
   shield: { name: "Shield", condition: "defense only" },
   combo: { name: "Combo", condition: "previous card match" },
   "next-play": {
@@ -237,12 +248,14 @@ export function keywordKey(keyword: StoneKeyword): string {
     keyword.type === "amplify" ||
     keyword.type === "silence" ||
     keyword.type === "dizzy" ||
+    keyword.type === "shuffle" ||
     keyword.type === "combo" ||
     keyword.type === "environment" ||
     keyword.type === "conjure" ||
     keyword.type === "discard" ||
     keyword.type === "scavenge" ||
     keyword.type === "parting-gift" ||
+    keyword.type === "enchant" ||
     keyword.type === "discard-priority"
     ? keyword.type
     : `${keyword.type}:${keyword.side}`;
@@ -260,7 +273,8 @@ export function repeatableKeyword(type: KeywordType): boolean {
     type === "environment" ||
     type === "conjure" ||
     type === "discard" ||
-    type === "parting-gift"
+    type === "parting-gift" ||
+    type === "enchant"
   );
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
@@ -280,6 +294,7 @@ export function keywordGroups(keywords: StoneKeyword[], halfScoped = false) {
       keyword.type === "discard" ||
       keyword.type === "scavenge" ||
       keyword.type === "parting-gift" ||
+      keyword.type === "enchant" ||
       keyword.type === "discard-priority"
     )
       return [
@@ -358,6 +373,7 @@ export interface PlacedStone {
     sides?: Side[];
     timing?: "before-captures";
   };
+  shuffles?: { before: Edges; after: Edges; sides: Side[] }[];
   shields?: Edges;
   grantedKeywords?: BasicKeyword[];
   comboActive?: boolean;
@@ -1070,6 +1086,11 @@ export function chooseKeywordTargets(
           dizzySides(keyword),
         );
     });
+  edges = applyShuffles(
+    edges,
+    effectiveKeywords(stone, board, owner),
+    placementSeed(board, index, owner),
+  ).edges;
   let state = prepareTargeting(board, original, targets, owner, index);
   while (state.pending) {
     let { options } = state.pending;
@@ -1176,6 +1197,61 @@ export function redistributePips(
 
 export function dizzySides(keyword: { sides?: Side[] }): Side[] {
   return keyword.sides || [0, 1, 2, 3];
+}
+export function validShuffleSides(value: unknown): value is Side[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    value.length <= 4 &&
+    new Set(value).size === value.length &&
+    value.every((side) => Number.isInteger(side) && side >= 0 && side <= 3)
+  );
+}
+// Permute whole side values: no pip cap, truncation, or new pips, including on upgraded cards.
+export function shufflePips(
+  edges: Edges,
+  seed: number,
+  sides: readonly Side[],
+): Edges {
+  if (!validShuffleSides(sides))
+    throw new Error("Shuffle needs two to four different sides.");
+  const selected = [...sides].sort(),
+    result = [...edges] as Edges;
+  let state = seed >>> 0 || 0x9e3779b9;
+  for (let i = selected.length - 1; i > 0; i--) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const a = selected[i],
+      b = selected[(state >>> 0) % (i + 1)];
+    [result[a], result[b]] = [result[b], result[a]];
+  }
+  return result;
+}
+export function applyShuffles(
+  edges: Edges,
+  keywords: BasicKeyword[],
+  seed: number,
+) {
+  let after = edges;
+  const shuffles: NonNullable<PlacedStone["shuffles"]> = [];
+  keywords
+    .filter((keyword) => keyword.type === "shuffle")
+    .forEach((keyword, n) => {
+      if (keyword.type !== "shuffle") return;
+      const before = after;
+      after = shufflePips(
+        before,
+        seed ^ Math.imul(n + 1, 0x85ebca6b),
+        keyword.sides,
+      );
+      shuffles.push({
+        before: [...before] as Edges,
+        after: [...after] as Edges,
+        sides: [...keyword.sides].sort(),
+      });
+    });
+  return { edges: after, shuffles };
 }
 export function rollDizzy(
   edges: Edges,
@@ -1487,6 +1563,12 @@ export function placeStone(
       },
     };
   }
+  const shuffled = applyShuffles(
+    next[index]!.edges || stone.edges,
+    effectiveKeywords(stone, board, owner),
+    options.seed ?? placementSeed(board, index, owner),
+  );
+  if (shuffled.shuffles.length) next[index] = { ...next[index]!, ...shuffled };
   next = withTrap(
     withTileEnvironments(next),
     next[index]?.placedTrap || options.trap || boardTrap(board),
@@ -1831,12 +1913,14 @@ export function validateKeywords(
       keyword.type === "amplify" ||
       keyword.type === "silence" ||
       keyword.type === "dizzy" ||
+      keyword.type === "shuffle" ||
       keyword.type === "combo" ||
       keyword.type === "environment" ||
       keyword.type === "conjure" ||
       keyword.type === "discard" ||
       keyword.type === "scavenge" ||
       keyword.type === "parting-gift" ||
+      keyword.type === "enchant" ||
       keyword.type === "discard-priority"
         ? keyword.side !== undefined
         : !(
@@ -1882,9 +1966,13 @@ export function validateKeywords(
     if (keyword.type === "conjure" && !validateConjure(keyword, depth))
       return false;
     if (
-      ["discard", "scavenge", "parting-gift", "discard-priority"].includes(
-        keyword.type,
-      ) &&
+      [
+        "discard",
+        "scavenge",
+        "parting-gift",
+        "enchant",
+        "discard-priority",
+      ].includes(keyword.type) &&
       !validDiscardKeyword(keyword, depth)
     )
       return false;
@@ -1940,6 +2028,8 @@ export function validateKeywords(
           (side: number) => Number.isInteger(side) && side >= 0 && side <= 3,
         ))
     )
+      return false;
+    if (keyword.type === "shuffle" && !validShuffleSides(keyword.sides))
       return false;
     if (
       keyword.type === "resonance" &&

@@ -1,3 +1,4 @@
+import { hasTribe } from "./tribes.ts";
 import { characterDefault } from "./cardDefaults.ts";
 import { applyConjure, CONJURE_CARDS } from "./conjure.ts";
 import { assembleParts } from "./assemble.ts";
@@ -15,6 +16,7 @@ import {
   keywordShieldEdges,
   shieldEdges,
   cardEdges,
+  score,
 } from "./game.ts";
 import type {
   Board,
@@ -45,6 +47,9 @@ export type PartingGiftKeyword = {
   count?: number;
   keywords?: StoneKeyword[];
 } & BuffSpec;
+export type EnchantKeyword = Omit<PartingGiftKeyword, "type"> & {
+  type: "enchant";
+};
 export type DiscardKeyword =
   | {
       type: "discard";
@@ -54,6 +59,7 @@ export type DiscardKeyword =
     }
   | ({ type: "scavenge"; from: "self" | "opponent" | "both" } & BuffSpec)
   | PartingGiftKeyword
+  | EnchantKeyword
   | { type: "discard-priority"; priority?: number };
 export interface GiftOption {
   id: string;
@@ -77,7 +83,13 @@ export interface DiscardChoice {
   cardIds: string[];
 }
 export interface DiscardPending {
-  gift?: { id: string; source: string; text: string; options: GiftOption[] };
+  gift?: {
+    kind?: "enchant";
+    id: string;
+    source: string;
+    text: string;
+    options: GiftOption[];
+  };
   trap?: Trap;
   keywordIndex: number;
   owner: Owner;
@@ -91,6 +103,7 @@ export interface DiscardRecord {
   owner: Owner;
   requested: number;
   spells?: string[];
+  enchant?: true;
   cards: { id: string; name: string }[];
   skipped: number;
   buffs: {
@@ -155,7 +168,10 @@ export function validDiscardKeyword(value: DiscardKeyword, depth = 0): boolean {
         validBuffSpec(value)
       );
     case "parting-gift":
+    case "enchant":
       return (
+        (value.type !== "enchant" ||
+          (value.target !== "discarder" && !!value.keywords?.length)) &&
         [
           "discarder",
           "allies",
@@ -230,6 +246,7 @@ function addBuffs(
 function boardKeywordGift(
   cell: NonNullable<Board[number]>,
   grants: StoneKeyword[],
+  board?: Board,
 ) {
   const runtime =
     !!cell.stone.runtimeEffects || grants.some((k) => !validateKeywords([k]));
@@ -256,15 +273,16 @@ function boardKeywordGift(
             1,
           ),
         );
+  const newEffects = merged.added.flatMap<BasicKeyword>((k) =>
+    k.type === "combo" ? [] : scaleEffect(k, multiplier(k.type, amplifiers)),
+  );
   const effects = [
     ...previous.flatMap<BasicKeyword>((k) =>
       k.type === "shield" || k.type === "scavenge"
         ? scaleEffect(k, multiplier(k.type, merged.added))
         : [k],
     ),
-    ...merged.added.flatMap<BasicKeyword>((k) =>
-      k.type === "combo" ? [] : scaleEffect(k, multiplier(k.type, amplifiers)),
-    ),
+    ...newEffects,
   ];
   const stone = {
     ...cell.stone,
@@ -281,8 +299,56 @@ function boardKeywordGift(
   ).map((n, side) =>
     Math.max(0, Math.min(198, n + native[side] - oldShields[side])),
   ) as Edges;
+  const bonus: Edges = [0, 0, 0, 0],
+    activated = [...(cell.activeKeywords || [])];
+  if (board) {
+    const scores = score(board),
+      owner = cell.owner;
+    for (const keyword of newEffects.flatMap((k) =>
+      scaleEffect(k, trapKeywordMultiplier(boardTrap(board), stone, k.type)),
+    )) {
+      if (
+        (keyword.type === "head-start" && scores[owner] > scores[1 - owner]) ||
+        (keyword.type === "comeback" && scores[owner] < scores[1 - owner])
+      ) {
+        if (keyword.type !== "head-start" && keyword.type !== "comeback")
+          continue;
+        bonus[keyword.side] += keyword.amount ?? 1;
+        activated.push(keyword);
+      } else if (keyword.type === "resonance") {
+        const count = board.filter(
+          (c) =>
+            c &&
+            (keyword.tribe
+              ? hasTribe(c.stone, keyword.tribe)
+              : c.stone.element === keyword.element),
+        ).length;
+        const amount =
+          count *
+          ((keyword as typeof keyword & { multiplier?: number }).multiplier ||
+            1);
+        if (amount) {
+          bonus[keyword.side] += amount;
+          activated.push({ ...keyword, bonus: Math.min(99, amount) });
+        }
+      }
+    }
+  }
   return {
-    cell: { ...cell, stone, resolvedEffects: effects, shields },
+    cell: {
+      ...cell,
+      stone,
+      resolvedEffects: effects,
+      shields,
+      ...(board
+        ? {
+            edges: (cell.edges || cell.stone.edges).map((n, side) =>
+              Math.min(99, n + bonus[side]),
+            ) as Edges,
+            activeKeywords: activated,
+          }
+        : {}),
+    },
     added: merged.added,
   };
 }
@@ -366,7 +432,11 @@ export function resolveDiscards(
   if (!caster || caster.discards) return { board, hands, records: [] };
   const keywords = placedKeywords(caster),
     actor = caster.playedBy ?? caster.owner;
-  if (!keywords.some((keyword) => keyword.type === "discard")) {
+  if (
+    !keywords.some(
+      (keyword) => keyword.type === "discard" || keyword.type === "enchant",
+    )
+  ) {
     if (choices.length) throw new Error("This card has no discard choices.");
     return { board, hands, records: [] };
   }
@@ -420,7 +490,11 @@ export function resolveDiscards(
       discardBuffs: addBuffs(cell.discardBuffs, actual),
     };
     const grants = (spec as PartingGiftKeyword).keywords || [];
-    const result = boardKeywordGift(updated, grants);
+    const result = boardKeywordGift(
+      updated,
+      grants,
+      record.enchant ? nextBoard : undefined,
+    );
     updated = result.cell;
     nextBoard[target] = updated;
     record.buffs.push({
@@ -432,7 +506,213 @@ export function resolveDiscards(
       location: "board",
     });
   };
+  const applyGift = (
+    card: Stone,
+    owner: Owner,
+    gift: PartingGiftKeyword,
+    keywordIndex: number,
+    giftId: string,
+    record: DiscardRecord,
+  ): DiscardPending | undefined => {
+    const options: GiftOption[] = [];
+    const handTarget = ["hand", "enemy-hand", "hands"].includes(gift.target);
+    if (handTarget)
+      for (const recipientOwner of [0, 1] as Owner[]) {
+        if (
+          (gift.target === "hand" && recipientOwner !== owner) ||
+          (gift.target === "enemy-hand" && recipientOwner === owner)
+        )
+          continue;
+        for (const target of nextHands[recipientOwner])
+          options.push({
+            id: `hand:${recipientOwner}:${target.id}`,
+            stone: target,
+            owner: recipientOwner,
+            location: "hand",
+            edges: target.edges.map((n, s) =>
+              Math.max(
+                0,
+                Math.min(99, n + (target.discardBuffs?.pips[s] || 0)),
+              ),
+            ) as Edges,
+          });
+      }
+    else
+      nextBoard.forEach((cell, target) => {
+        if (
+          !cell ||
+          cell.silenced ||
+          (gift.target === "discarder" && target !== index) ||
+          (gift.target === "allies" && cell.owner !== owner) ||
+          (gift.target === "enemies" && cell.owner === owner)
+        )
+          return;
+        options.push({
+          id: `board:${target}`,
+          stone: cell.stone,
+          owner: cell.owner,
+          location: "board",
+          boardIndex: target,
+          edges: cardEdges(cell),
+          shields: cell.shields,
+          keywordShields: keywordShieldEdges(cell),
+          environment: cell.environment,
+        });
+      });
+    const matches = choices.filter(
+      (c) =>
+        c.giftId === giftId &&
+        c.keywordIndex === keywordIndex &&
+        c.owner === owner,
+    );
+    if (matches.length > 1)
+      throw new Error("Choose each Parting Gift only once.");
+    const mode = gift.mode || "all",
+      count =
+        mode === "all"
+          ? options.length
+          : Math.min(gift.count || 1, options.length);
+    let selected: GiftOption[] = [];
+    if (mode === "chosen" && count) {
+      const choice = matches[0];
+      const manual = manualGiftOwners
+        ? manualGiftOwners.includes(owner)
+        : !automatic && owner === actor;
+      if (!choice && manual)
+        return {
+          keywordIndex,
+          owner,
+          count,
+          requested: gift.count || 1,
+          required: 0,
+          cards: options.map((o) => o.stone),
+          trap: boardTrap(nextBoard),
+          gift: {
+            id: giftId,
+            ...(record.enchant ? { kind: "enchant" as const } : {}),
+            source: card.name,
+            text: record.enchant
+              ? enchantText({ ...gift, type: "enchant" })
+              : discardText(gift),
+            options,
+          },
+        };
+      if (choice) {
+        if (
+          choice.cardIds.length !== count ||
+          new Set(choice.cardIds).size !== count ||
+          choice.cardIds.some((id) => !options.some((o) => o.id === id))
+        )
+          throw new Error(
+            `Choose exactly ${count} eligible Parting Gift targets.`,
+          );
+        used.add(choice);
+        selected = choice.cardIds.map(
+          (id) => options.find((o) => o.id === id)!,
+        );
+      } else {
+        const value = (o: GiftOption) =>
+          (o.owner === owner ? 1 : -1) *
+          ((gift.pips || []).reduce(
+            (sum, p) =>
+              sum +
+              Math.max(0, Math.min(99, o.edges[p.side] + p.amount)) -
+              o.edges[p.side],
+            0,
+          ) +
+            (gift.shields || []).reduce((sum, p) => sum + p.amount, 0) +
+            (gift.keywords?.length || 0) * 2);
+        selected = [...options]
+          .sort((a, b) => value(b) - value(a))
+          .slice(0, count);
+      }
+    } else if (mode === "random") {
+      if (matches.length)
+        throw new Error("Random Parting Gift cannot take a chosen target.");
+      const pool = [...options];
+      for (let n = 0; n < count; n++)
+        selected.push(pool.splice(Math.floor(random() * pool.length), 1)[0]);
+    } else selected = options;
+    for (const option of selected) {
+      if (option.location === "board") {
+        buffBoard(option.boardIndex!, gift, card.name, record);
+        continue;
+      }
+      const recipient = nextHands[option.owner].find(
+        (s) => s.id === option.stone.id,
+      )!;
+      const extra = specifiedBuffs(gift);
+      const before = recipient.edges.map((n, s) =>
+        Math.max(0, Math.min(99, n + (recipient.discardBuffs?.pips[s] || 0))),
+      ) as Edges;
+      extra.pips = before.map(
+        (n, s) => Math.max(0, Math.min(99, n + extra.pips[s])) - n,
+      ) as Edges;
+      const netBuff: DiscardBuffs = {
+        pips: before.map(
+          (n, s) => n + extra.pips[s] - recipient.edges[s],
+        ) as Edges,
+        shields: extra.shields.map((n, s) =>
+          Math.min(99, n + (recipient.discardBuffs?.shields[s] || 0)),
+        ) as Edges,
+      };
+      extra.shields = netBuff.shields.map(
+        (n, s) => n - (recipient.discardBuffs?.shields[s] || 0),
+      ) as Edges;
+      const runtime =
+        !!recipient.runtimeEffects ||
+        (gift.keywords || []).some((k) => !validateKeywords([k]));
+      const merged = mergeKeywordGrants(
+        recipient.keywords || [],
+        gift.keywords || [],
+        runtime,
+      );
+      const updated = {
+        ...recipient,
+        keywords: merged.keywords,
+        discardBuffs: [...netBuff.pips, ...netBuff.shields].some(Boolean)
+          ? netBuff
+          : undefined,
+        ...(runtime ? { runtimeEffects: true as const } : {}),
+      };
+      nextHands[option.owner] = nextHands[option.owner].map((s) =>
+        s.id === recipient.id ? updated : s,
+      );
+      record.buffs.push({
+        source: card.name,
+        target: recipient.name,
+        ...extra,
+        ...(merged.added.length ? { keywords: merged.added } : {}),
+        owner: option.owner,
+        location: "hand",
+      });
+    }
+    return undefined;
+  };
   for (const [keywordIndex, keyword] of keywords.entries()) {
+    if (keyword.type === "enchant") {
+      const record: DiscardRecord = {
+        keywordIndex,
+        owner: actor,
+        requested: 0,
+        cards: [],
+        skipped: 0,
+        buffs: [],
+        enchant: true,
+      };
+      const pending = applyGift(
+        caster.stone,
+        actor,
+        { ...keyword, type: "parting-gift" },
+        keywordIndex,
+        `enchant:${keywordIndex}:${actor}`,
+        record,
+      );
+      if (pending)
+        return { board: nextBoard, hands: nextHands, records, pending };
+      records.push(record);
+      continue;
+    }
     if (keyword.type !== "discard") continue;
     const owners: Owner[] =
       keyword.recipient === "both"
@@ -608,191 +888,16 @@ export function resolveDiscards(
         );
         for (const [giftIndex, gift] of gifts.entries()) {
           if (gift.type !== "parting-gift") continue;
-          const options: GiftOption[] = [];
-          const handTarget = ["hand", "enemy-hand", "hands"].includes(
-            gift.target,
+          const pending = applyGift(
+            card,
+            owner,
+            gift,
+            keywordIndex,
+            `${keywordIndex}:${owner}:${discardIndex}:${giftIndex}`,
+            record,
           );
-          if (handTarget)
-            for (const recipientOwner of [0, 1] as Owner[]) {
-              if (
-                (gift.target === "hand" && recipientOwner !== owner) ||
-                (gift.target === "enemy-hand" && recipientOwner === owner)
-              )
-                continue;
-              for (const target of nextHands[recipientOwner])
-                options.push({
-                  id: `hand:${recipientOwner}:${target.id}`,
-                  stone: target,
-                  owner: recipientOwner,
-                  location: "hand",
-                  edges: target.edges.map((n, s) =>
-                    Math.max(
-                      0,
-                      Math.min(99, n + (target.discardBuffs?.pips[s] || 0)),
-                    ),
-                  ) as Edges,
-                });
-            }
-          else
-            nextBoard.forEach((cell, target) => {
-              if (
-                !cell ||
-                cell.silenced ||
-                (gift.target === "discarder" && target !== index) ||
-                (gift.target === "allies" && cell.owner !== owner) ||
-                (gift.target === "enemies" && cell.owner === owner)
-              )
-                return;
-              options.push({
-                id: `board:${target}`,
-                stone: cell.stone,
-                owner: cell.owner,
-                location: "board",
-                boardIndex: target,
-                edges: cardEdges(cell),
-                shields: cell.shields,
-                keywordShields: keywordShieldEdges(cell),
-                environment: cell.environment,
-              });
-            });
-          const giftId = `${keywordIndex}:${owner}:${discardIndex}:${giftIndex}`;
-          const matches = choices.filter(
-            (c) =>
-              c.giftId === giftId &&
-              c.keywordIndex === keywordIndex &&
-              c.owner === owner,
-          );
-          if (matches.length > 1)
-            throw new Error("Choose each Parting Gift only once.");
-          const mode = gift.mode || "all",
-            count =
-              mode === "all"
-                ? options.length
-                : Math.min(gift.count || 1, options.length);
-          let selected: GiftOption[] = [];
-          if (mode === "chosen" && count) {
-            const choice = matches[0];
-            const manual = manualGiftOwners
-              ? manualGiftOwners.includes(owner)
-              : !automatic && owner === actor;
-            if (!choice && manual)
-              return {
-                board: nextBoard,
-                hands: nextHands,
-                records,
-                pending: {
-                  keywordIndex,
-                  owner,
-                  count,
-                  requested: gift.count || 1,
-                  required: 0,
-                  cards: options.map((o) => o.stone),
-                  trap: boardTrap(nextBoard),
-                  gift: {
-                    id: giftId,
-                    source: card.name,
-                    text: discardText(gift),
-                    options,
-                  },
-                },
-              };
-            if (choice) {
-              if (
-                choice.cardIds.length !== count ||
-                new Set(choice.cardIds).size !== count ||
-                choice.cardIds.some((id) => !options.some((o) => o.id === id))
-              )
-                throw new Error(
-                  `Choose exactly ${count} eligible Parting Gift targets.`,
-                );
-              used.add(choice);
-              selected = choice.cardIds.map(
-                (id) => options.find((o) => o.id === id)!,
-              );
-            } else {
-              const value = (o: GiftOption) =>
-                (o.owner === owner ? 1 : -1) *
-                ((gift.pips || []).reduce(
-                  (sum, p) =>
-                    sum +
-                    Math.max(0, Math.min(99, o.edges[p.side] + p.amount)) -
-                    o.edges[p.side],
-                  0,
-                ) +
-                  (gift.shields || []).reduce((sum, p) => sum + p.amount, 0) +
-                  (gift.keywords?.length || 0) * 2);
-              selected = [...options]
-                .sort((a, b) => value(b) - value(a))
-                .slice(0, count);
-            }
-          } else if (mode === "random") {
-            if (matches.length)
-              throw new Error(
-                "Random Parting Gift cannot take a chosen target.",
-              );
-            const pool = [...options];
-            for (let n = 0; n < count; n++)
-              selected.push(
-                pool.splice(Math.floor(random() * pool.length), 1)[0],
-              );
-          } else selected = options;
-          for (const option of selected) {
-            if (option.location === "board") {
-              buffBoard(option.boardIndex!, gift, card.name, record);
-              continue;
-            }
-            const recipient = nextHands[option.owner].find(
-              (s) => s.id === option.stone.id,
-            )!;
-            const extra = specifiedBuffs(gift);
-            const before = recipient.edges.map((n, s) =>
-              Math.max(
-                0,
-                Math.min(99, n + (recipient.discardBuffs?.pips[s] || 0)),
-              ),
-            ) as Edges;
-            extra.pips = before.map(
-              (n, s) => Math.max(0, Math.min(99, n + extra.pips[s])) - n,
-            ) as Edges;
-            const netBuff: DiscardBuffs = {
-              pips: before.map(
-                (n, s) => n + extra.pips[s] - recipient.edges[s],
-              ) as Edges,
-              shields: extra.shields.map((n, s) =>
-                Math.min(99, n + (recipient.discardBuffs?.shields[s] || 0)),
-              ) as Edges,
-            };
-            extra.shields = netBuff.shields.map(
-              (n, s) => n - (recipient.discardBuffs?.shields[s] || 0),
-            ) as Edges;
-            const runtime =
-              !!recipient.runtimeEffects ||
-              (gift.keywords || []).some((k) => !validateKeywords([k]));
-            const merged = mergeKeywordGrants(
-              recipient.keywords || [],
-              gift.keywords || [],
-              runtime,
-            );
-            const updated = {
-              ...recipient,
-              keywords: merged.keywords,
-              discardBuffs: [...netBuff.pips, ...netBuff.shields].some(Boolean)
-                ? netBuff
-                : undefined,
-              ...(runtime ? { runtimeEffects: true as const } : {}),
-            };
-            nextHands[option.owner] = nextHands[option.owner].map((s) =>
-              s.id === recipient.id ? updated : s,
-            );
-            record.buffs.push({
-              source: card.name,
-              target: recipient.name,
-              ...extra,
-              ...(merged.added.length ? { keywords: merged.added } : {}),
-              owner: option.owner,
-              location: "hand",
-            });
-          }
+          if (pending)
+            return { board: nextBoard, hands: nextHands, records, pending };
         }
         if (card.spell === "discard") {
           const targets = chooseKeywordTargets(nextBoard, -1, card, owner);
@@ -847,9 +952,10 @@ export function discardSummary(
   names: string[],
 ): string {
   return records
-    .map(
-      (record) =>
-        `${names[record.owner]} discarded ${record.cards.length}${record.cards.length ? `: ${record.cards.map((card) => card.name).join(", ")}` : ""}${record.skipped ? ` · ${record.skipped} protected to finish the board` : ""}${record.buffs.length ? ` · ${record.buffs.length} buffs` : ""}${record.spells?.length ? ` · Discard spells: ${record.spells.join(", ")}` : ""}`,
+    .map((record) =>
+      record.enchant
+        ? `${names[record.owner]} Enchant: ${record.buffs.length} card${record.buffs.length === 1 ? "" : "s"} affected`
+        : `${names[record.owner]} discarded ${record.cards.length}${record.cards.length ? `: ${record.cards.map((card) => card.name).join(", ")}` : ""}${record.skipped ? ` · ${record.skipped} protected to finish the board` : ""}${record.buffs.length ? ` · ${record.buffs.length} buffs` : ""}${record.spells?.length ? ` · Discard spells: ${record.spells.join(", ")}` : ""}`,
     )
     .join(" · ");
 }
@@ -863,7 +969,9 @@ export function buffText(spec: BuffSpec): string {
     )
     .join(" · ");
 }
-export function partingGiftSummary(k: PartingGiftKeyword): string {
+export function partingGiftSummary(
+  k: PartingGiftKeyword | EnchantKeyword,
+): string {
   const target = {
     discarder: "CASTER",
     allies: "ALLY BOARD",
@@ -890,8 +998,13 @@ export function partingGiftSummary(k: PartingGiftKeyword): string {
     .filter(Boolean)
     .join(" · ");
 }
+export function enchantText(keyword: EnchantKeyword): string {
+  return `On play, ${partingGiftSummary(keyword)}. Resolve after Conjure. Hand recipients use granted keywords on their later plays or discards. Board Shield and conditional pip bonuses activate immediately for their controller; on-play effects are attached without replaying them or captures.`;
+}
 export function discardText(keyword: DiscardKeyword): string {
   switch (keyword.type) {
+    case "enchant":
+      return enchantText(keyword);
     case "discard":
       return `Discard up to ${keyword.count} ${keyword.mode === "chosen" ? "chosen" : "random"} card${keyword.count === 1 ? "" : "s"} from ${keyword.recipient === "both" ? "both hands" : keyword.recipient === "self" ? "your hand" : "the opponent’s hand"} after captures and Conjure. Keep enough cards for every remaining turn.`;
     case "scavenge":
@@ -942,7 +1055,8 @@ export function validateDiscardRecords(
         record.keywordIndex < (runtime ? 4096 : 29) &&
         [0, 1].includes(record.owner) &&
         Number.isInteger(record.requested) &&
-        record.requested >= 1 &&
+        (record.enchant === undefined || record.enchant === true) &&
+        record.requested >= (record.enchant ? 0 : 1) &&
         record.requested <= (runtime ? 160 : 5) &&
         Array.isArray(record.cards) &&
         record.cards.length <= (runtime ? 20 : 5) &&

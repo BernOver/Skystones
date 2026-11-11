@@ -509,7 +509,7 @@ function ExpeditionView({
   const keywordDirection =
     offeredKeyword.type === "environment"
       ? ENVIRONMENTS[offeredKeyword.environment.kind].name
-      : offeredKeyword.type === "dizzy"
+      : offeredKeyword.type === "dizzy" || offeredKeyword.type === "shuffle"
         ? (offeredKeyword.sides || [0, 1, 2, 3])
             .map((side) => SIDE_NAMES[side])
             .join("/")
@@ -1874,7 +1874,9 @@ function ExpeditionView({
         <RunDialog
           title={
             discardTarget.pending.gift
-              ? "Choose Parting Gift targets"
+              ? discardTarget.pending.gift.kind === "enchant"
+                ? "Choose Enchant targets"
+                : "Choose Parting Gift targets"
               : "Choose cards to discard"
           }
           onClose={cancelDiscardChoice}

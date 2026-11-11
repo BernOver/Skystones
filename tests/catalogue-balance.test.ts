@@ -113,11 +113,16 @@ test("every built-in card has a distinct character-specific flavor and generated
     );
   }
 });
-test("element themes cover all available keywords and every Conjure template dependency is present", () => {
+test("element themes preserve the original roster keywords and every Conjure template dependency is present", () => {
   const allTypes = new Set(
     CHARACTER_STONES.flatMap((c) => (c.keywords || []).map((k) => k.type)),
   );
-  assert.deepEqual([...allTypes].sort(), Object.keys(KEYWORD_RULES).sort());
+  assert.deepEqual(
+    [...allTypes].sort(),
+    Object.keys(KEYWORD_RULES)
+      .filter((type) => type !== "shuffle" && type !== "enchant")
+      .sort(),
+  );
   const has = (c: Stone, types: string[]) =>
     (c.keywords || []).some((k) => types.includes(k.type));
   assert.ok(

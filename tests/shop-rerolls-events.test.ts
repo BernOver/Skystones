@@ -1,3 +1,4 @@
+import { KEYWORD_RULES } from "../src/game.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -64,7 +65,7 @@ test("every merchant and reroll has a different keyword type from the previous o
     assert.equal(nextShop.shopRerolls, 0);
     roundtrip(nextShop);
   }
-  assert.equal(types.size, 20);
+  assert.equal(types.size, Object.keys(KEYWORD_RULES).length);
 });
 test("paid rerolls refresh all stock and workshop offers, retain purchases, and never replay entry gold", () => {
   const initial = {
@@ -207,7 +208,7 @@ test("the shrine offers three distinct stable keyword types and all twelve can a
       seen.add(offer.type);
     }
   }
-  assert.equal(seen.size, 20);
+  assert.equal(seen.size, Object.keys(KEYWORD_RULES).length);
 });
 for (const size of [3, 4] as const)
   test(`${size}×${size} shrine inscribes exactly one chosen stone for free and cannot be claimed twice`, () => {
@@ -240,9 +241,16 @@ for (const size of [3, 4] as const)
       ),
     };
     if (
-      ["sunder", "next-play", "environment", "conjure", "discard", "assemble", "amplify", "trap"].includes(
-        offer.type,
-      )
+      [
+        "sunder",
+        "next-play",
+        "environment",
+        "conjure",
+        "discard",
+        "assemble",
+        "amplify",
+        "trap",
+      ].includes(offer.type)
     )
       assert.ok(resolveAdventureEvent(duplicate, "inscribe:1", id));
     else

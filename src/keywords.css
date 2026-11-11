@@ -1265,3 +1265,9 @@
 .tribe-filter > label {
   font-size: 0;
 }
+
+.keyword-count {
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+}

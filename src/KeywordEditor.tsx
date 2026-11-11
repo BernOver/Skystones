@@ -49,6 +49,8 @@ export function defaultKeyword(
     return { type, effect: "all", duration: "next", count: 1 };
   if (type === "silence") return { type };
   if (type === "dizzy") return { type, sides: [side] };
+  if (type === "shuffle")
+    return { type, sides: [side, ((side + 1) % 4) as Side] };
   if (type === "combo") return { type, pips: [{ side, amount: 1 }] };
   if (type === "next-play") return { type, side, amount: 1, recipient: "self" };
   if (type === "shift")
@@ -73,6 +75,14 @@ export function defaultKeyword(
     return { type, mode: "random", recipient: "opponent", count: 1 };
   if (type === "scavenge")
     return { type, from: "self", pips: [{ side, amount: 1 }] };
+  if (type === "enchant")
+    return {
+      type,
+      target: "hand",
+      mode: "chosen",
+      count: 1,
+      keywords: [{ type: "shield", side }],
+    };
   if (type === "parting-gift")
     return { type, target: "allies", pips: [{ side, amount: 1 }] };
   if (type === "discard-priority") return { type, priority: 1 };
@@ -155,6 +165,7 @@ const SPELL_EFFECT_TYPES = new Set([
   "amplify",
   "combo",
   "parting-gift",
+  "enchant",
   "discard-priority",
 ]);
 function Fields({
@@ -480,12 +491,12 @@ function Fields({
           </small>
         </div>
       )}
-      {keyword.type === "parting-gift" && (
+      {(keyword.type === "parting-gift" || keyword.type === "enchant") && (
         <div className="effect-editor-options">
           <label>
             Buff recipients
             <select
-              aria-label={`Parting Gift recipients · ${label}`}
+              aria-label={`${keyword.type === "enchant" ? "Enchant" : "Parting Gift"} recipients · ${label}`}
               value={keyword.target}
               onChange={(event) =>
                 onChange({
@@ -503,7 +514,9 @@ function Fields({
               <option value="enemy-hand">Opponent’s hand</option>
               <option value="board">Both players’ board cards</option>
               <option value="hands">Both remaining hands</option>
-              <option value="discarder">The card causing the discard</option>
+              {keyword.type === "parting-gift" && (
+                <option value="discarder">The card causing the discard</option>
+              )}
             </select>
           </label>
           {keyword.target !== "discarder" && (
@@ -511,7 +524,7 @@ function Fields({
               <label>
                 Target selection
                 <select
-                  aria-label={`Parting Gift selection · ${label}`}
+                  aria-label={`${keyword.type === "enchant" ? "Enchant" : "Parting Gift"} selection · ${label}`}
                   value={keyword.mode || "all"}
                   onChange={(e) =>
                     onChange({
@@ -533,7 +546,7 @@ function Fields({
                 <label>
                   Number of targets
                   <select
-                    aria-label={`Parting Gift targets · ${label}`}
+                    aria-label={`${keyword.type === "enchant" ? "Enchant" : "Parting Gift"} targets · ${label}`}
                     value={keyword.count || 1}
                     onChange={(e) =>
                       onChange({ ...keyword, count: Number(e.target.value) })
@@ -551,7 +564,7 @@ function Fields({
           )}
           <BuffFields
             spec={keyword}
-            label={`Parting Gift · ${label}`}
+            label={`${keyword.type === "enchant" ? "Enchant" : "Parting Gift"} · ${label}`}
             signed
             onChange={(spec) => onChange({ ...keyword, ...spec })}
           />
@@ -563,12 +576,18 @@ function Fields({
             onChange={onChange}
           />
           <small>
-            Triggers from the actual hand card when discarded, including random
-            discards. Conjured cards can receive this keyword. It does not
-            trigger on play, and never changes your permanent card templates.
-            Its owner chooses chosen targets. Gifts to hand cards work when
-            played or discarded; board gifts activate passive abilities without
-            replaying on-play effects.
+            {keyword.type === "enchant" ? (
+              "On play, grant keywords after Conjure. The caster chooses recipients. Board Shield and conditional pip bonuses activate immediately for the recipient’s controller; other on-play effects are attached without replaying them. Canceling leaves the whole spell unchanged."
+            ) : (
+              <>
+                Triggers from the actual hand card when discarded, including
+                random discards. Conjured cards can receive this keyword. It
+                does not trigger on play, and never changes your permanent card
+                templates. Its owner chooses chosen targets. Gifts to hand cards
+                work when played or discarded; board gifts activate passive
+                abilities without replaying on-play effects.
+              </>
+            )}
           </small>
         </div>
       )}
@@ -1183,14 +1202,21 @@ function Fields({
             )}
         </div>
       )}
-      {keyword.type === "dizzy" && (
+      {(keyword.type === "dizzy" || keyword.type === "shuffle") && (
         <fieldset className="dizzy-side-options">
-          <legend>Dizzy sides</legend>
+          <legend>
+            {keyword.type === "shuffle" ? "Shuffle" : "Dizzy"} sides
+          </legend>
           {SIDE_NAMES.map((name, side) => (
             <label key={name}>
               <input
                 type="checkbox"
-                aria-label={`Dizzy ${name} · ${label}`}
+                aria-label={`${keyword.type === "shuffle" ? "Shuffle" : "Dizzy"} ${name} · ${label}`}
+                disabled={
+                  keyword.type === "shuffle" &&
+                  keyword.sides.length <= 2 &&
+                  keyword.sides.includes(side as Side)
+                }
                 checked={dizzySides(keyword).includes(side as Side)}
                 onChange={(event) =>
                   onChange({
@@ -1205,6 +1231,14 @@ function Fields({
             </label>
           ))}
         </fieldset>
+      )}
+      {keyword.type === "shuffle" && (
+        <p className="field-note">
+          Choose at least two sides. After Dizzy and before captures, randomly
+          rearrange their existing pip counts. Unmarked sides and the total stay
+          unchanged. Buffed pips are kept; there is no five-pip cap. An
+          unchanged arrangement is possible.
+        </p>
       )}
       {"side" in keyword && (
         <div>
@@ -1329,7 +1363,7 @@ function GrantKeywordFields({
 }: {
   keyword: Extract<
     StoneKeyword,
-    { type: "next-play" | "conjure" | "parting-gift" }
+    { type: "next-play" | "conjure" | "parting-gift" | "enchant" }
   >;
   element: Element;
   label: string;
@@ -1338,8 +1372,15 @@ function GrantKeywordFields({
 }) {
   const grants = keyword.keywords || [];
   const conjure = keyword.type === "conjure";
-  const parting = keyword.type === "parting-gift";
-  const kind = parting ? "Parting Gift" : conjure ? "Conjure" : "Next Play";
+  const parting = keyword.type === "parting-gift" || keyword.type === "enchant";
+  const kind =
+    keyword.type === "enchant"
+      ? "Enchant"
+      : parting
+        ? "Parting Gift"
+        : conjure
+          ? "Conjure"
+          : "Next Play";
   const update = (keywords: StoneKeyword[]) =>
     onChange({
       ...keyword,
@@ -1392,6 +1433,7 @@ function GrantKeywordFields({
                 keyword={grant}
                 allowHandOnly={
                   conjure ||
+                  keyword.type === "enchant" ||
                   (parting &&
                     ["hand", "enemy-hand", "hands"].includes(keyword.target))
                 }
@@ -1432,6 +1474,7 @@ function GrantKeywordFields({
             "shift",
             "sunder",
             "dizzy",
+            "shuffle",
             "resonance",
             "conjure",
             "head-start",
@@ -1591,6 +1634,7 @@ function ComboFields({
             "sunder",
             "silence",
             "dizzy",
+            "shuffle",
             "head-start",
             "comeback",
             "resonance",

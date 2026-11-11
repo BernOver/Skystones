@@ -1,3 +1,4 @@
+import { KEYWORD_RULES } from "../src/game.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { STARTER_STONES, validateStone } from "../src/game.ts";
@@ -596,7 +597,7 @@ test("Whetstone Ring respects edge and total caps; Elemental Prism adds a weakes
 });
 test("Rune Echo inscribes opposite edges, permits repeated Sunder and Parting Gift purchases, and preserves singleton rules", () => {
   const seen = new Set<string>();
-  for (let seed = 0; seed < 70; seed++) {
+  for (let seed = 0; seed < 140; seed++) {
     const shop = enterAdventureNode(
       { ...newAdventure(3, seed), floor: 2, gold: 200, relics: ["rune-echo"] },
       "shop-one",
@@ -610,7 +611,7 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder and Parting Gi
     assert.equal(bought.gold, 165);
     assert.deepEqual(
       keywords[0],
-      keyword.type === "dizzy"
+      keyword.type === "dizzy" || keyword.type === "shuffle"
         ? {
             ...keyword,
             sides: [
@@ -647,6 +648,7 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder and Parting Gi
         "amplify",
         "trap",
         "parting-gift",
+        "enchant",
       ].includes(keyword.type)
     ) {
       const second = buyAgain();
@@ -658,7 +660,7 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder and Parting Gi
     } else assert.throws(buyAgain);
     seen.add(keyword.type);
   }
-  assert.equal(seen.size, 20);
+  assert.equal(seen.size, Object.keys(KEYWORD_RULES).length);
 });
 test("Market Map stocks four distinct merchant cards without applying card reward relics", () => {
   const base: Adventure = {

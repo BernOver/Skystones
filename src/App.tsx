@@ -3002,7 +3002,9 @@ export default function App() {
         <Dialog
           title={
             dialog.pending.gift
-              ? "Choose Parting Gift targets"
+              ? dialog.pending.gift.kind === "enchant"
+                ? "Choose Enchant targets"
+                : "Choose Parting Gift targets"
               : "Choose cards to discard"
           }
           onClose={cancelDiscardChoice}

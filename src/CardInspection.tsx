@@ -58,7 +58,7 @@ import {
 import type { TileEnvironment } from "./effects";
 import { conjureText, conjurationSummary, MAX_HAND_CARDS } from "./conjure";
 import type { Conjuration } from "./conjure";
-import { discardText, discardSummary } from "./discard";
+import { discardText, discardSummary, enchantText } from "./discard";
 import type { DiscardBuffs, DiscardRecord } from "./discard";
 
 export interface Inspection {
@@ -670,6 +670,70 @@ export function KeywordDetails({
               </section>
             );
           }
+          if (type === "enchant")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Shuffle size={15} />
+                  <strong>Enchant</strong>
+                  <span>On play · after Conjure</span>
+                </div>
+                {keywords.map((keyword, i) =>
+                  keyword.type === "enchant" ? (
+                    <div key={i}>
+                      <p>{enchantText(keyword)}</p>
+                      <KeywordDetails
+                        stone={{ ...stone, keywords: keyword.keywords || [] }}
+                      />
+                    </div>
+                  ) : null,
+                )}
+              </section>
+            );
+          if (type === "shuffle")
+            return (
+              <section
+                className="keyword-rule"
+                key={groupIndex}
+                data-half={
+                  isSwapForce(stone)
+                    ? `${keywordHalf(keywords[0])} half`
+                    : undefined
+                }
+              >
+                <div className="keyword-rule-heading">
+                  <Shuffle size={15} />
+                  <strong>Shuffle</strong>
+                  <span>Before captures</span>
+                </div>
+                <p>
+                  After Dizzy and before captures, randomly rearrange the
+                  existing pip counts among the marked sides. No pips are added
+                  or removed, and unmarked sides stay unchanged. Buffed pips
+                  have no Shuffle cap. The arrangement may stay the same.
+                </p>
+                <p>
+                  Affected sides:{" "}
+                  {keywords
+                    .map((keyword) =>
+                      keyword.type === "shuffle"
+                        ? keyword.sides
+                            .map((side) => SIDE_NAMES[side])
+                            .join(" / ")
+                        : "",
+                    )
+                    .join("; ")}
+                  .
+                </p>
+                <span className="keyword-status">
+                  {silenced
+                    ? "Disabled by Silence · printed strengths restored, minus damage"
+                    : played
+                      ? "Shuffled once before captures · current strengths stay through turns and captures."
+                      : "The sides are printed on the card; no sides are chosen during play."}
+                </span>
+              </section>
+            );
           if (type === "dizzy")
             return (
               <section

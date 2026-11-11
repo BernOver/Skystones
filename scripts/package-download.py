@@ -67,6 +67,19 @@ new games, new Draft pools, and newly generated Adventure cards. Existing
 games and copies in an Adventure keep their saved cards. Restore original
 default in the character details to reset it. Defaults save in this browser.
 
+Board keyword labels: after a card is played, three or more keyword entries
+collapse to "X keywords". Hover or open it for the complete keyword rules.
+Shuffle: choose two to four sides in Card studio. After Dizzy and before
+captures, their ordinary pip counts are randomly rearranged. The values and
+total are preserved, including buffs above five. Unmarked sides, Shield, and
+field bonuses stay separate. An unchanged arrangement is possible.
+Enchant: add this keyword to a spell or stone to grant any keyword to friendly,
+enemy, or both players' cards in hand or on the board. Use all, chosen, or
+random recipients. Board Shield activates immediately; Head Start, Comeback
+and Resonance check once when granted. Other on-play effects attach without
+replaying placement or captures. Hand cards use grants on later plays/discards.
+Conjure resolves first. Canceling a target choice leaves the whole play unchanged.
+
 Spells: Collection > Spells has six examples. In Card studio, choose Card type
 Spell or Spell - discard only. Save the template, then give a stone Conjure >
 Specified token or spell, or Random > Spells only. Spells only enter hands

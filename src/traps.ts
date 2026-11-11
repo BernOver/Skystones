@@ -45,6 +45,7 @@ export const TRAP_AMPLIFY_TARGETS: TrapAmplifyTarget[] = [
   "sunder",
   "silence",
   "dizzy",
+  "shuffle",
   "shield",
   "combo",
   "next-play",
@@ -54,6 +55,7 @@ export const TRAP_AMPLIFY_TARGETS: TrapAmplifyTarget[] = [
   "discard",
   "scavenge",
   "parting-gift",
+  "enchant",
   "discard-priority",
   "assemble",
 ];

@@ -98,12 +98,13 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
       break;
     case "scavenge":
     case "parting-gift":
+    case "enchant":
       for (const kind of ["pips", "shields"] as const)
         out[kind] = out[kind]?.map((p) => ({
           ...p,
           amount: Math.max(-99, Math.min(99, p.amount * times)),
         }));
-      if (out.type === "parting-gift") {
+      if (out.type === "parting-gift" || out.type === "enchant") {
         out.keywords = out.keywords?.flatMap<StoneKeyword>((g) =>
           g.type === "combo"
             ? [
@@ -394,7 +395,10 @@ export function validRuntimeEffects(value: unknown): value is BasicKeyword[] {
               Number.isInteger(p?.amount) &&
               Number(p.amount) !== 0 &&
               Number(p.amount) >=
-                (k.type === "parting-gift" && key === "pips" ? -99 : 1) &&
+                ((k.type === "parting-gift" || k.type === "enchant") &&
+                key === "pips"
+                  ? -99
+                  : 1) &&
               Number(p.amount) <= 99
                 ? Math.max(-5, Math.min(5, Number(p.amount)))
                 : NaN,

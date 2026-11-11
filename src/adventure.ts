@@ -68,6 +68,7 @@ import {
   MAX_KEYWORDS,
   DIZZY_EDGE_CAP,
   dizzySides,
+  validShuffleSides,
   repeatableKeyword,
   placeStone,
   score,
@@ -1581,11 +1582,11 @@ export function adventureFusionPreview(base: Stone, donor: Stone): Stone {
     );
     if (existing === -1) {
       if (keywords.length < MAX_KEYWORDS) keywords.push({ ...keyword });
-    } else if (keyword.type === "dizzy") {
+    } else if (keyword.type === "dizzy" || keyword.type === "shuffle") {
       const current = keywords[existing];
-      if (current.type === "dizzy")
+      if (current.type === keyword.type)
         keywords[existing] = {
-          type: "dizzy",
+          type: keyword.type,
           sides: [
             ...new Set([...dizzySides(current), ...dizzySides(keyword)]),
           ].sort(),
@@ -1849,26 +1850,42 @@ function rollWorkshopOffer(
                                     },
                                   ],
                                 }
-                              : type === "dizzy"
-                                ? { type, sides: [side] }
-                                : type === "silence"
-                                  ? { type }
-                                  : type === "resonance"
-                                    ? {
-                                        type,
-                                        side,
-                                        element:
-                                          elements[
-                                            Math.floor(rng() * elements.length)
-                                          ],
-                                      }
-                                    : type === "sunder"
-                                      ? {
-                                          type,
-                                          side,
-                                          amount: 1 + Math.floor(run.floor / 4),
-                                        }
-                                      : { type, side };
+                              : type === "enchant"
+                                ? {
+                                    type,
+                                    target: "hand",
+                                    mode: "chosen",
+                                    count: 1,
+                                    keywords: [{ type: "shield", side }],
+                                  }
+                                : type === "shuffle"
+                                  ? {
+                                      type,
+                                      sides: [side, ((side + 1) % 4) as Side],
+                                    }
+                                  : type === "dizzy"
+                                    ? { type, sides: [side] }
+                                    : type === "silence"
+                                      ? { type }
+                                      : type === "resonance"
+                                        ? {
+                                            type,
+                                            side,
+                                            element:
+                                              elements[
+                                                Math.floor(
+                                                  rng() * elements.length,
+                                                )
+                                              ],
+                                          }
+                                        : type === "sunder"
+                                          ? {
+                                              type,
+                                              side,
+                                              amount:
+                                                1 + Math.floor(run.floor / 4),
+                                            }
+                                          : { type, side };
   const tribeRoll =
     (run.seed ^
       Math.imul(run.floor + 1, 0x79b1) ^
@@ -2008,7 +2025,10 @@ export function buyAdventureService(
       throw new Error(
         "That keyword is already assigned here, or its settings are invalid.",
       );
-    if (hasRelic(run, "rune-echo") && offer.keyword.type === "dizzy") {
+    if (
+      hasRelic(run, "rune-echo") &&
+      (offer.keyword.type === "dizzy" || offer.keyword.type === "shuffle")
+    ) {
       const sides = offer.keyword.sides || [0, 1, 2, 3];
       keywords[keywords.length - 1] = {
         ...offer.keyword,
@@ -2266,6 +2286,31 @@ function validPlaced(
         : validateKeywords(cell.grantedKeywords)) &&
         cell.grantedKeywords.every(
           (keyword) => String(keyword.type) !== "combo",
+        ))) &&
+    (cell.shuffles === undefined ||
+      (Array.isArray(cell.shuffles) &&
+        cell.shuffles.length <= 4096 &&
+        cell.shuffles.every(
+          (shuffle) =>
+            shuffle &&
+            edges(shuffle.before) &&
+            edges(shuffle.after) &&
+            validShuffleSides(shuffle.sides) &&
+            shuffle.after.every(
+              (n, side) =>
+                shuffle.sides.includes(side as Side) ||
+                n === shuffle.before[side],
+            ) &&
+            [...shuffle.sides]
+              .map((side) => shuffle.before[side])
+              .sort((a, b) => a - b)
+              .every(
+                (n, i) =>
+                  n ===
+                  [...shuffle.sides]
+                    .map((side) => shuffle.after[side])
+                    .sort((a, b) => a - b)[i],
+              ),
         ))) &&
     (cell.dizzy === undefined ||
       (!!cell.dizzy &&

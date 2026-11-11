@@ -301,6 +301,14 @@ Only **actual Conjure gains** count, after its hand cap, filters, and token avai
 
 New Draft pools include discard synergies; existing saved pools keep their definitions. New Adventure shops, shrines, and transformations can offer the four abilities. Draft’s unused offer cards remain separate from hand discards during a match.
 
+## Shuffle and compact board keywords
+
+Played cards with **more than two keyword entries** show only **“X keywords”** on the board. Cards in hand and in the studio retain their labels; hovering or opening an in-play card shows its complete keyword rules.
+
+**Shuffle** randomly permutes the ordinary pip counts on **two to four printed sides** after Dizzy and before captures. Select its sides in Card studio, including through Combo, Next Play, Conjure or Enchant grants. Other sides stay unchanged. Shuffle preserves every selected value and their total, including buffs above five; Shield counters and field bonuses stay separate. The same arrangement may be rolled. The result stays through capture and Adventure reloads. Amplify repeats the shuffle without changing its total, and Traps can double or nullify it.
+
+**Enchant** lets a spell or stone grant up to five chosen keyword definitions to **friendly, enemy, or both players’ hand or board cards**. Choose **all**, **1–5 random**, or **1–5 selected** recipients; separate Enchant entries can affect different groups. Resolve Conjure first, so generated cards are available as recipients. Canceling a choice leaves the whole play unchanged. All current keyword types can be granted. In-hand copies use them on later plays or discards. Board Shield activates immediately; Head Start, Comeback and Resonance check the recipient’s controller and current board once when granted, and keep that bonus. Other on-play keywords attach without replaying placement or captures. Silence disables board recipients; permanent card templates keep their base definitions. Enchant is available in the spell maker, shops and inscription events.
+
 ## Spells
 
 Spells enter hands **through Conjure during a battle**, rather than replacing the 5/8 starting stones. Collection → **Spells** contains six examples. In Card studio, choose **Card type → Spell** or **Spell · discard only** and add its effects. Spells share portrait uploads, image sizing, keyword editing, inspection and portable card exports with stones. They have no board pips.

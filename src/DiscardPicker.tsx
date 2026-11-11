@@ -122,7 +122,10 @@ function PartingGiftPicker({
   const gift = pending.gift!;
   return (
     <div className="discard-picker parting-gift-picker">
-      <span className="eyebrow">PARTING GIFT · {names[pending.owner]}</span>
+      <span className="eyebrow">
+        {gift.kind === "enchant" ? "ENCHANT" : "PARTING GIFT"} ·{" "}
+        {names[pending.owner]}
+      </span>
       <h2>
         Choose {pending.count} gift target{pending.count === 1 ? "" : "s"}.
       </h2>
@@ -135,7 +138,7 @@ function PartingGiftPicker({
       <div
         className="discard-card-grid"
         role="group"
-        aria-label="Eligible Parting Gift targets"
+        aria-label={`Eligible ${gift.kind === "enchant" ? "Enchant" : "Parting Gift"} targets`}
       >
         {gift.options.map((option) => (
           <button
@@ -184,7 +187,7 @@ function PartingGiftPicker({
           disabled={ids.length !== pending.count}
           onClick={() => onConfirm(ids)}
         >
-          Apply Parting Gift
+          Apply {gift.kind === "enchant" ? "Enchant" : "Parting Gift"}
         </button>
       </div>
       <p className="dialog-small-note">

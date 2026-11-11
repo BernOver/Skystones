@@ -313,7 +313,7 @@ export function rotatedPotionStone(stone: Stone): Stone {
                       side: ((keyword.environment.side + 1) % 4) as Side,
                     },
                   }
-                : keyword.type === "dizzy"
+                : keyword.type === "dizzy" || keyword.type === "shuffle"
                   ? {
                       ...keyword,
                       ...(keyword.sides
