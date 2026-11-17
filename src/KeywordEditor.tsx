@@ -1,3 +1,5 @@
+import { RandomKeywordFields } from "./RandomKeywordFields";
+import { CardFilterFields } from "./CardFilterFields";
 import { readTraps, trapKeywordText } from "./traps";
 import { readUniques } from "./unique";
 import { amplifyText } from "./amplify";
@@ -17,6 +19,7 @@ import {
   keywordAssignmentKey,
   validateKeywords,
   repeatableKeyword,
+  TURN_START_TYPES,
 } from "./game";
 import { ENVIRONMENTS, defaultEnvironment } from "./effects";
 import type { EffectSide, EnvironmentKind } from "./effects";
@@ -42,6 +45,14 @@ export function defaultKeyword(
   side: Side = 0,
   element: Element = "magic",
 ): StoneKeyword {
+  if (type === "relocate") return { type, affects: "allies" };
+  if (type === "command") return { type, turns: 1 };
+  if (type === "turn-start")
+    return {
+      type,
+      when: "self",
+      keywords: [{ type: "next-play", side, amount: 1, recipient: "self" }],
+    };
   if (type === "trap") return { type, trap: structuredClone(readTraps()[0]) };
   if (type === "assemble") return { type, count: 2 };
   if (type === "flash") return { type };
@@ -166,6 +177,9 @@ const SPELL_EFFECT_TYPES = new Set([
   "combo",
   "parting-gift",
   "enchant",
+  "relocate",
+  "command",
+  "turn-start",
   "discard-priority",
 ]);
 function Fields({
@@ -174,6 +188,7 @@ function Fields({
   element,
   allowCombo = true,
   spellOnly = false,
+  allowedTypes,
   allowHandOnly = true,
   depth = 0,
   onChange,
@@ -183,6 +198,7 @@ function Fields({
   element: Element;
   allowCombo?: boolean;
   spellOnly?: boolean;
+  allowedTypes?: KeywordType[];
   allowHandOnly?: boolean;
   depth?: number;
   onChange: (value: StoneKeyword) => void;
@@ -207,6 +223,10 @@ function Fields({
             }
           >
             {Object.entries(KEYWORD_RULES)
+              .filter(
+                ([type]) =>
+                  !allowedTypes || allowedTypes.includes(type as KeywordType),
+              )
               .filter(([type]) => !spellOnly || SPELL_EFFECT_TYPES.has(type))
               .filter(([type]) => allowCombo || type !== "combo")
               .filter(
@@ -508,6 +528,7 @@ function Fields({
                 })
               }
             >
+              <option value="self">This card (if on the board)</option>
               <option value="allies">Its owner’s board cards</option>
               <option value="hand">Its owner’s remaining hand</option>
               <option value="enemies">Opponent’s board cards</option>
@@ -575,6 +596,18 @@ function Fields({
             depth={depth}
             onChange={onChange}
           />
+          <RandomKeywordFields
+            label={label}
+            value={keyword.randomKeywords}
+            onChange={(randomKeywords) =>
+              onChange({ ...keyword, randomKeywords })
+            }
+          />
+          <CardFilterFields
+            label={`${label} recipients`}
+            value={keyword.filter}
+            onChange={(filter) => onChange({ ...keyword, filter })}
+          />
           <small>
             {keyword.type === "enchant" ? (
               "On play, grant keywords after Conjure. The caster chooses recipients. Board Shield and conditional pip bonuses activate immediately for the recipient’s controller; other on-play effects are attached without replaying them. Canceling leaves the whole spell unchanged."
@@ -588,6 +621,93 @@ function Fields({
                 abilities without replaying on-play effects.
               </>
             )}
+          </small>
+        </div>
+      )}
+      {keyword.type === "command" && (
+        <div className="effect-editor-options">
+          <label>
+            Controlled bot turns
+            <select
+              aria-label={`Command turns · ${label}`}
+              value={keyword.turns}
+              onChange={(e) =>
+                onChange({ ...keyword, turns: Number(e.target.value) })
+              }
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <small>
+            Choose each card the opponent bot plays for that many upcoming
+            turns. The bot still chooses where to place it. Spells and Flash
+            keep the same controlled turn. This does not force choices on a
+            human opponent.
+          </small>
+        </div>
+      )}
+      {keyword.type === "relocate" && (
+        <div className="effect-editor-options">
+          <label>
+            Cards that can move
+            <select
+              aria-label={`Relocate recipients · ${label}`}
+              value={keyword.affects}
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  affects: e.target.value as "allies" | "enemies" | "both",
+                })
+              }
+            >
+              <option value="allies">Allied cards</option>
+              <option value="enemies">Enemy cards</option>
+              <option value="both">Either player’s cards</option>
+            </select>
+          </label>
+          <small>
+            Choose a board card, then an empty destination. Movement makes no
+            captures, does not replay the card, and carries its owner and buffs.
+            Terrain stays on the tile.
+          </small>
+        </div>
+      )}
+      {keyword.type === "turn-start" && (
+        <div className="effect-editor-options">
+          <label>
+            Trigger turns
+            <select
+              aria-label={`Turn Start timing · ${label}`}
+              value={keyword.when}
+              onChange={(e) =>
+                onChange({
+                  ...keyword,
+                  when: e.target.value as "self" | "opponent" | "both",
+                })
+              }
+            >
+              <option value="self">Its controller’s turns</option>
+              <option value="opponent">Opponent’s turns</option>
+              <option value="both">Every turn</option>
+            </select>
+          </label>
+          <GrantKeywordFields
+            keyword={keyword}
+            element={element}
+            label={label}
+            depth={depth}
+            onChange={onChange}
+          />
+          <small>
+            Triggers once at the beginning of each matching new turn after this
+            play. Spells and Flash do not start another turn. Board sources
+            follow their current controller; spells keep their caster. Targets
+            are chosen automatically. Silence stops a board source. New
+            schedules wait for a later turn.
           </small>
         </div>
       )}
@@ -1354,7 +1474,7 @@ function Fields({
     </>
   );
 }
-function GrantKeywordFields({
+export function GrantKeywordFields({
   keyword,
   element,
   label,
@@ -1363,7 +1483,9 @@ function GrantKeywordFields({
 }: {
   keyword: Extract<
     StoneKeyword,
-    { type: "next-play" | "conjure" | "parting-gift" | "enchant" }
+    {
+      type: "next-play" | "conjure" | "parting-gift" | "enchant" | "turn-start";
+    }
   >;
   element: Element;
   label: string;
@@ -1372,16 +1494,23 @@ function GrantKeywordFields({
 }) {
   const grants = keyword.keywords || [];
   const conjure = keyword.type === "conjure";
+  const turnStart = keyword.type === "turn-start";
   const parting = keyword.type === "parting-gift" || keyword.type === "enchant";
   const kind =
-    keyword.type === "enchant"
-      ? "Enchant"
-      : parting
-        ? "Parting Gift"
-        : conjure
-          ? "Conjure"
-          : "Next Play";
-  const update = (keywords: StoneKeyword[]) =>
+    keyword.type === "turn-start"
+      ? "Turn Start"
+      : keyword.type === "enchant"
+        ? "Enchant"
+        : parting
+          ? "Parting Gift"
+          : conjure
+            ? "Conjure"
+            : "Next Play";
+  const update = (keywords: StoneKeyword[]) => {
+    if (keyword.type === "turn-start") {
+      if (keywords.length) onChange({ ...keyword, keywords });
+      return;
+    }
     onChange({
       ...keyword,
       ...(keyword.type === "next-play"
@@ -1391,32 +1520,38 @@ function GrantKeywordFields({
                 ? keyword.amount
                 : 1,
           }
-        : keyword.type === "parting-gift" &&
+        : (keyword.type === "parting-gift" || keyword.type === "enchant") &&
             !keywords.length &&
             !keyword.pips?.length &&
-            !keyword.shields?.length
+            !keyword.shields?.length &&
+            !keyword.randomKeywords
           ? { pips: [{ side: 0 as Side, amount: 1 }] }
           : {}),
       keywords: keywords.length ? keywords : undefined,
     });
+  };
   return (
     <fieldset
       className="next-keyword-grants"
       aria-label={`${kind} keywords · ${label}`}
     >
       <legend>
-        {parting
-          ? "Keywords for gift recipients"
-          : conjure
-            ? "Keywords for each generated card"
-            : "Keywords for the next card"}
+        {turnStart
+          ? "Effects that repeat at turn start"
+          : parting
+            ? "Keywords for gift recipients"
+            : conjure
+              ? "Keywords for each generated card"
+              : "Keywords for the next card"}
       </legend>
       <p>
-        {parting
-          ? "Hand recipients gain these abilities for their later plays and discards. Board recipients gain passive abilities immediately; on-play effects do not replay. "
-          : conjure
-            ? "Every copy gains these keywords when generated. They activate only when that copy is played. Use keywords alone or combine them with extra pips. "
-            : "They are added before its on-play checks and captures. Choose None to omit a pip change. "}
+        {turnStart
+          ? "These effects fire automatically at the beginning of the selected turns. They do not play another stone or make captures. "
+          : parting
+            ? "Hand recipients gain these abilities for their later plays and discards. Board recipients gain passive abilities immediately; on-play effects do not replay. "
+            : conjure
+              ? "Every copy gains these keywords when generated. They activate only when that copy is played. Use keywords alone or combine them with extra pips. "
+              : "They are added before its on-play checks and captures. Choose None to omit a pip change. "}
         Unique keywords already on the same edge are kept; extra grants stop at
         the card’s 24-keyword limit.
       </p>
@@ -1431,6 +1566,8 @@ function GrantKeywordFields({
             >
               <Fields
                 keyword={grant}
+                allowedTypes={turnStart ? TURN_START_TYPES : undefined}
+                allowCombo={!turnStart}
                 allowHandOnly={
                   conjure ||
                   keyword.type === "enchant" ||
@@ -1469,21 +1606,23 @@ function GrantKeywordFields({
         aria-label={`Add ${kind} keyword · ${label}`}
         disabled={grants.length >= 5 || depth >= MAX_KEYWORD_DEPTH}
         onClick={() => {
-          for (const type of [
-            "shield",
-            "shift",
-            "sunder",
-            "dizzy",
-            "shuffle",
-            "resonance",
-            "conjure",
-            "head-start",
-            "comeback",
-            "silence",
-            "environment",
-            "next-play",
-            "combo",
-          ] as KeywordType[])
+          for (const type of turnStart
+            ? TURN_START_TYPES
+            : ([
+                "shield",
+                "shift",
+                "sunder",
+                "dizzy",
+                "shuffle",
+                "resonance",
+                "conjure",
+                "head-start",
+                "comeback",
+                "silence",
+                "environment",
+                "next-play",
+                "combo",
+              ] as KeywordType[]))
             for (const side of [0, 1, 2, 3] as Side[]) {
               const value = defaultKeyword(type, side, element);
               if (validateKeywords([...grants, value])) {

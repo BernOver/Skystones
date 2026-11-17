@@ -72,6 +72,9 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
       break;
     case "resonance":
       return [{ ...out, multiplier: times } as T];
+    case "command":
+      out.turns = Math.min(160, out.turns * times);
+      break;
     case "assemble":
     case "conjure":
     case "discard":
@@ -99,6 +102,11 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
     case "scavenge":
     case "parting-gift":
     case "enchant":
+      if ("randomKeywords" in out && out.randomKeywords)
+        out.randomKeywords.count = Math.min(
+          5,
+          out.randomKeywords.count * times,
+        );
       for (const kind of ["pips", "shields"] as const)
         out[kind] = out[kind]?.map((p) => ({
           ...p,

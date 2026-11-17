@@ -597,7 +597,7 @@ test("Whetstone Ring respects edge and total caps; Elemental Prism adds a weakes
 });
 test("Rune Echo inscribes opposite edges, permits repeated Sunder and Parting Gift purchases, and preserves singleton rules", () => {
   const seen = new Set<string>();
-  for (let seed = 0; seed < 140; seed++) {
+  for (let seed = 0; seed < 600; seed++) {
     const shop = enterAdventureNode(
       { ...newAdventure(3, seed), floor: 2, gold: 200, relics: ["rune-echo"] },
       "shop-one",
@@ -649,6 +649,9 @@ test("Rune Echo inscribes opposite edges, permits repeated Sunder and Parting Gi
         "trap",
         "parting-gift",
         "enchant",
+        "relocate",
+        "command",
+        "turn-start",
       ].includes(keyword.type)
     ) {
       const second = buyAgain();

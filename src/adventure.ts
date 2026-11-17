@@ -1,3 +1,8 @@
+import { advanceTurn, postPlayTrapGrants, validTurnState } from "./turns.ts";
+import type { TurnState } from "./turns.ts";
+import { validAIProfile } from "./ai.ts";
+import type { AIProfile } from "./ai.ts";
+import { keywordTemplate } from "./randomKeywords.ts";
 import { readRecipes, validRecipes, validRecipe } from "./recipes.ts";
 import type { SuperchargerRecipe } from "./recipes.ts";
 import {
@@ -456,6 +461,8 @@ export interface AdventureBattle {
   traps?: TrapState;
   recipes?: SuperchargerRecipe[];
   turnNumber?: number;
+  turnState?: TurnState;
+  ai?: AIProfile;
   board: Board;
   spellHistory?: import("./game.ts").PlacedStone[];
   hands: [Stone[], Stone[]];
@@ -938,6 +945,17 @@ function beginBattle(
         combineParts(enemies, recipes),
       ],
       current: 0,
+      ...(node.encounter?.ai
+        ? {
+            ai: structuredClone(node.encounter.ai),
+            turnState: {
+              control: [node.encounter.ai.controlTurns || 0, 0] as [
+                number,
+                number,
+              ],
+            },
+          }
+        : {}),
       turns: 0,
       name:
         encounter?.name ||
@@ -1155,6 +1173,7 @@ export function adventureCardStrengths(
   const result = evaluateKeywords(prepared, run.battle?.board || [], owner);
   return {
     ...result,
+    ordinaryEdges: result.edges,
     edges: arenaEdges(
       trapEdges(result.edges, prepared, run.battle?.traps?.active?.trap),
       prepared.element,
@@ -1341,6 +1360,25 @@ export function playAdventureCard(
     error.move = { index, cardIndex, targets };
     throw error;
   }
+  const trapGifts = postPlayTrapGrants(
+    discarded.board,
+    discarded.hands,
+    battle.board,
+    battle.hands,
+    move.sourceIndex ?? index,
+    run.seed ^ battle.turns,
+    recipes,
+  );
+  const turn = advanceTurn(
+    trapGifts.board,
+    trapGifts.hands,
+    battle.current,
+    battle.turnNumber ?? battle.turns,
+    !!move.keepsTurn,
+    run.seed ^ battle.turns,
+    battle.turnState,
+    { botOwners: [1], recipes, arenaCycle: battle.elementCycle },
+  );
   const bracer =
     battle.current === 0 &&
     move.captured.length > 0 &&
@@ -1350,7 +1388,7 @@ export function playAdventureCard(
   if (battle.objectiveKind === "chest")
     for (const effect of move.effects)
       if (
-        effect.type === "shift" &&
+        (effect.type === "shift" || effect.type === "relocate") &&
         effect.moved &&
         effect.target === objective
       )
@@ -1361,24 +1399,19 @@ export function playAdventureCard(
     battle: {
       ...battle,
       ...(objective !== undefined ? { objective } : {}),
-      board: arena
-        ? withArenaElement(
-            discarded.board,
-            move.keepsTurn ? arena.current : arena.next,
-          )
-        : discarded.board,
-      hands: discarded.hands,
-      ...(discarded.board.spellHistory
-        ? { spellHistory: discarded.board.spellHistory }
+      board: turn.board,
+      hands: turn.hands,
+      ...(turn.board.spellHistory
+        ? { spellHistory: turn.board.spellHistory }
         : {}),
+      turnState: turn.state,
       recipes,
-      ...(trapStateFromBoard(discarded.board)
-        ? { traps: trapStateFromBoard(discarded.board) }
+      ...(trapStateFromBoard(turn.board)
+        ? { traps: trapStateFromBoard(turn.board) }
         : {}),
-      current: (move.keepsTurn ? battle.current : 1 - battle.current) as Owner,
+      current: turn.owner,
       turns: battle.turns + 1,
-      turnNumber:
-        (battle.turnNumber ?? battle.turns) + (move.keepsTurn ? 0 : 1),
+      turnNumber: turn.turnNumber,
       captures:
         (battle.captures || 0) +
         (battle.current === 0 ? move.captured.length : 0),
@@ -1390,6 +1423,8 @@ export function playAdventureCard(
           hasRelic(run, "vanguard-banner")),
       lastCaptured: move.captured,
       log: [
+        ...trapGifts.messages,
+        ...turn.messages,
         `${battle.current === 0 ? "You" : "Keeper"}: ${stone.name} → ${stone.spell ? "Spell" : coordinate(index, run.size)} · ${move.captured.length} captured${assembled.messages.length ? ` · ${assembled.messages.join(", ")}` : ""}${move.keepsTurn ? (stone.spell ? " · Spell: play again" : " · Flash: play again") : ""}${discarded.records.length ? ` · ${discardSummary(discarded.records, ["You", "Keeper"])}` : ""}${conjured.conjurations.length ? ` · ${conjurationSummary(conjured.conjurations, ["You", "Keeper"])}` : ""}${move.effects
           .filter((effect) => effect.type === "shift")
           .map((effect) =>
@@ -1403,21 +1438,7 @@ export function playAdventureCard(
     },
   };
   if (boardFinished(move.board)) return finishBattle(next);
-  if (!playableHand(next.battle!.hands[next.battle!.current])) {
-    const other = (1 - next.battle!.current) as Owner;
-    if (!playableHand(next.battle!.hands[other])) return finishBattle(next);
-    return {
-      ...next,
-      battle: {
-        ...next.battle!,
-        current: other,
-        turnNumber: move.keepsTurn
-          ? (battle.turnNumber ?? battle.turns) + 1
-          : next.battle!.turnNumber,
-        log: ["Empty hand: turn passed.", ...next.battle!.log].slice(0, 20),
-      },
-    };
-  }
+  if (!next.battle!.hands.some(playableHand)) return finishBattle(next);
   return next;
 }
 export function swapAdventureCards(
@@ -1445,12 +1466,15 @@ export function swapAdventureCards(
 export function adventureEnemyMove(
   run: Adventure,
   manualGiftOwners?: Owner[],
+  forcedCardIndex?: number,
 ): Adventure {
   if (run.phase !== "battle" || run.battle?.current !== 1) return run;
   const battle = run.battle;
   const move = chooseMove(battle.board, battle.hands[1], battle.hands[0], 1, {
     ...(adventureArena(run) || {}),
     trap: battle.traps?.active?.trap,
+    ai: battle.ai,
+    forcedCardIndex,
   });
   return playAdventureCard(
     run,
@@ -1771,121 +1795,125 @@ function rollWorkshopOffer(
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
-    type === "trap"
-      ? {
-          type,
-          trap: structuredClone(
-            readTraps()[Math.floor(rng() * readTraps().length)],
-          ),
-        }
-      : type === "assemble"
-        ? { type, count: 2 }
-        : type === "flash"
-          ? { type }
-          : type === "amplify"
-            ? { type, effect: "all", duration: "next", count: 1 }
-            : type === "conjure"
-              ? {
-                  type,
-                  mode: "random",
-                  count: 1,
-                  recipient: "self",
-                  ...((run.seed + run.floor + reroll) % 2 === 0
-                    ? { pool: "tokens" as const }
-                    : {}),
-                }
-              : type === "discard"
-                ? { type, mode: "random", recipient: "opponent", count: 1 }
-                : type === "scavenge"
-                  ? { type, from: "self", pips: [{ side, amount: 1 }] }
-                  : type === "parting-gift"
-                    ? { type, target: "allies", pips: [{ side, amount: 1 }] }
-                    : type === "discard-priority"
-                      ? { type, priority: 1 }
-                      : type === "shift"
-                        ? {
-                            type,
-                            side,
-                            direction: (
-                              [side, (side + 1) % 4, (side + 3) % 4] as Side[]
-                            )[Math.floor(rng() * 3)],
-                            affects: (["enemies", "allies", "both"] as const)[
-                              Math.floor(rng() * 3)
-                            ],
-                          }
-                        : type === "environment"
+    type === "relocate" || type === "command" || type === "turn-start"
+      ? keywordTemplate(type, side)
+      : type === "trap"
+        ? {
+            type,
+            trap: structuredClone(
+              readTraps()[Math.floor(rng() * readTraps().length)],
+            ),
+          }
+        : type === "assemble"
+          ? { type, count: 2 }
+          : type === "flash"
+            ? { type }
+            : type === "amplify"
+              ? { type, effect: "all", duration: "next", count: 1 }
+              : type === "conjure"
+                ? {
+                    type,
+                    mode: "random",
+                    count: 1,
+                    recipient: "self",
+                    ...((run.seed + run.floor + reroll) % 2 === 0
+                      ? { pool: "tokens" as const }
+                      : {}),
+                  }
+                : type === "discard"
+                  ? { type, mode: "random", recipient: "opponent", count: 1 }
+                  : type === "scavenge"
+                    ? { type, from: "self", pips: [{ side, amount: 1 }] }
+                    : type === "parting-gift"
+                      ? { type, target: "allies", pips: [{ side, amount: 1 }] }
+                      : type === "discard-priority"
+                        ? { type, priority: 1 }
+                        : type === "shift"
                           ? {
                               type,
-                              environment: defaultEnvironment(
-                                (
-                                  Object.keys(ENVIRONMENTS) as EnvironmentKind[]
-                                )[Math.floor(rng() * 7)],
-                                elements[Math.floor(rng() * elements.length)],
-                              ),
+                              side,
+                              direction: (
+                                [side, (side + 1) % 4, (side + 3) % 4] as Side[]
+                              )[Math.floor(rng() * 3)],
+                              affects: (["enemies", "allies", "both"] as const)[
+                                Math.floor(rng() * 3)
+                              ],
                             }
-                          : type === "next-play"
+                          : type === "environment"
                             ? {
                                 type,
-                                side: rng() < 0.5 ? "all" : side,
-                                amount: rng() < 0.35 ? -1 : 1,
-                                recipient: rng() < 0.35 ? "opponent" : "self",
-                                ...((run.seed + run.floor + reroll) % 3 === 0
-                                  ? {
-                                      amount: run.seed % 2 ? 0 : 1,
-                                      recipient: "self" as const,
-                                      keywords: [
-                                        { type: "shield" as const, side },
-                                      ],
-                                    }
-                                  : {}),
+                                environment: defaultEnvironment(
+                                  (
+                                    Object.keys(
+                                      ENVIRONMENTS,
+                                    ) as EnvironmentKind[]
+                                  )[Math.floor(rng() * 7)],
+                                  elements[Math.floor(rng() * elements.length)],
+                                ),
                               }
-                            : type === "combo"
+                            : type === "next-play"
                               ? {
                                   type,
-                                  pips: [{ side, amount: 1 }],
-                                  keywords: [
-                                    {
-                                      type: "shield",
-                                      side: ((side + 2) % 4) as Side,
-                                    },
-                                  ],
+                                  side: rng() < 0.5 ? "all" : side,
+                                  amount: rng() < 0.35 ? -1 : 1,
+                                  recipient: rng() < 0.35 ? "opponent" : "self",
+                                  ...((run.seed + run.floor + reroll) % 3 === 0
+                                    ? {
+                                        amount: run.seed % 2 ? 0 : 1,
+                                        recipient: "self" as const,
+                                        keywords: [
+                                          { type: "shield" as const, side },
+                                        ],
+                                      }
+                                    : {}),
                                 }
-                              : type === "enchant"
+                              : type === "combo"
                                 ? {
                                     type,
-                                    target: "hand",
-                                    mode: "chosen",
-                                    count: 1,
-                                    keywords: [{ type: "shield", side }],
+                                    pips: [{ side, amount: 1 }],
+                                    keywords: [
+                                      {
+                                        type: "shield",
+                                        side: ((side + 2) % 4) as Side,
+                                      },
+                                    ],
                                   }
-                                : type === "shuffle"
+                                : type === "enchant"
                                   ? {
                                       type,
-                                      sides: [side, ((side + 1) % 4) as Side],
+                                      target: "hand",
+                                      mode: "chosen",
+                                      count: 1,
+                                      keywords: [{ type: "shield", side }],
                                     }
-                                  : type === "dizzy"
-                                    ? { type, sides: [side] }
-                                    : type === "silence"
-                                      ? { type }
-                                      : type === "resonance"
-                                        ? {
-                                            type,
-                                            side,
-                                            element:
-                                              elements[
-                                                Math.floor(
-                                                  rng() * elements.length,
-                                                )
-                                              ],
-                                          }
-                                        : type === "sunder"
+                                  : type === "shuffle"
+                                    ? {
+                                        type,
+                                        sides: [side, ((side + 1) % 4) as Side],
+                                      }
+                                    : type === "dizzy"
+                                      ? { type, sides: [side] }
+                                      : type === "silence"
+                                        ? { type }
+                                        : type === "resonance"
                                           ? {
                                               type,
                                               side,
-                                              amount:
-                                                1 + Math.floor(run.floor / 4),
+                                              element:
+                                                elements[
+                                                  Math.floor(
+                                                    rng() * elements.length,
+                                                  )
+                                                ],
                                             }
-                                          : { type, side };
+                                          : type === "sunder"
+                                            ? {
+                                                type,
+                                                side,
+                                                amount:
+                                                  1 + Math.floor(run.floor / 4),
+                                              }
+                                            : { type, side };
   const tribeRoll =
     (run.seed ^
       Math.imul(run.floor + 1, 0x79b1) ^
@@ -2264,6 +2292,10 @@ function validPlaced(
         cell.shields.every(
           (n) => Number.isInteger(n) && n >= 0 && n <= 198,
         ))) &&
+    (cell.commandTurns === undefined ||
+      (Number.isInteger(cell.commandTurns) &&
+        cell.commandTurns >= 1 &&
+        cell.commandTurns <= 10000)) &&
     (cell.playedOrder === undefined ||
       (Number.isInteger(cell.playedOrder) &&
         cell.playedOrder >= 1 &&
@@ -2370,9 +2402,14 @@ function validPlaced(
         cell.effects.every(
           (effect) =>
             effect &&
-            ["sunder", "silence", "environment", "shift"].includes(
+            ["sunder", "silence", "environment", "shift", "relocate"].includes(
               effect.type,
             ) &&
+            (effect.type !== "relocate" ||
+              (Number.isInteger(effect.to) &&
+                effect.to >= 0 &&
+                effect.to < length &&
+                effect.moved === true)) &&
             (effect.type !== "shift" ||
               (Number.isInteger(effect.to) &&
                 effect.to >= -1 &&
@@ -2589,6 +2626,9 @@ export function validateAdventure(value: unknown): value is Adventure {
         battle.turnNumber > 10000)
     )
       return false;
+    if (battle.turnState !== undefined && !validTurnState(battle.turnState))
+      return false;
+    if (battle.ai !== undefined && !validAIProfile(battle.ai)) return false;
     if (battle.recipes !== undefined && !validRecipes(battle.recipes))
       return false;
     if (battle.traps !== undefined && !validTrapState(battle.traps))

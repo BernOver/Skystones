@@ -1,3 +1,15 @@
+import {
+  cardMatches,
+  validCardFilter,
+  validPipTest,
+  comparePips,
+  filterText,
+} from "./cardFilters.ts";
+import type { CardFilter, PipTest } from "./cardFilters.ts";
+import { validateKeywords } from "./game.ts";
+import type { StoneKeyword } from "./game.ts";
+import { validRandomKeywords } from "./randomKeywords.ts";
+import type { RandomKeywordSpec } from "./randomKeywords.ts";
 import { boardContext } from "./playSources.ts";
 import { validImageTransform } from "./imageLayout.ts";
 import type { ImageTransform } from "./imageLayout.ts";
@@ -17,15 +29,23 @@ import {
   underlyingSide,
 } from "./effects.ts";
 import type { TileEnvironment } from "./effects.ts";
-import { hasTribe, tribeName, validTribe } from "./tribes.ts";
-import type { Tribe } from "./tribes.ts";
+import { tribeName, validTribe } from "./tribes.ts";
 export type TrapPipEffect = {
   kind: "pips" | "attack" | "defense";
   side: Side | "all";
   sides?: Side[];
   amount: number;
 };
-export type TrapEffect =
+export type TrapGrantEffect = {
+  kind: "grant";
+  target: "board" | "hand" | "both";
+  timing: "placed" | "enter" | "turn-start";
+  recipients?: "active" | "both";
+  keywords?: StoneKeyword[];
+  randomKeywords?: RandomKeywordSpec;
+};
+export type TrapEffect = (
+  | TrapGrantEffect
   | TrapPipEffect
   | { kind: "amplify"; effect: TrapEffectTarget }
   | { kind: "nullify"; effect: TrapNullifyTarget }
@@ -33,7 +53,8 @@ export type TrapEffect =
   | { kind: "mirror" }
   | { kind: "equalizer" }
   | { kind: "ceiling"; side: Side | "all"; sides?: Side[]; maximum: number }
-  | { kind: "steady"; minimum: number };
+  | { kind: "steady"; minimum: number }
+) & { condition?: CardFilter; sideCondition?: PipTest };
 export type TrapAmplifyTarget =
   | Exclude<KeywordType, "amplify" | "flash" | "trap">
   | "all";
@@ -58,6 +79,9 @@ export const TRAP_AMPLIFY_TARGETS: TrapAmplifyTarget[] = [
   "enchant",
   "discard-priority",
   "assemble",
+  "relocate",
+  "command",
+  "turn-start",
 ];
 export const TRAP_BOARD_TARGETS = [
   "attack-bonus",
@@ -97,6 +121,11 @@ export const TRAP_EFFECTS: Record<
   TrapEffect["kind"],
   { name: string; description: string }
 > = {
+  grant: {
+    name: "Grant keywords",
+    description:
+      "Grant fixed or random keywords to matching hand or board cards when this Trap is placed, cards enter, or a turn starts. Grants last for this battle.",
+  },
   pips: {
     name: "Ordinary pips",
     description: "Add or remove pips on the selected sides.",
@@ -149,6 +178,13 @@ export function isTrapPipEffect(e: TrapEffect): e is TrapPipEffect {
 }
 export function defaultTrapEffect(kind: TrapEffect["kind"]): TrapEffect {
   switch (kind) {
+    case "grant":
+      return {
+        kind,
+        target: "board",
+        timing: "placed",
+        keywords: [{ type: "shield", side: 0 }],
+      };
     case "pips":
     case "attack":
     case "defense":
@@ -179,7 +215,7 @@ export interface Trap {
   description: string;
   image?: string;
   imageTransform?: ImageTransform;
-  affects?: { element?: Element; tribe?: Tribe; exclude?: boolean };
+  affects?: CardFilter & { exclude?: boolean };
   effects: TrapEffect[];
 }
 export interface TrapState {
@@ -286,7 +322,12 @@ DEFAULT_TRAPS.push(
     effects: [{ kind: "steady", minimum: 2 }],
   },
 );
-export function validTrap(value: unknown, runtime = false): value is Trap {
+export function validTrap(
+  value: unknown,
+  runtime = false,
+  depth = 0,
+): value is Trap {
+  if (depth > 3) return false;
   if (!value || typeof value !== "object") return false;
   const t = value as Trap;
   return (
@@ -305,6 +346,7 @@ export function validTrap(value: unknown, runtime = false): value is Trap {
         /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(t.image))) &&
     (!t.affects ||
       (typeof t.affects === "object" &&
+        validCardFilter(t.affects) &&
         (!t.affects.element || elements.includes(t.affects.element)) &&
         (!t.affects.tribe || validTribe(t.affects.tribe)) &&
         (t.affects.exclude === undefined ||
@@ -312,16 +354,35 @@ export function validTrap(value: unknown, runtime = false): value is Trap {
     Array.isArray(t.effects) &&
     t.effects.length > 0 &&
     t.effects.length <= 8 &&
-    t.effects.every((e) => validTrapEffect(e, runtime))
+    t.effects.every((e) => validTrapEffect(e, runtime, depth))
   );
 }
 function validTrapEffect(
   value: unknown,
   runtime: boolean,
+  depth = 0,
 ): value is TrapEffect {
   if (!value || typeof value !== "object") return false;
   const e = value as TrapEffect;
   if (!Object.hasOwn(TRAP_EFFECTS, e.kind)) return false;
+  if (e.condition !== undefined && !validCardFilter(e.condition)) return false;
+  if (
+    e.sideCondition !== undefined &&
+    (!validPipTest(e.sideCondition) || !("side" in e))
+  )
+    return false;
+  if (e.kind === "grant")
+    return (
+      ["board", "hand", "both"].includes(e.target) &&
+      ["placed", "enter", "turn-start"].includes(e.timing) &&
+      (e.recipients === undefined ||
+        ["active", "both"].includes(e.recipients)) &&
+      !!(e.keywords?.length || e.randomKeywords) &&
+      (e.keywords === undefined ||
+        (e.keywords.length <= 5 &&
+          validateKeywords(e.keywords, depth + 1, runtime))) &&
+      (e.randomKeywords === undefined || validRandomKeywords(e.randomKeywords))
+    );
   if (
     "side" in e &&
     !(
@@ -377,37 +438,43 @@ export function validTrapState(value: unknown): value is TrapState {
 }
 export function trapMatches(trap: Trap, stone: Stone) {
   const a = trap.affects,
-    matches =
-      (!a?.element || stone.element === a.element) &&
-      (!a?.tribe || hasTribe(stone, a.tribe));
+    matches = cardMatches(stone, a);
   return a?.exclude ? !matches : matches;
 }
 export function trapBonus(
   trap: Trap | undefined,
   stone: Stone,
   kind: "pips" | "attack" | "defense",
+  edges: Edges = stone.edges,
 ): Edges {
   const out: Edges = [0, 0, 0, 0];
   if (trap && trapMatches(trap, stone))
     for (const e of trap.effects)
-      if (e.kind === kind)
+      if (e.kind === kind && cardMatches(stone, e.condition, edges))
         for (let side = 0; side < 4; side++)
-          if (trapEffectSides(e).includes(side as Side)) out[side] += e.amount;
+          if (
+            trapEffectSides(e).includes(side as Side) &&
+            (!e.sideCondition || comparePips(edges[side], e.sideCondition))
+          )
+            out[side] += e.amount;
   return out;
 }
 export function trapEdges(edges: Edges, stone: Stone, trap?: Trap): Edges {
-  const bonus = trapBonus(trap, stone, "pips");
+  const bonus = trapBonus(trap, stone, "pips", edges);
   let out = edges.map((n, s) =>
     Math.max(0, Math.min(99, n + bonus[s])),
   ) as Edges;
   if (trap && trapMatches(trap, stone))
     for (const e of trap.effects) {
+      if (!cardMatches(stone, e.condition, edges)) continue;
       if (e.kind === "multiply")
         for (const side of trapEffectSides(e))
-          out[side] = Math.min(99, out[side] * 2);
+          if (!e.sideCondition || comparePips(edges[side], e.sideCondition))
+            out[side] = Math.min(99, out[side] * 2);
       if (e.kind === "ceiling")
         for (const side of trapEffectSides(e))
-          out[side] = Math.min(out[side], e.maximum);
+          if (!e.sideCondition || comparePips(edges[side], e.sideCondition))
+            out[side] = Math.min(out[side], e.maximum);
       if (e.kind === "mirror")
         out = [
           Math.max(out[0], out[2]),
@@ -433,6 +500,7 @@ export function trapNullifies(
   return trap.effects.some(
     (e) =>
       e.kind === "nullify" &&
+      cardMatches(stone, e.condition) &&
       (e.effect === target || (includeAll && keyword && e.effect === "all")),
   );
 }
@@ -455,6 +523,7 @@ export function trapKeywordMultiplier(
       (n, e) =>
         n *
         (e.kind === "amplify" &&
+        cardMatches(stone, e.condition) &&
         (e.effect === type || (includeAll && e.effect === "all"))
           ? 2
           : 1),
@@ -472,7 +541,13 @@ export function trapBoardMultiplier(
   return Math.min(
     32,
     trap.effects.reduce(
-      (n, e) => n * (e.kind === "amplify" && e.effect === target ? 2 : 1),
+      (n, e) =>
+        n *
+        (e.kind === "amplify" &&
+        cardMatches(stone, e.condition) &&
+        e.effect === target
+          ? 2
+          : 1),
       1,
     ),
   );
@@ -503,10 +578,11 @@ export function trapCombatBonuses(
   shields: Edges,
   trap?: Trap,
   environment?: TileEnvironment,
+  edges: Edges = stone.edges,
 ) {
   const terrain = trapBoardMultiplier(trap, stone, "terrain");
-  const attack = trapBonus(trap, stone, "attack"),
-    defense = trapBonus(trap, stone, "defense");
+  const attack = trapBonus(trap, stone, "attack", edges),
+    defense = trapBonus(trap, stone, "defense", edges);
   return {
     attack: attack.map(
       (n) =>
@@ -549,6 +625,11 @@ export function boardTrap(board: Board): Trap | undefined {
 }
 const sideNames = ["North", "East", "South", "West"];
 export function trapEffectText(e: TrapEffect): string {
+  const { condition, sideCondition, ...plain } = e;
+  if (condition || sideCondition)
+    return `${trapEffectText(plain as TrapEffect)}${condition ? `; only ${filterText(condition)}` : ""}${sideCondition ? `; only sides ${sideCondition.compare === "eq" ? "=" : sideCondition.compare === "lte" ? "≤" : "≥"} ${sideCondition.value} ordinary pips before Trap changes` : ""}`;
+  if (e.kind === "grant")
+    return `Grant ${e.keywords?.map((k) => k.type).join(", ") || ""}${e.randomKeywords ? `${e.keywords?.length ? " and " : ""}${e.randomKeywords.count} random keyword(s), never Flash` : ""} to ${e.target} cards ${e.timing === "placed" ? "when placed" : e.timing === "enter" ? "when cards enter" : "at the beginning of each turn"}${e.recipients === "active" && e.timing === "turn-start" ? ", current player only" : ", both players"}; grants last this battle`;
   const sides = "side" in e ? trapEffectSides(e) : [];
   const where =
     sides.length === 4

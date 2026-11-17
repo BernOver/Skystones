@@ -1,3 +1,6 @@
+import { CardFilterFields, PipTestFields } from "./CardFilterFields";
+import { RandomKeywordFields } from "./RandomKeywordFields";
+import { GrantKeywordFields } from "./KeywordEditor";
 import { trapImageLayout } from "./imageLayout";
 import { ImageLayoutControls } from "./ImageLayoutControls";
 import { useId, useState } from "react";
@@ -520,6 +523,92 @@ function TrapEffectFields({
           ))}
         </select>
       </label>
+      {effect.kind === "grant" && (
+        <>
+          <label>
+            Recipients
+            <select
+              aria-label={`Trap grant recipients ${number}`}
+              value={effect.target}
+              onChange={(e) =>
+                onChange({
+                  ...effect,
+                  target: e.target.value as "board" | "hand" | "both",
+                })
+              }
+            >
+              <option value="board">Board cards</option>
+              <option value="hand">Hand cards</option>
+              <option value="both">Board and hand cards</option>
+            </select>
+          </label>
+          <label>
+            When to grant
+            <select
+              aria-label={`Trap grant timing ${number}`}
+              value={effect.timing}
+              onChange={(e) =>
+                onChange({
+                  ...effect,
+                  timing: e.target.value as "placed" | "enter" | "turn-start",
+                })
+              }
+            >
+              <option value="placed">
+                When this Trap is placed · after captures
+              </option>
+              <option value="enter">
+                When cards enter play or hands · after captures
+              </option>
+              <option value="turn-start">At the beginning of turns</option>
+            </select>
+          </label>
+          {effect.timing === "turn-start" && (
+            <label>
+              Whose cards
+              <select
+                aria-label={`Trap grant turns ${number}`}
+                value={effect.recipients || "both"}
+                onChange={(e) =>
+                  onChange({
+                    ...effect,
+                    recipients: e.target.value as "active" | "both",
+                  })
+                }
+              >
+                <option value="both">Both players</option>
+                <option value="active">Current player only</option>
+              </select>
+            </label>
+          )}
+          <GrantKeywordFields
+            label={`Trap grant ${number}`}
+            depth={0}
+            element="magic"
+            keyword={{
+              type: "enchant",
+              target: effect.target === "hand" ? "hands" : "board",
+              keywords: effect.keywords,
+              randomKeywords: effect.randomKeywords,
+            }}
+            onChange={(keyword) =>
+              keyword.type === "enchant" &&
+              onChange({ ...effect, keywords: keyword.keywords })
+            }
+          />
+          <RandomKeywordFields
+            label={`Trap grant ${number}`}
+            value={effect.randomKeywords}
+            onChange={(randomKeywords) =>
+              onChange({ ...effect, randomKeywords })
+            }
+          />
+          <small>
+            Grants last for this battle even if this Trap is replaced. Flash is
+            excluded from random grants.
+          </small>
+        </>
+      )}
       {"side" in effect && (
         <>
           <label>
@@ -650,6 +739,55 @@ function TrapEffectFields({
             }
           />
         </label>
+      )}
+      <CardFilterFields
+        label={`Trap effect ${number} matching`}
+        value={effect.condition}
+        onChange={(condition) => onChange({ ...effect, condition })}
+      />
+      {"side" in effect && (
+        <>
+          <label>
+            <input
+              type="checkbox"
+              aria-label={`Trap side condition ${number}`}
+              checked={!!effect.sideCondition}
+              onChange={(e) =>
+                onChange({
+                  ...effect,
+                  sideCondition: e.target.checked
+                    ? { compare: "eq", value: 0 }
+                    : undefined,
+                })
+              }
+            />
+            Only modify sides passing a pip condition
+          </label>
+          {effect.sideCondition && (
+            <PipTestFields
+              label={`Trap side condition ${number}`}
+              value={effect.sideCondition}
+              onChange={(sideCondition) =>
+                onChange({ ...effect, sideCondition })
+              }
+            />
+          )}
+          <button
+            type="button"
+            className="text-button"
+            onClick={() =>
+              onChange({
+                kind: "pips",
+                side: "all",
+                amount: 2,
+                condition: { type: "stone" },
+                sideCondition: { compare: "eq", value: 0 },
+              })
+            }
+          >
+            Preset: stones gain +2 on zero-pip sides
+          </button>
+        </>
       )}
       <p className="trap-effect-help">
         {TRAP_EFFECTS[effect.kind].description}

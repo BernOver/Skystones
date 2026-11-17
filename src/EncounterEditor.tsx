@@ -1,3 +1,4 @@
+import { AIProfileFields } from "./BotControl";
 import { useMemo, useState } from "react";
 import { Plus, Save, Play, ArrowLeft, Trash2 } from "lucide-react";
 import { CharacterAvatar } from "./CharacterAvatar";
@@ -414,6 +415,10 @@ export function EncounterEditor({
             </p>
           </section>
           <section className="run-panel">
+            <AIProfileFields
+              value={draft.ai}
+              onChange={(ai) => update({ ai })}
+            />
             <h2>Enemy starting hand</h2>
             <label className="encounter-check">
               <input

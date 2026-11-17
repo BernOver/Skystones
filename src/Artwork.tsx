@@ -1,6 +1,10 @@
 import { imageLayoutStyle } from "./imageLayout";
 import { readTokens } from "./tokens";
-import { trapCombatBonuses, trapDizzyMinimum } from "./traps";
+import {
+  trapCombatBonuses,
+  trapDizzyMinimum,
+  trapEnvironmentEdges,
+} from "./traps";
 import type { Trap } from "./traps";
 import { swapIdentity, keywordHalf, isSwapForce } from "./swapForce";
 import { stoneTribes, tribeName } from "./tribes";
@@ -569,6 +573,7 @@ export const StoneCard = memo(
     compact = false,
     faded = false,
     edges = stone.edges,
+    ordinaryEdges = stone.edges,
     silenced = false,
     shields = shieldEdges(stone, silenced),
     keywordShields,
@@ -583,6 +588,7 @@ export const StoneCard = memo(
     compact?: boolean;
     faded?: boolean;
     edges?: Edges;
+    ordinaryEdges?: Edges;
     silenced?: boolean;
     shields?: Edges;
     keywordShields?: Edges;
@@ -603,6 +609,7 @@ export const StoneCard = memo(
       trapAdjustedShields(stone, shields, trap, silenced, keywordShields),
       trap,
       environment,
+      trapEnvironmentEdges(ordinaryEdges, stone, environment, trap),
     );
     return (
       <div
@@ -836,9 +843,19 @@ export const StoneCard = memo(
                                                       : keyword.type ===
                                                           "discard-priority"
                                                         ? `${keyword.priority ?? 1}`
-                                                        : keyword.side === "any"
-                                                          ? "ANY EDGE"
-                                                          : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
+                                                        : keyword.type ===
+                                                            "relocate"
+                                                          ? `MOVE ${keyword.affects.toUpperCase()}`
+                                                          : keyword.type ===
+                                                              "command"
+                                                            ? `${keyword.turns} BOT TURNS`
+                                                            : keyword.type ===
+                                                                "turn-start"
+                                                              ? `${keyword.when.toUpperCase()} TURN · ${keyword.keywords.map((k) => KEYWORD_RULES[k.type].name).join(", ")}`
+                                                              : keyword.side ===
+                                                                  "any"
+                                                                ? "ANY EDGE"
+                                                                : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
                           )
                           .join("/")}
                       </b>
@@ -893,6 +910,7 @@ export const StoneCard = memo(
       before.silenced === after.silenced &&
       before.played === after.played &&
       sameEdges(before.edges, after.edges) &&
+      sameEdges(before.ordinaryEdges, after.ordinaryEdges) &&
       sameEdges(before.shields, after.shields) &&
       (before.environment === after.environment ||
         JSON.stringify(before.environment) ===

@@ -164,6 +164,7 @@ function PartingGiftPicker({
             </small>
             <StoneCard
               stone={option.stone}
+              ordinaryEdges={option.ordinaryEdges || option.edges}
               edges={
                 option.location === "hand"
                   ? trapEdges(option.edges, option.stone, pending.trap)

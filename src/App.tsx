@@ -1,3 +1,6 @@
+import { advanceTurn, postPlayTrapGrants } from "./turns";
+import type { TurnState } from "./turns";
+import { BotControlPanel } from "./BotControl";
 import { DEFAULT_SPELLS } from "./spellCards.ts";
 import { ImageLayoutControls } from "./ImageLayoutControls";
 import {
@@ -193,6 +196,7 @@ interface Match {
   traps?: TrapState;
   recipes?: SuperchargerRecipe[];
   turnNumber?: number;
+  turnState?: TurnState;
   id: string;
   board: Board;
   hands: [Stone[], Stone[]];
@@ -359,26 +363,37 @@ function applyMove(
     error.move = { index, cardIndex, targets };
     throw error;
   }
-  let nextOwner: Owner = move.keepsTurn
-    ? match.current
-    : ((1 - match.current) as Owner);
-  if (
-    !playableHand(discarded.hands[nextOwner]) &&
-    playableHand(discarded.hands[(1 - nextOwner) as Owner])
-  )
-    nextOwner = (1 - nextOwner) as Owner;
+  const trapGifts = postPlayTrapGrants(
+    discarded.board,
+    discarded.hands,
+    match.board,
+    match.hands,
+    move.sourceIndex ?? index,
+    seed,
+    recipes,
+  );
+  const turn = advanceTurn(
+    trapGifts.board,
+    trapGifts.hands,
+    match.current,
+    match.turnNumber ?? match.moves,
+    !!move.keepsTurn,
+    seed,
+    match.turnState,
+    { recipes, botOwners: match.mode === "computer" ? [1] : [] },
+  );
   return {
     ...match,
-    board: discarded.board,
-    ...(trapStateFromBoard(discarded.board)
-      ? { traps: trapStateFromBoard(discarded.board) }
+    board: turn.board,
+    ...(trapStateFromBoard(turn.board)
+      ? { traps: trapStateFromBoard(turn.board) }
       : {}),
     recipes,
-    hands: discarded.hands,
-    current: nextOwner,
+    hands: turn.hands,
+    current: turn.owner,
     moves: match.moves + 1,
-    turnNumber:
-      (match.turnNumber ?? match.moves) + (nextOwner === match.current ? 0 : 1),
+    turnNumber: turn.turnNumber,
+    turnState: turn.state,
     lastCaptured: move.captured,
     lastPlaced: index,
     entries: [
@@ -389,6 +404,8 @@ function applyMove(
         captured: move.captured.length,
         effects: [
           ...assembled.messages,
+          ...trapGifts.messages,
+          ...turn.messages,
           ...(move.keepsTurn
             ? [stone.spell ? "Spell: play again" : "Flash: play again"]
             : []),
@@ -620,7 +637,7 @@ export default function App() {
   }, [toast]);
 
   useEffect(() => {
-    if (!aiTurn || dialog) return;
+    if (!aiTurn || dialog || match.turnState?.controlledBy === 0) return;
     const timer = setTimeout(() => {
       try {
         const move = chooseMove(
@@ -764,6 +781,9 @@ export default function App() {
       discards: cell?.discards,
       discardBuffs: cell?.discardBuffs,
       playerNames: names,
+      ordinaryEdges: cell
+        ? cell.edges || cell.stone.edges
+        : evaluateKeywords(stone, match.board, player).edges,
       dizzy: cell?.dizzy,
       trap: activeTrap,
       environment: cell?.environment,
@@ -888,6 +908,14 @@ export default function App() {
     setDialog(null);
     navigate("table");
   }
+  function chooseBotCard(cardIndex: number) {
+    if (!aiTurn || match.turnState?.controlledBy !== 0) return;
+    const move = chooseMove(match.board, match.hands[1], match.hands[0], 1, {
+      trap: match.traps?.active?.trap,
+      forcedCardIndex: cardIndex,
+    });
+    commitMove(move.index, move.cardIndex, move.targets);
+  }
   function castFromHand(cardIndex: number) {
     if (aiTurn || done) return;
     const stone = match.hands[match.current][cardIndex];
@@ -971,7 +999,7 @@ export default function App() {
     }
     setDialog(null);
   }
-  function chooseTarget(boardIndex: number, side?: Side) {
+  function chooseTarget(boardIndex: number, side?: Side, to?: number) {
     if (dialog?.kind !== "target") return;
     const stone = match.hands[match.current][dialog.cardIndex];
     const state = prepareTargeting(
@@ -984,7 +1012,10 @@ export default function App() {
     if (
       !state.pending ||
       !state.pending.options.some(
-        (option) => option.boardIndex === boardIndex && option.side === side,
+        (option) =>
+          option.boardIndex === boardIndex &&
+          option.side === side &&
+          option.to === to,
       )
     )
       return;
@@ -994,6 +1025,7 @@ export default function App() {
         keywordIndex: state.pending.keywordIndex,
         boardIndex,
         ...(side !== undefined ? { side } : {}),
+        ...(to !== undefined ? { to } : {}),
       },
     ];
     if (
@@ -1564,6 +1596,13 @@ export default function App() {
                     </div>
                   </div>
 
+                  {aiTurn && match.turnState?.controlledBy === 0 && (
+                    <BotControlPanel
+                      hand={match.hands[1]}
+                      remaining={match.turnState.control[0]}
+                      onChoose={chooseBotCard}
+                    />
+                  )}
                   <TrapPanel
                     state={match.traps}
                     board={match.board}
@@ -1649,6 +1688,7 @@ export default function App() {
                             >
                               <StoneCard
                                 stone={cell.stone}
+                                ordinaryEdges={cell.edges || cell.stone.edges}
                                 played
                                 owner={cell.owner}
                                 edges={cardEdges(cell)}
@@ -1863,6 +1903,10 @@ export default function App() {
                       >
                         <StoneCard
                           trap={activeTrap}
+                          ordinaryEdges={
+                            evaluateKeywords(stone, match.board, handOwner)
+                              .edges
+                          }
                           stone={withNextKeywords(
                             stone,
                             match.board,

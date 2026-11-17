@@ -5016,3 +5016,28 @@ button:disabled:hover {
   background: #56332bef;
   border-color: #deb19c;
 }
+
+.bot-control-panel {
+  padding: 16px;
+  margin: 16px 0;
+  background: #f3e8cb;
+  border: 1px solid #c8b477;
+  border-radius: 14px;
+}
+.bot-control-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  max-height: 440px;
+  overflow: auto;
+}
+.bot-control-cards > button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.bot-control-cards > button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

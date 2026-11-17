@@ -1,3 +1,4 @@
+import { trapEnvironmentEdges } from "./traps";
 import { keywordHalf, isSwapForce } from "./swapForce";
 import { readTokens } from "./tokens";
 import { amplifyText } from "./amplify";
@@ -68,6 +69,7 @@ export interface Inspection {
   anchor: { left: number; right: number; top: number };
   anchorElement: HTMLElement;
   edges: Edges;
+  ordinaryEdges?: Edges;
   activeKeywords: ActiveKeyword[];
   played: boolean;
   playerName: string;
@@ -670,6 +672,73 @@ export function KeywordDetails({
               </section>
             );
           }
+          if (type === "command")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <strong>Command</strong>
+                {keywords.map(
+                  (k, i) =>
+                    k.type === "command" && (
+                      <p key={i}>
+                        Choose the opponent bot’s next cards for {k.turns}{" "}
+                        upcoming turns. The bot chooses placement. Spells and
+                        Flash stay in the same controlled turn; human opponents
+                        keep their choices.
+                      </p>
+                    ),
+                )}
+              </section>
+            );
+          if (type === "relocate")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <strong>Relocate · before captures</strong>
+                {keywords.map(
+                  (k, i) =>
+                    k.type === "relocate" && (
+                      <p key={i}>
+                        Choose{" "}
+                        {k.affects === "allies"
+                          ? "an allied"
+                          : k.affects === "enemies"
+                            ? "an enemy"
+                            : "either player’s"}{" "}
+                        board card, then an empty tile. Keep its owner, pips,
+                        keywords and history. Movement makes no captures or
+                        on-play triggers; terrain stays on its tile. A treasure
+                        chest objective follows its card.
+                      </p>
+                    ),
+                )}
+              </section>
+            );
+          if (type === "turn-start")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <strong>Turn Start</strong>
+                {keywords.map(
+                  (k, i) =>
+                    k.type === "turn-start" && (
+                      <div key={i}>
+                        <p>
+                          Repeat at the beginning of{" "}
+                          {k.when === "self"
+                            ? "its controller’s turns"
+                            : k.when === "opponent"
+                              ? "opponent turns"
+                              : "every turn"}
+                          . Once per new turn; Flash and spells do not repeat
+                          it. Targets are chosen automatically. Silence stops a
+                          board source. Spells keep their caster.
+                        </p>
+                        <KeywordDetails
+                          stone={{ ...stone, keywords: k.keywords }}
+                        />
+                      </div>
+                    ),
+                )}
+              </section>
+            );
           if (type === "enchant")
             return (
               <section className="keyword-rule" key={groupIndex}>
@@ -1105,6 +1174,12 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
     ),
     inspection.trap,
     inspection.environment,
+    trapEnvironmentEdges(
+      inspection.ordinaryEdges || stone.edges,
+      stone,
+      inspection.environment,
+      inspection.trap,
+    ),
   );
   return (
     <>
@@ -1402,6 +1477,7 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
           played={inspection.played}
           grantedKeywords={inspection.grantedKeywords}
           edges={inspection.edges}
+          ordinaryEdges={inspection.ordinaryEdges}
           silenced={inspection.silenced}
           shields={inspection.shields}
           keywordShields={inspection.keywordShields}

@@ -1,3 +1,5 @@
+import { aiCandidates } from "./ai.ts";
+import type { AIProfile } from "./ai.ts";
 import { boardContext } from "./playSources.ts";
 import { validImageTransform } from "./imageLayout.ts";
 import type { ImageTransform } from "./imageLayout.ts";
@@ -87,6 +89,9 @@ export type KeywordType =
   | "dizzy"
   | "shuffle"
   | "enchant"
+  | "relocate"
+  | "command"
+  | "turn-start"
   | "shield"
   | "combo"
   | "next-play"
@@ -109,8 +114,28 @@ export type ShiftKeyword = {
 };
 export type TargetKeyword =
   | { type: "sunder"; side: Side | "any"; amount?: number }
-  | { type: "silence" };
+  | { type: "silence" }
+  | { type: "relocate"; affects: "allies" | "enemies" | "both" };
+export const TURN_START_TYPES: KeywordType[] = [
+  "conjure",
+  "assemble",
+  "enchant",
+  "next-play",
+  "sunder",
+  "silence",
+  "environment",
+  "amplify",
+  "trap",
+  "discard",
+  "command",
+];
 export type BasicKeyword =
+  | { type: "command"; turns: number }
+  | {
+      type: "turn-start";
+      when: "self" | "opponent" | "both";
+      keywords: StoneKeyword[];
+    }
   | ({ type: "assemble"; count: number } & (
       | { mode?: "random"; part?: never }
       | { mode: "specific"; part: string }
@@ -159,8 +184,16 @@ export interface KeywordTarget {
   keywordIndex: number;
   boardIndex: number;
   side?: Side;
+  to?: number;
 }
 export type TargetEffect =
+  | {
+      type: "relocate";
+      target: number;
+      to: number;
+      keywordIndex: number;
+      moved: true;
+    }
   | {
       type: "shift";
       target: number;
@@ -190,6 +223,18 @@ export type TargetEffect =
 export const SIDE_NAMES = ["North", "East", "South", "West"] as const;
 export const SIDE_LETTERS = ["N", "E", "S", "W"] as const;
 export const KEYWORD_RULES = {
+  relocate: {
+    name: "Relocate",
+    condition: "move a chosen card to an empty tile",
+  },
+  command: {
+    name: "Command",
+    condition: "choose the bot’s cards for upcoming turns",
+  },
+  "turn-start": {
+    name: "Turn Start",
+    condition: "repeat effects at the beginning of turns",
+  },
   trap: { name: "Trap", condition: "place a shared crystal on play" },
   assemble: {
     name: "Assemble",
@@ -256,6 +301,9 @@ export function keywordKey(keyword: StoneKeyword): string {
     keyword.type === "scavenge" ||
     keyword.type === "parting-gift" ||
     keyword.type === "enchant" ||
+    keyword.type === "relocate" ||
+    keyword.type === "command" ||
+    keyword.type === "turn-start" ||
     keyword.type === "discard-priority"
     ? keyword.type
     : `${keyword.type}:${keyword.side}`;
@@ -274,7 +322,10 @@ export function repeatableKeyword(type: KeywordType): boolean {
     type === "conjure" ||
     type === "discard" ||
     type === "parting-gift" ||
-    type === "enchant"
+    type === "enchant" ||
+    type === "turn-start" ||
+    type === "relocate" ||
+    type === "command"
   );
 }
 // Keep each on-play effect in printed order; only the passive edge bonuses group together.
@@ -295,6 +346,9 @@ export function keywordGroups(keywords: StoneKeyword[], halfScoped = false) {
       keyword.type === "scavenge" ||
       keyword.type === "parting-gift" ||
       keyword.type === "enchant" ||
+      keyword.type === "relocate" ||
+      keyword.type === "command" ||
+      keyword.type === "turn-start" ||
       keyword.type === "discard-priority"
     )
       return [
@@ -353,6 +407,7 @@ export interface Stone {
   swapParts?: SwapParts;
 }
 export interface PlacedStone {
+  commandTurns?: number;
   placedTrap?: Trap;
   trap?: Trap;
   history?: PlacedStone[];
@@ -739,6 +794,12 @@ export function attackEdges(cell: PlacedStone): Edges {
     [0, 0, 0, 0],
     cell.trap,
     cell.environment,
+    trapEnvironmentEdges(
+      cell.edges || cell.stone.edges,
+      cell.stone,
+      cell.environment,
+      cell.trap,
+    ),
   );
   return cardEdges(cell).map((value, s) =>
     Math.max(0, value + attack[s]),
@@ -766,6 +827,12 @@ export function defenseEdges(cell: PlacedStone): Edges {
     adjustedShields,
     cell.trap,
     cell.environment,
+    trapEnvironmentEdges(
+      cell.edges || cell.stone.edges,
+      cell.stone,
+      cell.environment,
+      cell.trap,
+    ),
   );
   return cardEdges(cell).map((edge, s) =>
     Math.max(0, edge + defense[s]),
@@ -873,11 +940,28 @@ export function prepareTargeting(
     if (
       keyword.type !== "sunder" &&
       keyword.type !== "silence" &&
-      keyword.type !== "environment"
+      keyword.type !== "environment" &&
+      keyword.type !== "relocate"
     )
       continue;
     const options: KeywordTarget[] = next.flatMap((cell, boardIndex) => {
       if (keyword.type === "environment") return [{ keywordIndex, boardIndex }];
+      if (keyword.type === "relocate") {
+        if (
+          !cell ||
+          owner === undefined ||
+          (keyword.affects !== "both" &&
+            (keyword.affects === "allies"
+              ? cell.owner !== owner
+              : cell.owner === owner))
+        )
+          return [];
+        return next.flatMap((destination, to) =>
+          !destination && to !== placementIndex
+            ? [{ keywordIndex, boardIndex, to }]
+            : [],
+        );
+      }
       if (!cell) return [];
       if (keyword.type === "sunder") {
         const edges = cell.edges || cell.stone.edges;
@@ -933,13 +1017,26 @@ export function prepareTargeting(
       !options.some(
         (option) =>
           option.boardIndex === choice.boardIndex &&
-          option.side === choice.side,
+          option.side === choice.side &&
+          option.to === choice.to,
       )
     )
       throw new Error("Choose a valid card and edge already on the board.");
     used.add(keywordIndex);
     const cell = next[choice.boardIndex]!;
-    if (keyword.type === "environment") {
+    if (keyword.type === "relocate") {
+      next = boardContext([...next], next);
+      next[choice.boardIndex] = null;
+      next[choice.to!] = cell;
+      next = withTileEnvironments(next);
+      effects.push({
+        type: "relocate",
+        keywordIndex,
+        target: choice.boardIndex,
+        to: choice.to!,
+        moved: true,
+      });
+    } else if (keyword.type === "environment") {
       effects.push({
         type: "environment",
         keywordIndex,
@@ -1396,6 +1493,17 @@ export function castSpell(
     playedOrder: order,
     playedElement: stone.receivedElement?.before || stone.element,
     resolvedEffects: plan.effects,
+    ...(plan.effects.some((k) => k.type === "command")
+      ? {
+          commandTurns: Math.min(
+            10000,
+            plan.effects.reduce(
+              (n, k) => n + (k.type === "command" ? k.turns : 0),
+              0,
+            ),
+          ),
+        }
+      : {}),
     ...(queuedPips.length ? { queuedPips } : {}),
     ...(plan.spent.length ? { amplifySpent: plan.spent } : {}),
     ...(plan.queues.length
@@ -1494,6 +1602,17 @@ export function placeStone(
   next[index] = {
     stone,
     ...(history.length ? { history } : {}),
+    ...(plan.effects.some((k) => k.type === "command")
+      ? {
+          commandTurns: Math.min(
+            10000,
+            plan.effects.reduce(
+              (n, k) => n + (k.type === "command" ? k.turns : 0),
+              0,
+            ),
+          ),
+        }
+      : {}),
     ...(plan.amplified ? { resolvedEffects: plan.effects } : {}),
     ...(plan.spent.length ? { amplifySpent: plan.spent } : {}),
     ...(plan.queues.length
@@ -1615,9 +1734,24 @@ export function chooseMove(
   hand: Stone[],
   rivalHand: Stone[],
   owner: Owner,
-  arena: { current?: Element; next?: Element; trap?: Trap } = {},
+  arena: {
+    current?: Element;
+    next?: Element;
+    trap?: Trap;
+    ai?: AIProfile;
+    forcedCardIndex?: number;
+  } = {},
 ): { index: number; cardIndex: number; targets: KeywordTarget[] } {
-  const spellIndex = hand.findIndex((card) => card.spell === "cast");
+  const candidates = aiCandidates(
+    board,
+    hand,
+    owner,
+    arena.ai,
+    arena.forcedCardIndex,
+  );
+  const spellIndex = hand.findIndex(
+    (card, i) => candidates.has(i) && card.spell === "cast",
+  );
   if (spellIndex >= 0)
     return {
       index: -1,
@@ -1638,7 +1772,13 @@ export function chooseMove(
   };
   hand.forEach((stone, cardIndex) =>
     board.forEach((_cell, index) => {
-      if (!canPlace(board, index) || stone.part || stone.spell) return;
+      if (
+        !candidates.has(cardIndex) ||
+        !canPlace(board, index) ||
+        stone.part ||
+        stone.spell
+      )
+        return;
       const targets = chooseKeywordTargets(
         board,
         index,
@@ -1921,6 +2061,9 @@ export function validateKeywords(
       keyword.type === "scavenge" ||
       keyword.type === "parting-gift" ||
       keyword.type === "enchant" ||
+      keyword.type === "relocate" ||
+      keyword.type === "command" ||
+      keyword.type === "turn-start" ||
       keyword.type === "discard-priority"
         ? keyword.side !== undefined
         : !(
@@ -1932,7 +2075,8 @@ export function validateKeywords(
             keyword.side > 3)
     )
       return false;
-    if (keyword.type === "trap" && !validTrap(keyword.trap)) return false;
+    if (keyword.type === "trap" && !validTrap(keyword.trap, false, depth + 1))
+      return false;
     if (
       keyword.type === "assemble" &&
       ((keyword.mode !== undefined &&
@@ -1961,6 +2105,30 @@ export function validateKeywords(
             keyword.count < 1 ||
             keyword.count > 5
           : keyword.count !== undefined))
+    )
+      return false;
+    if (
+      keyword.type === "command" &&
+      (!Number.isInteger(keyword.turns) ||
+        keyword.turns < 1 ||
+        keyword.turns > (runtime ? 160 : 5))
+    )
+      return false;
+    if (
+      keyword.type === "relocate" &&
+      !["allies", "enemies", "both"].includes(keyword.affects)
+    )
+      return false;
+    if (
+      keyword.type === "turn-start" &&
+      (!["self", "opponent", "both"].includes(keyword.when) ||
+        !Array.isArray(keyword.keywords) ||
+        !keyword.keywords.length ||
+        keyword.keywords.length > 5 ||
+        keyword.keywords.some(
+          (k: StoneKeyword) => !k || !TURN_START_TYPES.includes(k.type),
+        ) ||
+        !validateKeywords(keyword.keywords, depth + 1, runtime))
     )
       return false;
     if (keyword.type === "conjure" && !validateConjure(keyword, depth))

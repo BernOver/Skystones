@@ -1,3 +1,11 @@
+import { cardMatches, validCardFilter, filterText } from "./cardFilters.ts";
+import type { CardFilter } from "./cardFilters.ts";
+import {
+  rollKeywords,
+  validRandomKeywords,
+  keywordSeed,
+} from "./randomKeywords.ts";
+import type { RandomKeywordSpec } from "./randomKeywords.ts";
 import { hasTribe } from "./tribes.ts";
 import { characterDefault } from "./cardDefaults.ts";
 import { applyConjure, CONJURE_CARDS } from "./conjure.ts";
@@ -36,6 +44,7 @@ export type BuffSpec = {
 export type PartingGiftKeyword = {
   type: "parting-gift";
   target:
+    | "self"
     | "discarder"
     | "allies"
     | "enemies"
@@ -46,6 +55,8 @@ export type PartingGiftKeyword = {
   mode?: "all" | "chosen" | "random";
   count?: number;
   keywords?: StoneKeyword[];
+  randomKeywords?: RandomKeywordSpec;
+  filter?: CardFilter;
 } & BuffSpec;
 export type EnchantKeyword = Omit<PartingGiftKeyword, "type"> & {
   type: "enchant";
@@ -68,6 +79,7 @@ export interface GiftOption {
   location: "hand" | "board";
   boardIndex?: number;
   edges: Edges;
+  ordinaryEdges?: Edges;
   shields?: Edges;
   keywordShields?: Edges;
   environment?: TileEnvironment;
@@ -171,8 +183,10 @@ export function validDiscardKeyword(value: DiscardKeyword, depth = 0): boolean {
     case "enchant":
       return (
         (value.type !== "enchant" ||
-          (value.target !== "discarder" && !!value.keywords?.length)) &&
+          (value.target !== "discarder" &&
+            !!(value.keywords?.length || value.randomKeywords))) &&
         [
+          "self",
           "discarder",
           "allies",
           "enemies",
@@ -194,7 +208,14 @@ export function validDiscardKeyword(value: DiscardKeyword, depth = 0): boolean {
             value.keywords.length > 0 &&
             value.keywords.length <= 5 &&
             validateKeywords(value.keywords, depth + 1))) &&
-        validBuffSpec(value, true, !!value.keywords?.length)
+        (value.randomKeywords === undefined ||
+          validRandomKeywords(value.randomKeywords)) &&
+        (value.filter === undefined || validCardFilter(value.filter)) &&
+        validBuffSpec(
+          value,
+          true,
+          !!(value.keywords?.length || value.randomKeywords),
+        )
       );
     case "discard-priority":
       return (
@@ -524,24 +545,39 @@ export function resolveDiscards(
         )
           continue;
         for (const target of nextHands[recipientOwner])
-          options.push({
-            id: `hand:${recipientOwner}:${target.id}`,
-            stone: target,
-            owner: recipientOwner,
-            location: "hand",
-            edges: target.edges.map((n, s) =>
-              Math.max(
-                0,
-                Math.min(99, n + (target.discardBuffs?.pips[s] || 0)),
-              ),
-            ) as Edges,
-          });
+          if (
+            cardMatches(
+              target,
+              gift.filter,
+              target.edges.map((n, s) =>
+                Math.max(0, n + (target.discardBuffs?.pips[s] || 0)),
+              ) as Edges,
+            )
+          )
+            options.push({
+              id: `hand:${recipientOwner}:${target.id}`,
+              stone: target,
+              owner: recipientOwner,
+              location: "hand",
+              edges: target.edges.map((n, s) =>
+                Math.max(
+                  0,
+                  Math.min(99, n + (target.discardBuffs?.pips[s] || 0)),
+                ),
+              ) as Edges,
+            });
       }
     else
       nextBoard.forEach((cell, target) => {
         if (
           !cell ||
           cell.silenced ||
+          !cardMatches(
+            cell.stone,
+            gift.filter,
+            cell.edges || cell.stone.edges,
+          ) ||
+          (gift.target === "self" && target !== index) ||
           (gift.target === "discarder" && target !== index) ||
           (gift.target === "allies" && cell.owner !== owner) ||
           (gift.target === "enemies" && cell.owner === owner)
@@ -554,6 +590,7 @@ export function resolveDiscards(
           location: "board",
           boardIndex: target,
           edges: cardEdges(cell),
+          ordinaryEdges: cell.edges || cell.stone.edges,
           shields: cell.shields,
           keywordShields: keywordShieldEdges(cell),
           environment: cell.environment,
@@ -634,8 +671,20 @@ export function resolveDiscards(
         selected.push(pool.splice(Math.floor(random() * pool.length), 1)[0]);
     } else selected = options;
     for (const option of selected) {
+      const randomGrants = gift.randomKeywords
+        ? rollKeywords(
+            gift.randomKeywords,
+            keywordSeed(`${giftId}:${option.id}`, seed),
+            [...(option.stone.keywords || []), ...(gift.keywords || [])],
+            option.stone.element,
+          )
+        : [];
+      const receivedGift = {
+        ...gift,
+        keywords: [...(gift.keywords || []), ...randomGrants],
+      };
       if (option.location === "board") {
-        buffBoard(option.boardIndex!, gift, card.name, record);
+        buffBoard(option.boardIndex!, receivedGift, card.name, record);
         continue;
       }
       const recipient = nextHands[option.owner].find(
@@ -661,10 +710,10 @@ export function resolveDiscards(
       ) as Edges;
       const runtime =
         !!recipient.runtimeEffects ||
-        (gift.keywords || []).some((k) => !validateKeywords([k]));
+        (receivedGift.keywords || []).some((k) => !validateKeywords([k]));
       const merged = mergeKeywordGrants(
         recipient.keywords || [],
-        gift.keywords || [],
+        receivedGift.keywords || [],
         runtime,
       );
       const updated = {
@@ -973,6 +1022,7 @@ export function partingGiftSummary(
   k: PartingGiftKeyword | EnchantKeyword,
 ): string {
   const target = {
+    self: "THIS CARD",
     discarder: "CASTER",
     allies: "ALLY BOARD",
     enemies: "ENEMY BOARD",
@@ -999,7 +1049,7 @@ export function partingGiftSummary(
     .join(" · ");
 }
 export function enchantText(keyword: EnchantKeyword): string {
-  return `On play, ${partingGiftSummary(keyword)}. Resolve after Conjure. Hand recipients use granted keywords on their later plays or discards. Board Shield and conditional pip bonuses activate immediately for their controller; on-play effects are attached without replaying them or captures.`;
+  return `On play, ${partingGiftSummary(keyword)}${keyword.randomKeywords ? ` · ${keyword.randomKeywords.count} random keyword(s), never Flash` : ""}${keyword.filter ? ` · matching ${filterText(keyword.filter)}` : ""}. Resolve after Conjure. Hand recipients use granted keywords on their later plays or discards. Board Shield and conditional pip bonuses activate immediately for their controller; on-play effects are attached without replaying them or captures.`;
 }
 export function discardText(keyword: DiscardKeyword): string {
   switch (keyword.type) {
@@ -1011,6 +1061,7 @@ export function discardText(keyword: DiscardKeyword): string {
       return `When a card is discarded from ${keyword.from === "both" ? "either hand" : keyword.from === "self" ? "your hand" : "the opponent’s hand"}, this board card gains ${buffText(keyword)} per card discarded. Buffs apply after captures. Silence disables this ability and its discard bonuses.`;
     case "parting-gift": {
       const target = {
+        self: "this board card",
         discarder: "the card causing the discard",
         allies: "its owner’s board cards",
         enemies: "the opponent’s board cards",

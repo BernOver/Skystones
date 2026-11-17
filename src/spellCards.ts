@@ -51,6 +51,28 @@ export const DEFAULT_SPELLS: Stone[] = [
     spell: "discard",
     keywords: [{ type: "sunder", side: "any", amount: 3 }],
   },
+  {
+    id: "custom-token-spell-relocate",
+    name: "Wayfinder Call",
+    element: "magic",
+    portrait: "hoot-loop",
+    keywords: [{ type: "relocate", affects: "allies" }],
+  },
+  {
+    id: "custom-token-spell-wild-grant",
+    name: "Wild Blessing",
+    element: "magic",
+    portrait: "pop-fizz",
+    keywords: [
+      {
+        type: "enchant",
+        target: "hand",
+        mode: "chosen",
+        count: 1,
+        randomKeywords: { count: 1 },
+      },
+    ],
+  },
 ].map(
   (card) =>
     ({

@@ -53,7 +53,7 @@ export function TargetPicker({
   placement: number;
   targets: KeywordTarget[];
   names: string[];
-  onChoose: (index: number, side?: Side) => void;
+  onChoose: (index: number, side?: Side, to?: number) => void;
   onCancel: () => void;
 }) {
   const state = prepareTargeting(board, stone, targets, owner, placement);
@@ -74,6 +74,7 @@ export function TargetPicker({
   }, [selectedTarget, state.pending?.keywordIndex]);
   if (!state.pending) return null;
   const { keyword, candidates } = state.pending;
+  const moving = keyword.type === "relocate";
   const flexible = keyword.type === "sunder" && keyword.side === "any";
   const terrain = keyword.type === "environment";
   const amount = keyword.type === "sunder" ? (keyword.amount ?? 1) : 1;
@@ -102,6 +103,21 @@ export function TargetPicker({
             {environmentText(keyword.environment)} Choose any empty or occupied
             tile, including your placement tile. This replaces its previous
             environment.
+          </>
+        ) : moving ? (
+          <>
+            <strong>
+              Choose{" "}
+              {keyword.affects === "both"
+                ? "a"
+                : keyword.affects === "allies"
+                  ? "an allied"
+                  : "an enemy"}{" "}
+              board card
+            </strong>
+            , then an empty destination. Its owner, pips, keywords and play
+            history travel with it. Relocation does not make captures or replay
+            the card.
           </>
         ) : keyword.type === "sunder" ? (
           <>
@@ -151,7 +167,50 @@ export function TargetPicker({
           . You can still cancel this play.
         </p>
       )}
-      {selectedCard && selectedTarget !== null ? (
+      {moving && selectedTarget !== null ? (
+        <div ref={optionsRef}>
+          <p>
+            Move <strong>{selectedCard?.stone.name}</strong> from{" "}
+            {coordinate(selectedTarget, size)}. Choose an empty tile.
+          </p>
+          <div
+            className={`target-board target-board-${size}`}
+            role="group"
+            aria-label="Choose relocation destination"
+          >
+            {state.board.map((cell, to) => (
+              <button
+                key={to}
+                className="target-cell"
+                disabled={
+                  !state.pending!.options.some(
+                    (option) =>
+                      option.boardIndex === selectedTarget && option.to === to,
+                  )
+                }
+                aria-label={`Move to ${coordinate(to, size)}${cell ? ", occupied" : ", empty"}`}
+                onClick={() => onChoose(selectedTarget, undefined, to)}
+              >
+                {coordinate(to, size)}
+                {cell && (
+                  <StoneCard
+                    stone={cell.stone}
+                    ordinaryEdges={cell.edges || cell.stone.edges}
+                    played
+                    edges={cardEdges(cell)}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+          <button
+            className="text-button target-back"
+            onClick={() => setChosen(null)}
+          >
+            Choose another card
+          </button>
+        </div>
+      ) : selectedCard && selectedTarget !== null ? (
         <div className="target-edge-selection" ref={optionsRef}>
           <p>
             <strong>{selectedCard.stone.name}</strong> ·{" "}
@@ -160,6 +219,7 @@ export function TargetPicker({
           <div className="target-selected-card">
             <StoneCard
               stone={selectedCard.stone}
+              ordinaryEdges={selectedCard.edges || selectedCard.stone.edges}
               played
               edges={cardEdges(selectedCard)}
               silenced={selectedCard.silenced}
@@ -233,7 +293,7 @@ export function TargetPicker({
                     : `${coordinate(index, size)}, ${index === placement ? "placing here" : "empty"}`
                 }
                 onClick={() =>
-                  flexible
+                  flexible || moving
                     ? setChosen({
                         keywordIndex: state.pending!.keywordIndex,
                         boardIndex: index,
@@ -249,6 +309,7 @@ export function TargetPicker({
                   <>
                     <StoneCard
                       stone={cell.stone}
+                      ordinaryEdges={cell.edges || cell.stone.edges}
                       played
                       owner={cell.owner}
                       edges={cardEdges(cell)}
@@ -287,11 +348,13 @@ export function TargetPicker({
         </div>
       )}
       <p className="field-note">
-        {terrain
-          ? "Environments stay on their tile through captures, Silence, and position swaps. Only the newest environment on a tile applies."
-          : keyword.type === "sunder"
-            ? "Pips cannot fall below zero. The reduction stays after captures or Silence."
-            : "Silence lasts for the rest of the match. Earlier captures and resolved effects stay."}{" "}
+        {moving
+          ? "Only empty destinations are allowed. Terrain stays on its tile; a treasure chest objective follows its card."
+          : terrain
+            ? "Environments stay on their tile through captures, Silence, and position swaps. Only the newest environment on a tile applies."
+            : keyword.type === "sunder"
+              ? "Pips cannot fall below zero. The reduction stays after captures or Silence."
+              : "Silence lasts for the rest of the match. Earlier captures and resolved effects stay."}{" "}
         If no valid targets remain, the next effect is skipped.
       </p>
       <button className="button button-outline full-width" onClick={onCancel}>

@@ -301,6 +301,22 @@ Only **actual Conjure gains** count, after its hand cap, filters, and token avai
 
 New Draft pools include discard synergies; existing saved pools keep their definitions. New Adventure shops, shrines, and transformations can offer the four abilities. Draft’s unused offer cards remain separate from hand discards during a match.
 
+## Random grants, turn starts, and bot behavior
+
+**Random keywords:** in Card studio, choose **Enchant → Generate random keywords**, then select 1–5 keywords per recipient, strength, and an optional allowed-type pool. Fixed grants and random grants can be combined. **Flash is excluded from every random keyword pool**, including nested generated definitions. Each recipient gets an independent, reproducible roll when the grant resolves; uniqueness rules and the 24-keyword limit still apply. Enchant → This card lets a stone generate its own keywords after captures. Spells use the same Enchant controls for hand and board recipients.
+
+**Trap keyword grants:** Collection → Traps → Grant keywords supports fixed or random keywords for board cards, hand cards, or both. Trigger when the Trap is placed, when cards enter play/hands, or at the beginning of turns. Placement and entry grants resolve after captures and Conjure; they use both players' matching cards. Turn-start grants can affect both players or only the current player. Granted keywords last for the battle even when the Trap is replaced. A newer Trap replaces the old crystal's ongoing rules.
+
+**Conditional Trap modifications:** each effect can match a card type, element, tribe, keyword, and pip condition. Side conditions can check exactly, at most, or at least a pip value. The preset **Stones gain +2 on zero-pip sides** changes each zero side to 2 while leaving other sides unchanged. Side checks use ordinary input pips before the Trap's own modifiers, avoiding a bonus canceling its own condition. Normal cards, tokens, Unique cards, Parts, spells and Superchargers can be selected by type.
+
+**Turn Start:** add this keyword, select controller/opponent/every turn, and configure up to five effects. Supported effects include Conjure, Assemble, Enchant, Next Play, Sunder, Silence, Environment, Amplify, Trap placement, Discard, and Command. They trigger automatically once per new matching turn, after the source is played; Flash and spells stay in the same turn. Targets and discard reactions are automatic. A captured board source follows its current controller; Silence stops it. A spell's schedule keeps its caster and lasts for this battle. A new schedule granted at turn start waits for a later turn. Saved runs retain their processed turn, so reloads do not repeat a trigger.
+
+**Bot priorities:** Adventure → Adventure workshop → Bot behavior supports tactical play, lowest pips first, or highest pips first, plus matching-card priorities. A priority match is selected first; pip order narrows that group, then tactical placement breaks ties. If no priority matches, the bot uses its remaining hand. Spells count as zero pips; loose Parts and discard-only spells are never chosen as plays. Saved encounter settings apply to new fights and the Test encounter button; current fights retain their setup.
+
+**Command:** choose the opponent bot's cards for 1–5 upcoming turns, while the bot chooses their placements and effect targets. Encounter settings can also grant 0–99 controlled turns at the start of a fight. A control turn is spent once when a playable bot turn begins, and includes all its Flash cards and spells. Controls persist through reloads and expire normally; human opponents keep their own choices. The panel clearly shows which card is being chosen and how many controlled turns remain.
+
+**Wayfinder Call** is a new Conjure-only spell with **Relocate**: choose an allied board card, then an empty destination. It keeps its owner, stats, buffs and play history, makes no captures, and does not replay on-play effects or end the turn. Terrain stays on its tile; a treasure chest objective follows its card, while throne objectives stay on their tile. The maker also lets Relocate affect enemies or either player. **Wild Blessing** demonstrates a targeted random keyword grant.
+
 ## Shuffle and compact board keywords
 
 Played cards with **more than two keyword entries** show only **“X keywords”** on the board. Cards in hand and in the studio retain their labels; hovering or opening an in-play card shows its complete keyword rules.
@@ -311,7 +327,7 @@ Played cards with **more than two keyword entries** show only **“X keywords”
 
 ## Spells
 
-Spells enter hands **through Conjure during a battle**, rather than replacing the 5/8 starting stones. Collection → **Spells** contains six examples. In Card studio, choose **Card type → Spell** or **Spell · discard only** and add its effects. Spells share portrait uploads, image sizing, keyword editing, inspection and portable card exports with stones. They have no board pips.
+Spells enter hands **through Conjure during a battle**, rather than replacing the 5/8 starting stones. Collection → **Spells** contains eight examples. In Card studio, choose **Card type → Spell** or **Spell · discard only** and add its effects. Spells share portrait uploads, image sizing, keyword editing, inspection and portable card exports with stones. They have no board pips.
 
 On a stone, use **Conjure → Specified token or spell** to select a particular spell, or **Random → Spells only** for a random spell. Normal card/token Conjures exclude spells. Random spell filters support elements and tribes; hand limits still apply. Spell templates are reusable and generated copies last for the current battle.
 

@@ -67,6 +67,28 @@ new games, new Draft pools, and newly generated Adventure cards. Existing
 games and copies in an Adventure keep their saved cards. Restore original
 default in the character details to reset it. Defaults save in this browser.
 
+Random keywords: Card studio > Enchant > Generate random keywords. Choose 1-5
+per recipient, strength, and an optional custom pool. Flash is never in random
+pools. Fixed and random grants can be combined. "This card" lets a stone grant
+itself keywords. Spells grant to hand or board cards with the same controls.
+Traps can grant fixed or random keywords when placed, when cards enter, or at
+turn start. Grants resolve after captures and Conjure and last this battle.
+Use effect matching and side pip conditions for conditional bonuses. The preset
+"stones gain +2 on zero-pip sides" leaves nonzero sides unchanged.
+Turn Start: choose controller/opponent/every turn and the effects to repeat.
+Targets are automatic. Only new turns trigger it; spells and Flash do not.
+Captured sources follow their controller; Silence stops board sources. Spell
+schedules keep their caster. Reloading does not repeat a processed turn.
+Adventure workshop > Bot behavior: prioritize card types, elements, tribes or
+keywords, then use tactical, lowest-pip-first or highest-pip-first play.
+Initial bot control turns let the player choose its cards. Command adds more
+controlled turns during a battle. The bot still chooses placement. Flash and
+spells stay in one controlled turn; the counter expires and survives reloads.
+Wayfinder Call: Conjure this spell, choose an allied card and an empty tile.
+Relocate keeps stats, keywords and owner, makes no captures, and keeps your
+turn. Terrain stays in place; treasure chest objectives follow their cards.
+Wild Blessing is a new spell demonstrating random keyword grants.
+
 Board keyword labels: after a card is played, three or more keyword entries
 collapse to "X keywords". Hover or open it for the complete keyword rules.
 Shuffle: choose two to four sides in Card studio. After Dizzy and before
@@ -80,7 +102,7 @@ and Resonance check once when granted. Other on-play effects attach without
 replaying placement or captures. Hand cards use grants on later plays/discards.
 Conjure resolves first. Canceling a target choice leaves the whole play unchanged.
 
-Spells: Collection > Spells has six examples. In Card studio, choose Card type
+Spells: Collection > Spells has eight examples. In Card studio, choose Card type
 Spell or Spell - discard only. Save the template, then give a stone Conjure >
 Specified token or spell, or Random > Spells only. Spells only enter hands
 through Conjure during a battle; normal card/token pools exclude them.

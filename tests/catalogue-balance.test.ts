@@ -120,7 +120,12 @@ test("element themes preserve the original roster keywords and every Conjure tem
   assert.deepEqual(
     [...allTypes].sort(),
     Object.keys(KEYWORD_RULES)
-      .filter((type) => type !== "shuffle" && type !== "enchant")
+      .filter(
+        (type) =>
+          !["shuffle", "enchant", "relocate", "command", "turn-start"].includes(
+            type,
+          ),
+      )
       .sort(),
   );
   const has = (c: Stone, types: string[]) =>

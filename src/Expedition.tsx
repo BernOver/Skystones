@@ -1,3 +1,4 @@
+import { BotControlPanel } from "./BotControl";
 import { TrapPanel } from "./Traps";
 import { canPlace } from "./game";
 import { isSwapForce } from "./swapForce";
@@ -348,7 +349,8 @@ function ExpeditionView({
       setup ||
       discardTarget ||
       run.phase !== "battle" ||
-      run.battle?.current !== 1
+      run.battle?.current !== 1 ||
+      run.battle.turnState?.controlledBy === 0
     )
       return;
     const floor = run.floor,
@@ -567,6 +569,7 @@ function ExpeditionView({
       discards: cell?.discards,
       discardBuffs: cell?.discardBuffs,
       playerNames: ["You", "Keeper"],
+      ...(cell ? { ordinaryEdges: cell.edges || cell.stone.edges } : {}),
       dizzy: cell?.dizzy,
       trap: battle?.traps?.active?.trap,
       environment: cell?.environment,
@@ -577,6 +580,33 @@ function ExpeditionView({
       setInspected(value);
       setInspection(null);
     } else setInspection(value);
+  }
+  function chooseBotCard(cardIndex: number) {
+    if (
+      !run ||
+      run.battle?.current !== 1 ||
+      run.battle.turnState?.controlledBy !== 0
+    )
+      return;
+    try {
+      setRun(adventureEnemyMove(run, [0], cardIndex));
+      setError("");
+    } catch (error) {
+      if (error instanceof DiscardSelectionRequired && error.move)
+        setDiscardTarget({
+          placement: error.move.index,
+          cardIndex: error.move.cardIndex,
+          targets: error.move.targets,
+          choices: [],
+          pending: error.pending,
+        });
+      else
+        setError(
+          error instanceof Error
+            ? error.message
+            : "The bot could not play that card.",
+        );
+    }
   }
   function play(placement: number) {
     if (selected === null || ai || !battle) return;
@@ -652,7 +682,7 @@ function ExpeditionView({
     }
     setDiscardTarget(null);
   }
-  function chooseTarget(boardIndex: number, chosenSide?: Side) {
+  function chooseTarget(boardIndex: number, chosenSide?: Side, to?: number) {
     if (!target || !battle) return;
     const stone = battle.hands[0][target.cardIndex],
       state = prepareTargeting(
@@ -665,7 +695,9 @@ function ExpeditionView({
     if (
       !state.pending?.options.some(
         (option) =>
-          option.boardIndex === boardIndex && option.side === chosenSide,
+          option.boardIndex === boardIndex &&
+          option.side === chosenSide &&
+          option.to === to,
       )
     )
       return;
@@ -675,6 +707,7 @@ function ExpeditionView({
         keywordIndex: state.pending.keywordIndex,
         boardIndex,
         ...(chosenSide !== undefined ? { side: chosenSide } : {}),
+        ...(to !== undefined ? { to } : {}),
       },
     ];
     if (
@@ -1089,6 +1122,13 @@ function ExpeditionView({
                   : `Win the score AND hold ${adventureOpponent(run).name}’s throne at ${coordinate(battle.objective, run.size)}. No extra guard starts on the board.`}
             </p>
           )}
+          {ai && battle.turnState?.controlledBy === 0 && (
+            <BotControlPanel
+              hand={battle.hands[1]}
+              remaining={battle.turnState.control[0]}
+              onChoose={chooseBotCard}
+            />
+          )}
           <TrapPanel
             state={battle.traps}
             board={battle.board}
@@ -1139,6 +1179,7 @@ function ExpeditionView({
                   >
                     <StoneCard
                       stone={cell.stone}
+                      ordinaryEdges={cell.edges || cell.stone.edges}
                       played
                       owner={cell.owner}
                       edges={cardEdges(cell)}
@@ -1265,6 +1306,9 @@ function ExpeditionView({
                   }
                   edges={adventureCardStrengths(run, stone).edges}
                   selected={selected === index}
+                  ordinaryEdges={
+                    adventureCardStrengths(run, stone).ordinaryEdges
+                  }
                   shields={adventureCardStrengths(run, stone).shields}
                 />
               </button>

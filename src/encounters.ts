@@ -1,3 +1,5 @@
+import { validAIProfile } from "./ai.ts";
+import type { AIProfile } from "./ai.ts";
 import { validateStone } from "./game.ts";
 import type { Stone } from "./game.ts";
 import { CHARACTER_PORTRAITS } from "./characters.ts";
@@ -35,6 +37,7 @@ export interface EncounterDefinition {
   mechanic: keyof typeof ENCOUNTER_MECHANICS;
   // Undefined uses the Adventure generator. An explicit empty hand is valid.
   deck?: Stone[];
+  ai?: AIProfile;
 }
 export interface EncounterLibrary {
   version: 1;
@@ -180,6 +183,7 @@ export function validEncounter(value: unknown): value is EncounterDefinition {
     text(encounter.name, 80) &&
     text(encounter.description, 600) &&
     validEnemyCharacter(encounter.character) &&
+    (encounter.ai === undefined || validAIProfile(encounter.ai)) &&
     typeof encounter.enabled === "boolean" &&
     Object.hasOwn(ENCOUNTER_MECHANICS, encounter.mechanic) &&
     Array.isArray(encounter.pools) &&
