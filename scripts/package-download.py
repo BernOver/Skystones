@@ -67,6 +67,14 @@ new games, new Draft pools, and newly generated Adventure cards. Existing
 games and copies in an Adventure keep their saved cards. Restore original
 default in the character details to reset it. Defaults save in this browser.
 
+Environment Immunity: add it in Card studio, or grant it with Combo, Next Play,
+Conjure, Enchant, Parting Gift or a Trap. Ignore all seven tile environments,
+including helpful effects. This works before captures and follows a moved or
+captured card. Silence disables it; a Trap can nullify it until replaced.
+Terrain remains on its tile for other cards. Traps, arena bonuses, Sunder,
+potions and other card effects still apply. Immunity cannot be doubled and
+does not spend queued Amplify. Shops and random keyword grants can offer it.
+
 Random keywords: Card studio > Enchant > Generate random keywords. Choose 1-5
 per recipient, strength, and an optional custom pool. Flash is never in random
 pools. Fixed and random grants can be combined. "This card" lets a stone grant

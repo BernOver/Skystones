@@ -122,9 +122,14 @@ test("element themes preserve the original roster keywords and every Conjure tem
     Object.keys(KEYWORD_RULES)
       .filter(
         (type) =>
-          !["shuffle", "enchant", "relocate", "command", "turn-start"].includes(
-            type,
-          ),
+          ![
+            "shuffle",
+            "enchant",
+            "relocate",
+            "command",
+            "turn-start",
+            "environment-immunity",
+          ].includes(type),
       )
       .sort(),
   );

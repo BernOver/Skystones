@@ -20,7 +20,7 @@ import type {
 import { playHistory, score, validateKeywords, KEYWORD_RULES } from "./game.ts";
 export type AmplifyKeyword = {
   type: "amplify";
-  effect: Exclude<KeywordType, "amplify"> | "all";
+  effect: Exclude<KeywordType, "amplify" | "environment-immunity"> | "all";
 } & (
   | { duration: "always"; count?: never }
   | { duration: "next"; count: number }
@@ -60,6 +60,7 @@ export function scaleEffect<T extends BasicKeyword>(k: T, times: number): T[] {
     case "amplify":
       return [out];
     case "flash":
+    case "environment-immunity":
       return [out];
     case "discard-priority":
       out.priority = Math.min(99, (out.priority ?? 1) * times);
@@ -184,6 +185,7 @@ export function amplifyPlan(
     "scavenge",
     "parting-gift",
     "discard-priority",
+    "environment-immunity",
   ]);
   let fieldAmplified = false;
   const fieldMultiplier = (type: KeywordType, includeAll: boolean) => {
@@ -246,7 +248,7 @@ export function amplifyPlan(
       fieldAmplified = true;
       return;
     }
-    if (k.type === "amplify") {
+    if (k.type === "amplify" || k.type === "environment-immunity") {
       resolved.push(k);
       return;
     }

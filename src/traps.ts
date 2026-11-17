@@ -56,7 +56,7 @@ export type TrapEffect = (
   | { kind: "steady"; minimum: number }
 ) & { condition?: CardFilter; sideCondition?: PipTest };
 export type TrapAmplifyTarget =
-  | Exclude<KeywordType, "amplify" | "flash" | "trap">
+  | Exclude<KeywordType, "amplify" | "flash" | "trap" | "environment-immunity">
   | "all";
 export const TRAP_AMPLIFY_TARGETS: TrapAmplifyTarget[] = [
   "all",
@@ -91,7 +91,11 @@ export const TRAP_BOARD_TARGETS = [
 ] as const;
 export type TrapBoardTarget = (typeof TRAP_BOARD_TARGETS)[number];
 export type TrapEffectTarget = TrapAmplifyTarget | TrapBoardTarget;
-export type TrapNullifyTarget = TrapEffectTarget | "flash" | "amplify";
+export type TrapNullifyTarget =
+  | TrapEffectTarget
+  | "flash"
+  | "amplify"
+  | "environment-immunity";
 export const TRAP_EFFECT_TARGETS: TrapEffectTarget[] = [
   ...TRAP_AMPLIFY_TARGETS,
   ...TRAP_BOARD_TARGETS,
@@ -100,6 +104,7 @@ export const TRAP_NULLIFY_TARGETS: TrapNullifyTarget[] = [
   ...TRAP_EFFECT_TARGETS,
   "flash",
   "amplify",
+  "environment-immunity",
 ];
 export function trapTargetName(target: TrapNullifyTarget): string {
   const names: Partial<Record<TrapNullifyTarget, string>> = {
@@ -552,15 +557,28 @@ export function trapBoardMultiplier(
     ),
   );
 }
+export function ignoresEnvironments(
+  stone: Stone,
+  trap?: Trap,
+  keywords: readonly StoneKeyword[] = stone.keywords || [],
+  silenced = false,
+): boolean {
+  return (
+    !silenced &&
+    keywords.some((k) => k.type === "environment-immunity") &&
+    !trapNullifies(trap, stone, "environment-immunity")
+  );
+}
 export function trapEnvironmentEdges(
   edges: Edges,
   stone: Stone,
   environment?: TileEnvironment,
   trap?: Trap,
+  immune = ignoresEnvironments(stone, trap),
 ): Edges {
   let out = edges;
   for (let n = 0; n < trapBoardMultiplier(trap, stone, "terrain"); n++)
-    out = environmentEdges(out, stone.element, environment, stone);
+    out = environmentEdges(out, stone.element, environment, stone, immune);
   return out.map((p) => Math.min(99, p)) as Edges;
 }
 export function trapUnderlyingSide(
@@ -568,9 +586,10 @@ export function trapUnderlyingSide(
   side: Side,
   stone: Stone,
   trap?: Trap,
+  immune = ignoresEnvironments(stone, trap),
 ): Side {
   for (let n = 0; n < trapBoardMultiplier(trap, stone, "terrain"); n++)
-    side = underlyingSide(environment, side, stone);
+    side = underlyingSide(environment, side, stone, immune);
   return side;
 }
 export function trapCombatBonuses(
@@ -579,6 +598,7 @@ export function trapCombatBonuses(
   trap?: Trap,
   environment?: TileEnvironment,
   edges: Edges = stone.edges,
+  immune = ignoresEnvironments(stone, trap),
 ) {
   const terrain = trapBoardMultiplier(trap, stone, "terrain");
   const attack = trapBonus(trap, stone, "attack", edges),
@@ -586,12 +606,14 @@ export function trapCombatBonuses(
   return {
     attack: attack.map(
       (n) =>
-        (n + environmentAttack(environment, stone) * terrain) *
+        (n + environmentAttack(environment, stone, immune) * terrain) *
         trapBoardMultiplier(trap, stone, "attack-bonus"),
     ) as Edges,
     defense: defense.map(
       (n, s) =>
-        (n + shields[s] + environmentDefense(environment, stone) * terrain) *
+        (n +
+          shields[s] +
+          environmentDefense(environment, stone, immune) * terrain) *
         trapBoardMultiplier(trap, stone, "defense-bonus"),
     ) as Edges,
   };

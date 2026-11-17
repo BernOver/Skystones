@@ -173,6 +173,7 @@ function PartingGiftPicker({
               shields={option.shields}
               keywordShields={option.keywordShields}
               environment={option.environment}
+              environmentImmune={option.environmentImmune}
               trap={pending.trap}
               played={option.location === "board"}
             />

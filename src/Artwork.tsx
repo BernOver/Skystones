@@ -4,6 +4,7 @@ import {
   trapCombatBonuses,
   trapDizzyMinimum,
   trapEnvironmentEdges,
+  ignoresEnvironments,
 } from "./traps";
 import type { Trap } from "./traps";
 import { swapIdentity, keywordHalf, isSwapForce } from "./swapForce";
@@ -580,6 +581,7 @@ export const StoneCard = memo(
     played = false,
     grantedKeywords = [],
     environment,
+    environmentImmune,
     trap,
   }: {
     stone: Stone;
@@ -595,6 +597,7 @@ export const StoneCard = memo(
     played?: boolean;
     grantedKeywords?: import("./game").BasicKeyword[];
     environment?: TileEnvironment;
+    environmentImmune?: boolean;
     trap?: Trap;
   }) {
     const element = ELEMENTS[stone.element];
@@ -604,12 +607,21 @@ export const StoneCard = memo(
     const statPicture = hasSkystonesArtwork(stone);
     const unknownSides =
       !played && !silenced ? stoneDizzySides(stone, grantedKeywords) : [];
+    const immune =
+      environmentImmune ??
+      ignoresEnvironments(
+        stone,
+        trap,
+        [...(stone.keywords || []), ...grantedKeywords],
+        silenced,
+      );
     const { defense: visibleShields, attack: attackBonus } = trapCombatBonuses(
       stone,
       trapAdjustedShields(stone, shields, trap, silenced, keywordShields),
       trap,
       environment,
-      trapEnvironmentEdges(ordinaryEdges, stone, environment, trap),
+      trapEnvironmentEdges(ordinaryEdges, stone, environment, trap, immune),
+      immune,
     );
     return (
       <div
@@ -797,65 +809,68 @@ export const StoneCard = memo(
                                 ? `${keyword.count} ${keyword.mode === "specific" ? readTokens().find((c) => c.id === keyword.part)?.name || "MISSING PART" : "RANDOM PARTS"}`
                                 : keyword.type === "flash"
                                   ? "FREE PLAY"
-                                  : keyword.type === "amplify"
-                                    ? `${keyword.effect.toUpperCase()} · ${keyword.duration === "next" ? `NEXT ${keyword.count}` : "ALWAYS"}`
-                                    : keyword.type === "conjure"
-                                      ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
-                                      : keyword.type === "next-play"
-                                        ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
-                                        : keyword.type === "shift"
-                                          ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
-                                          : keyword.type === "environment"
-                                            ? ENVIRONMENTS[
-                                                keyword.environment.kind
-                                              ].name
-                                            : keyword.type === "silence" ||
-                                                keyword.type === "dizzy" ||
-                                                keyword.type === "shuffle" ||
-                                                keyword.type === "combo"
-                                              ? keyword.type === "dizzy" ||
-                                                keyword.type === "shuffle"
-                                                ? dizzySides(keyword)
-                                                    .map(
-                                                      (side) =>
-                                                        SIDE_LETTERS[side],
-                                                    )
-                                                    .join("/")
-                                                : keyword.type === "combo"
-                                                  ? comboRequirement(
-                                                      stone,
-                                                      keyword,
-                                                    )
-                                                  : "ON PLAY"
-                                              : keyword.type === "discard"
-                                                ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
-                                                : keyword.type === "scavenge"
-                                                  ? `${keyword.from} · ${buffText(keyword)}`
-                                                  : keyword.type ===
-                                                      "parting-gift"
-                                                    ? partingGiftSummary(
+                                  : keyword.type === "environment-immunity"
+                                    ? "IGNORE TILE EFFECTS"
+                                    : keyword.type === "amplify"
+                                      ? `${keyword.effect.toUpperCase()} · ${keyword.duration === "next" ? `NEXT ${keyword.count}` : "ALWAYS"}`
+                                      : keyword.type === "conjure"
+                                        ? `${keyword.count} ${conjureSource(keyword)}${conjureBuffText(keyword) ? ` · ${conjureBuffText(keyword)}` : ""}${keyword.recipient === "self" ? "" : keyword.recipient === "both" ? " · BOTH" : " · RIVAL"}`
+                                        : keyword.type === "next-play"
+                                          ? `${keyword.recipient === "self" ? "YOU" : "RIVAL"} ${nextEffectText(keyword)}${nextRequirementText(keyword) ? ` · IF ${nextRequirementText(keyword)}` : ""}`
+                                          : keyword.type === "shift"
+                                            ? `${SIDE_LETTERS[keyword.side]} → ${["Up", "Right", "Down", "Left"][keyword.direction]} · ${keyword.affects}`
+                                            : keyword.type === "environment"
+                                              ? ENVIRONMENTS[
+                                                  keyword.environment.kind
+                                                ].name
+                                              : keyword.type === "silence" ||
+                                                  keyword.type === "dizzy" ||
+                                                  keyword.type === "shuffle" ||
+                                                  keyword.type === "combo"
+                                                ? keyword.type === "dizzy" ||
+                                                  keyword.type === "shuffle"
+                                                  ? dizzySides(keyword)
+                                                      .map(
+                                                        (side) =>
+                                                          SIDE_LETTERS[side],
+                                                      )
+                                                      .join("/")
+                                                  : keyword.type === "combo"
+                                                    ? comboRequirement(
+                                                        stone,
                                                         keyword,
                                                       )
-                                                    : keyword.type === "enchant"
+                                                    : "ON PLAY"
+                                                : keyword.type === "discard"
+                                                  ? `${keyword.count} ${keyword.mode} · ${keyword.recipient}`
+                                                  : keyword.type === "scavenge"
+                                                    ? `${keyword.from} · ${buffText(keyword)}`
+                                                    : keyword.type ===
+                                                        "parting-gift"
                                                       ? partingGiftSummary(
                                                           keyword,
                                                         )
                                                       : keyword.type ===
-                                                          "discard-priority"
-                                                        ? `${keyword.priority ?? 1}`
+                                                          "enchant"
+                                                        ? partingGiftSummary(
+                                                            keyword,
+                                                          )
                                                         : keyword.type ===
-                                                            "relocate"
-                                                          ? `MOVE ${keyword.affects.toUpperCase()}`
+                                                            "discard-priority"
+                                                          ? `${keyword.priority ?? 1}`
                                                           : keyword.type ===
-                                                              "command"
-                                                            ? `${keyword.turns} BOT TURNS`
+                                                              "relocate"
+                                                            ? `MOVE ${keyword.affects.toUpperCase()}`
                                                             : keyword.type ===
-                                                                "turn-start"
-                                                              ? `${keyword.when.toUpperCase()} TURN · ${keyword.keywords.map((k) => KEYWORD_RULES[k.type].name).join(", ")}`
-                                                              : keyword.side ===
-                                                                  "any"
-                                                                ? "ANY EDGE"
-                                                                : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
+                                                                "command"
+                                                              ? `${keyword.turns} BOT TURNS`
+                                                              : keyword.type ===
+                                                                  "turn-start"
+                                                                ? `${keyword.when.toUpperCase()} TURN · ${keyword.keywords.map((k) => KEYWORD_RULES[k.type].name).join(", ")}`
+                                                                : keyword.side ===
+                                                                    "any"
+                                                                  ? "ANY EDGE"
+                                                                  : `${SIDE_LETTERS[keyword.side]}${(keyword.type === "head-start" || keyword.type === "comeback") && (keyword.amount ?? 1) > 1 ? ` +${keyword.amount}` : ""}`,
                           )
                           .join("/")}
                       </b>
@@ -908,6 +923,7 @@ export const StoneCard = memo(
       before.compact === after.compact &&
       before.faded === after.faded &&
       before.silenced === after.silenced &&
+      before.environmentImmune === after.environmentImmune &&
       before.played === after.played &&
       sameEdges(before.edges, after.edges) &&
       sameEdges(before.ordinaryEdges, after.ordinaryEdges) &&

@@ -132,9 +132,11 @@ export function environmentText(environment: TileEnvironment): string {
 export function environmentAffects(
   environment?: TileEnvironment,
   stone?: Stone,
+  immune = !!stone?.keywords?.some((k) => k.type === "environment-immunity"),
 ): boolean {
   return (
     !!environment &&
+    !immune &&
     (!environment.tribe || (!!stone && hasTribe(stone, environment.tribe)))
   );
 }
@@ -352,8 +354,10 @@ export function environmentEdges(
   element: Element,
   environment?: TileEnvironment,
   stone?: Stone,
+  immune?: boolean,
 ): Edges {
-  if (!environment || !environmentAffects(environment, stone)) return edges;
+  if (!environment || !environmentAffects(environment, stone, immune))
+    return edges;
   switch (environment.kind) {
     case "elemental":
     case "blight": {
@@ -393,18 +397,20 @@ export function environmentEdges(
 export function environmentAttack(
   environment?: TileEnvironment,
   stone?: Stone,
+  immune?: boolean,
 ): number {
   return environment?.kind === "war-banner" &&
-    environmentAffects(environment, stone)
+    environmentAffects(environment, stone, immune)
     ? environment.amount
     : 0;
 }
 export function environmentDefense(
   environment?: TileEnvironment,
   stone?: Stone,
+  immune?: boolean,
 ): number {
   return environment?.kind === "bastion" &&
-    environmentAffects(environment, stone)
+    environmentAffects(environment, stone, immune)
     ? environment.amount
     : 0;
 }
@@ -412,9 +418,10 @@ export function underlyingSide(
   environment: TileEnvironment | undefined,
   displayedSide: Side,
   stone?: Stone,
+  immune?: boolean,
 ): Side {
   return environment?.kind === "crosswind" &&
-    environmentAffects(environment, stone)
+    environmentAffects(environment, stone, immune)
     ? (((displayedSide + 3) % 4) as Side)
     : displayedSide;
 }

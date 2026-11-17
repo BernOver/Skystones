@@ -56,6 +56,7 @@ export function defaultKeyword(
   if (type === "trap") return { type, trap: structuredClone(readTraps()[0]) };
   if (type === "assemble") return { type, count: 2 };
   if (type === "flash") return { type };
+  if (type === "environment-immunity") return { type };
   if (type === "amplify")
     return { type, effect: "all", duration: "next", count: 1 };
   if (type === "silence") return { type };
@@ -352,6 +353,14 @@ function Fields({
           Supercharger inherits its other effects, but not Flash.
         </p>
       )}
+      {keyword.type === "environment-immunity" && (
+        <p className="field-note">
+          Ignore every tile environment, including beneficial bonuses and
+          harmful effects. This applies before captures and stays active when
+          moved or captured. Silence or a Trap nullifying this keyword disables
+          it.
+        </p>
+      )}
       {keyword.type === "amplify" && (
         <div className="effect-editor-options">
           <label>
@@ -368,7 +377,12 @@ function Fields({
             >
               <option value="all">All effects</option>
               {Object.entries(KEYWORD_RULES)
-                .filter(([id]) => id !== "amplify" && id !== "flash")
+                .filter(
+                  ([id]) =>
+                    id !== "amplify" &&
+                    id !== "flash" &&
+                    id !== "environment-immunity",
+                )
                 .map(([id, r]) => (
                   <option key={id} value={id}>
                     {r.name}

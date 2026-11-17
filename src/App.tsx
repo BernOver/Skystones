@@ -89,6 +89,7 @@ import {
   coordinate,
   boardSize,
   cardEdges,
+  environmentImmunity,
   keywordShieldEdges,
   handSize,
   ELEMENTS,
@@ -787,6 +788,7 @@ export default function App() {
       dizzy: cell?.dizzy,
       trap: activeTrap,
       environment: cell?.environment,
+      environmentImmune: cell ? environmentImmunity(cell) : undefined,
       size,
     };
   }
@@ -1693,6 +1695,7 @@ export default function App() {
                                 owner={cell.owner}
                                 edges={cardEdges(cell)}
                                 environment={cell.environment}
+                                environmentImmune={environmentImmunity(cell)}
                                 trap={activeTrap}
                                 shields={cell.shields}
                                 keywordShields={keywordShieldEdges(cell)}
@@ -3097,6 +3100,7 @@ export default function App() {
                 keywordShields={dialog.inspection.keywordShields}
                 trap={dialog.inspection.trap}
                 environment={dialog.inspection.environment}
+                environmentImmune={dialog.inspection.environmentImmune}
                 silenced={dialog.inspection.silenced}
               />
             </div>

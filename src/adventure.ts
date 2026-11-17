@@ -1795,7 +1795,10 @@ function rollWorkshopOffer(
   const side = Math.floor(rng() * 4) as Side;
   const elements = Object.keys(ELEMENTS) as Element[];
   const keyword: StoneKeyword =
-    type === "relocate" || type === "command" || type === "turn-start"
+    type === "relocate" ||
+    type === "command" ||
+    type === "turn-start" ||
+    type === "environment-immunity"
       ? keywordTemplate(type, side)
       : type === "trap"
         ? {

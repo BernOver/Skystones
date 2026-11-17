@@ -1,4 +1,4 @@
-import { trapEnvironmentEdges } from "./traps";
+import { trapEnvironmentEdges, ignoresEnvironments } from "./traps";
 import { keywordHalf, isSwapForce } from "./swapForce";
 import { readTokens } from "./tokens";
 import { amplifyText } from "./amplify";
@@ -94,6 +94,7 @@ export interface Inspection {
   grantedKeywords?: BasicKeyword[];
   arenaElement?: Element;
   environment?: TileEnvironment;
+  environmentImmune?: boolean;
   inheritedPips?: Edges;
   conjurations?: Conjuration[];
   discards?: DiscardRecord[];
@@ -739,6 +740,25 @@ export function KeywordDetails({
                 )}
               </section>
             );
+          if (type === "environment-immunity")
+            return (
+              <section className="keyword-rule" key={groupIndex}>
+                <div className="keyword-rule-heading">
+                  <Shield size={15} />
+                  <strong>Environment Immunity</strong>
+                  <span>While active</span>
+                </div>
+                <p>
+                  Ignore all tile environments, including helpful and harmful
+                  pip changes, attack and defense bonuses, Crosswind rotation,
+                  Mirror Pool and Equalizer. This works before captures and
+                  stays with the card when moved or captured. Silence or a Trap
+                  nullifying this keyword disables it. Tile effects remain for
+                  other cards. Traps, the elemental arena and other card effects
+                  still apply. Doubling does not strengthen immunity.
+                </p>
+              </section>
+            );
           if (type === "enchant")
             return (
               <section className="keyword-rule" key={groupIndex}>
@@ -1163,6 +1183,14 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
     effects,
     dizzy,
   } = inspection;
+  const immune =
+    inspection.environmentImmune ??
+    ignoresEnvironments(
+      stone,
+      inspection.trap,
+      [...(stone.keywords || []), ...(inspection.grantedKeywords || [])],
+      !!silenced,
+    );
   const { defense: defenseBonus, attack: attackBonus } = trapCombatBonuses(
     stone,
     trapAdjustedShields(
@@ -1179,7 +1207,9 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
       stone,
       inspection.environment,
       inspection.trap,
+      immune,
     ),
+    immune,
   );
   return (
     <>
@@ -1284,9 +1314,11 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
         <p className="terrain-inspection-note">
           <strong>{ENVIRONMENTS[inspection.environment.kind].name}</strong> ·{" "}
           {environmentText(inspection.environment)}{" "}
-          {!environmentAffects(inspection.environment, stone)
-            ? "This card does not match the tribe condition, so it is unaffected."
-            : ""}{" "}
+          {immune
+            ? "Environment Immunity is active: this tile has no effect on this card."
+            : !environmentAffects(inspection.environment, stone, false)
+              ? "This card does not match the tribe condition, so it is unaffected."
+              : ""}{" "}
           Terrain stays on the tile and is separate from this card’s keywords.
         </p>
       )}
@@ -1386,7 +1418,7 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
             .flatMap((amount, side) =>
               amount
                 ? [
-                    `${SIDE_NAMES[inspection.environment?.kind === "crosswind" && environmentAffects(inspection.environment, stone) ? (side + 1) % 4 : side]} −${amount}`,
+                    `${SIDE_NAMES[inspection.environment?.kind === "crosswind" && environmentAffects(inspection.environment, stone, immune) ? (side + 1) % 4 : side]} −${amount}`,
                   ]
                 : [],
             )
@@ -1483,6 +1515,7 @@ export function CardInspector({ inspection }: { inspection: Inspection }) {
           keywordShields={inspection.keywordShields}
           trap={inspection.trap}
           environment={inspection.environment}
+          environmentImmune={inspection.environmentImmune}
         />
       </div>
       <h2>{inspection.stone.name}</h2>

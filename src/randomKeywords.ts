@@ -39,6 +39,8 @@ export function keywordTemplate(
   strength = 1,
 ): StoneKeyword {
   switch (type) {
+    case "environment-immunity":
+      return { type };
     case "flash":
       throw new Error("Flash cannot be randomly generated.");
     case "trap":

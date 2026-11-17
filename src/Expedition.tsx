@@ -60,6 +60,7 @@ import {
   SIDE_NAMES,
   coordinate,
   cardEdges,
+  environmentImmunity,
   keywordShieldEdges,
   handSize,
   prepareTargeting,
@@ -573,6 +574,7 @@ function ExpeditionView({
       dizzy: cell?.dizzy,
       trap: battle?.traps?.active?.trap,
       environment: cell?.environment,
+      environmentImmune: cell ? environmentImmunity(cell) : undefined,
       size: run!.size,
       arenaElement: cell?.arenaElement || adventureArena(run!)?.current,
     };
@@ -1188,6 +1190,7 @@ function ExpeditionView({
                       silenced={cell.silenced}
                       trap={battle.traps?.active?.trap}
                       environment={cell.environment}
+                      environmentImmune={environmentImmunity(cell)}
                     />
                   </CaptureFlip>
                 ) : (
@@ -2037,6 +2040,7 @@ function ExpeditionView({
               trap={inspected.trap}
               silenced={inspected.silenced}
               environment={inspected.environment}
+              environmentImmune={inspected.environmentImmune}
               played={inspected.played}
               grantedKeywords={inspected.grantedKeywords}
             />

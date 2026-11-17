@@ -5,6 +5,7 @@ import { StoneCard } from "./Artwork";
 import {
   coordinate,
   cardEdges,
+  environmentImmunity,
   keywordShieldEdges,
   boardSize,
   KEYWORD_RULES,
@@ -32,6 +33,7 @@ function strengthAfterSunder(
     side,
     cell.stone,
     cell.trap,
+    environmentImmunity(cell),
   );
   edges[rawSide] = Math.max(0, edges[rawSide] - amount);
   return cardEdges({ ...cell, edges })[side];
@@ -227,6 +229,7 @@ export function TargetPicker({
               keywordShields={keywordShieldEdges(selectedCard)}
               trap={selectedCard.trap}
               environment={selectedCard.environment}
+              environmentImmune={environmentImmunity(selectedCard)}
               owner={selectedCard.owner}
             />
           </div>
@@ -242,6 +245,7 @@ export function TargetPicker({
                   side as Side,
                   selectedCard.stone,
                   selectedCard.trap,
+                  environmentImmunity(selectedCard),
                 )
               ];
               const visible = cardEdges(selectedCard)[side];
@@ -318,6 +322,7 @@ export function TargetPicker({
                       shields={cell.shields}
                       keywordShields={keywordShieldEdges(cell)}
                       environment={cell.environment}
+                      environmentImmune={environmentImmunity(cell)}
                       compact
                     />
                     <span className="target-change">

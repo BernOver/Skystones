@@ -24,6 +24,7 @@ import {
   keywordShieldEdges,
   shieldEdges,
   cardEdges,
+  environmentImmunity,
   score,
 } from "./game.ts";
 import type {
@@ -83,6 +84,7 @@ export interface GiftOption {
   shields?: Edges;
   keywordShields?: Edges;
   environment?: TileEnvironment;
+  environmentImmune?: boolean;
 }
 export interface DiscardBuffs {
   pips: Edges;
@@ -592,6 +594,7 @@ export function resolveDiscards(
           shields: cell.shields,
           keywordShields: keywordShieldEdges(cell),
           environment: cell.environment,
+          environmentImmune: environmentImmunity(cell),
         });
       });
     const matches = choices.filter(

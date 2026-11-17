@@ -15,6 +15,7 @@ import {
   trapEnvironmentEdges,
   trapUnderlyingSide,
   trapCombatBonuses,
+  ignoresEnvironments,
 } from "./traps.ts";
 import type { Trap } from "./traps.ts";
 import { amplifyPlan, validRuntimeEffects } from "./amplify.ts";
@@ -96,6 +97,7 @@ export type KeywordType =
   | "combo"
   | "next-play"
   | "environment"
+  | "environment-immunity"
   | "conjure"
   | "shift"
   | "discard"
@@ -142,6 +144,7 @@ export type BasicKeyword =
     ))
   | { type: "trap"; trap: Trap }
   | { type: "flash" }
+  | { type: "environment-immunity" }
   | AmplifyKeyword
   | { type: "head-start" | "comeback"; side: Side; amount?: number }
   | { type: "resonance"; side: Side; element: Element; tribe?: Tribe }
@@ -266,6 +269,10 @@ export const KEYWORD_RULES = {
     condition: "queue pips, keywords, or an element",
   },
   environment: { name: "Environment", condition: "choose any tile" },
+  "environment-immunity": {
+    name: "Environment Immunity",
+    condition: "ignore all tile effects",
+  },
   conjure: { name: "Conjure", condition: "add cards to a hand" },
   shift: {
     name: "Shift",
@@ -296,6 +303,7 @@ export function keywordKey(keyword: StoneKeyword): string {
     keyword.type === "shuffle" ||
     keyword.type === "combo" ||
     keyword.type === "environment" ||
+    keyword.type === "environment-immunity" ||
     keyword.type === "conjure" ||
     keyword.type === "discard" ||
     keyword.type === "scavenge" ||
@@ -340,6 +348,7 @@ export function keywordGroups(keywords: StoneKeyword[], halfScoped = false) {
       keyword.type === "silence" ||
       keyword.type === "next-play" ||
       keyword.type === "environment" ||
+      keyword.type === "environment-immunity" ||
       keyword.type === "conjure" ||
       keyword.type === "shift" ||
       keyword.type === "discard" ||
@@ -770,6 +779,14 @@ export function arenaEdges(
   const amount = stone ? trapBoardMultiplier(trap, stone, "arena") : 1;
   return edges.map((edge) => edge + (active === element ? amount : 0)) as Edges;
 }
+export function environmentImmunity(cell: PlacedStone): boolean {
+  return ignoresEnvironments(
+    cell.stone,
+    cell.trap,
+    placedKeywords(cell),
+    !!cell.silenced,
+  );
+}
 export function cardEdges(cell: PlacedStone): Edges {
   return arenaEdges(
     trapEdges(
@@ -778,6 +795,7 @@ export function cardEdges(cell: PlacedStone): Edges {
         cell.stone,
         cell.environment,
         cell.trap,
+        environmentImmunity(cell),
       ),
       cell.stone,
       cell.trap,
@@ -799,7 +817,9 @@ export function attackEdges(cell: PlacedStone): Edges {
       cell.stone,
       cell.environment,
       cell.trap,
+      environmentImmunity(cell),
     ),
+    environmentImmunity(cell),
   );
   return cardEdges(cell).map((value, s) =>
     Math.max(0, value + attack[s]),
@@ -832,7 +852,9 @@ export function defenseEdges(cell: PlacedStone): Edges {
       cell.stone,
       cell.environment,
       cell.trap,
+      environmentImmunity(cell),
     ),
+    environmentImmunity(cell),
   );
   return cardEdges(cell).map((edge, s) =>
     Math.max(0, edge + defense[s]),
@@ -973,6 +995,7 @@ export function prepareTargeting(
                   side,
                   cell.stone,
                   cell.trap,
+                  environmentImmunity(cell),
                 )
               ] > 0
                 ? [{ keywordIndex, boardIndex, side: side as Side }]
@@ -984,6 +1007,7 @@ export function prepareTargeting(
                   keyword.side,
                   cell.stone,
                   cell.trap,
+                  environmentImmunity(cell),
                 )
               ] > 0
             ? [{ keywordIndex, boardIndex }]
@@ -1054,6 +1078,7 @@ export function prepareTargeting(
         side,
         cell.stone,
         cell.trap,
+        environmentImmunity(cell),
       );
       const reductions = [...(cell.reductions || [0, 0, 0, 0])] as Edges;
       const edges = [...(cell.edges || cell.stone.edges)] as Edges;
@@ -1238,6 +1263,7 @@ export function chooseKeywordTargets(
       const incoming: PlacedStone = {
         stone,
         owner,
+        resolvedEffects: effectiveKeywords(stone, board, owner),
         edges,
         environment,
         trap:
@@ -2056,6 +2082,7 @@ export function validateKeywords(
       keyword.type === "shuffle" ||
       keyword.type === "combo" ||
       keyword.type === "environment" ||
+      keyword.type === "environment-immunity" ||
       keyword.type === "conjure" ||
       keyword.type === "discard" ||
       keyword.type === "scavenge" ||
@@ -2098,7 +2125,8 @@ export function validateKeywords(
       keyword.type === "amplify" &&
       ((keyword.effect !== "all" &&
         (!Object.hasOwn(KEYWORD_RULES, keyword.effect) ||
-          keyword.effect === "amplify")) ||
+          keyword.effect === "amplify" ||
+          keyword.effect === "environment-immunity")) ||
         !["always", "next"].includes(keyword.duration) ||
         (keyword.duration === "next"
           ? !Number.isInteger(keyword.count) ||

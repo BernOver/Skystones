@@ -5,6 +5,7 @@ import {
   boardSize,
   coordinate,
   cardEdges,
+  environmentImmunity,
   arenaEdges,
   evaluateKeywords,
   prepareTargeting,
@@ -369,7 +370,13 @@ function damageCell(
   const rawSide =
     onlySide === undefined
       ? undefined
-      : trapUnderlyingSide(cell.environment, onlySide, cell.stone, cell.trap);
+      : trapUnderlyingSide(
+          cell.environment,
+          onlySide,
+          cell.stone,
+          cell.trap,
+          environmentImmunity(cell),
+        );
   const edges = before.map((edge, side) =>
     rawSide === undefined || side === rawSide
       ? Math.max(0, edge - amount)
@@ -410,7 +417,13 @@ export function potionSideOptions(
       : type === "shatter"
         ? !!cell &&
           (cell.edges || cell.stone.edges)[
-            trapUnderlyingSide(cell.environment, side, cell.stone, cell.trap)
+            trapUnderlyingSide(
+              cell.environment,
+              side,
+              cell.stone,
+              cell.trap,
+              environmentImmunity(cell),
+            )
           ] > 0
         : type === "resonance"
           ? !!stone &&
