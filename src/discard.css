@@ -99,6 +99,12 @@
   background: #fffdf7;
   color: #647665;
 }
+.hand-buff-preset {
+  grid-column: 1/-1;
+}
+.hand-buff-preset .button {
+  white-space: normal;
+}
 @media (max-width: 600px) {
   .discard-dialog {
     padding: 28px 16px;

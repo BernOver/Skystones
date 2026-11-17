@@ -263,3 +263,181 @@ test("an Enchant spell chooses a board card, cancels cleanly, grants Shield and 
   expect(saved.battle.board.filter(Boolean)).toHaveLength(4);
   expect(validateAdventure(saved)).toBe(true);
 });
+
+for (const cardType of ["stone", "cast"] as const)
+  test(`studio saves and exports a ${cardType} with a stat-only hand buff restricted by type, element and tribe`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page
+      .getByRole("button", { name: "Card studio", exact: true })
+      .click();
+    await page.getByLabel("Card type", { exact: true }).selectOption(cardType);
+    await page.getByLabel("Stone name").fill("Hand Rally");
+    await page.getByRole("button", { name: /^Add keyword/ }).click();
+    await page.getByLabel("Keyword 1", { exact: true }).selectOption("enchant");
+    await page
+      .getByLabel("Buff whole hand preset · Keyword 1", { exact: true })
+      .click();
+    await expect(page.getByLabel("Enchant selection · Keyword 1")).toHaveValue(
+      "all",
+    );
+    await expect(
+      page.getByLabel("Keyword 1 grant 1", { exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByLabel("Keyword 1 recipients card type", { exact: true })
+      .selectOption("stone");
+    await page
+      .getByLabel("Keyword 1 recipients element", { exact: true })
+      .selectOption("fire");
+    await page
+      .getByLabel("Keyword 1 recipients tribe", { exact: true })
+      .selectOption("giants");
+    await page
+      .getByLabel("Enchant · Keyword 1 North pips", { exact: true })
+      .selectOption("2");
+    await page
+      .getByLabel("Enchant · Keyword 1 South pips", { exact: true })
+      .selectOption("0");
+    await page
+      .getByLabel("Enchant · Keyword 1 South shields", { exact: true })
+      .selectOption("2");
+    await page
+      .getByRole("button", {
+        name: cardType === "stone" ? "Save to collection" : "Save spell",
+        exact: true,
+      })
+      .click();
+    const library = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("skystones-library-v1")!),
+    );
+    const saved = library.custom.find((c: Stone) => c.name === "Hand Rally");
+    expect(saved.keywords).toEqual([
+      {
+        type: "enchant",
+        target: "hand",
+        mode: "all",
+        pips: [
+          { side: 0, amount: 2 },
+          { side: 1, amount: 1 },
+          { side: 3, amount: 1 },
+        ],
+        shields: [{ side: 2, amount: 2 }],
+        filter: { type: "stone", element: "fire", tribe: "giants" },
+      },
+    ]);
+    await page.getByRole("button", { name: /^Collection/ }).click();
+    if (cardType === "cast")
+      await page.getByRole("button", { name: /^Spells/ }).click();
+    await page
+      .getByRole("button", { name: "View Hand Rally", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toContainText("OWN HAND · ALL");
+    await expect(page.getByRole("dialog")).toContainText(
+      "Stones · Fire · Giants",
+    );
+    const download = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "Export card file", exact: true })
+      .click();
+    const stream = await (await download).createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream!) chunks.push(chunk);
+    expect(JSON.parse(Buffer.concat(chunks).toString()).card.keywords).toEqual(
+      saved.keywords,
+    );
+  });
+
+for (const size of [3, 4] as const)
+  test(`${size}×${size} hand-wide and typed spells buff immediately, preserve the turn, and survive reload and placement`, async ({
+    page,
+  }) => {
+    let run = enterAdventureNode(newAdventure(size, 81), "moss");
+    const rally = (name: string, typed = false): Stone => ({
+      ...make(name, [
+        {
+          type: "enchant",
+          target: "hand",
+          mode: "all",
+          pips: typed
+            ? [{ side: 1, amount: 2 }]
+            : ([0, 1, 2, 3] as const).map((side) => ({ side, amount: 1 })),
+          ...(typed
+            ? {
+                filter: { type: "stone", tribe: "giants" },
+                shields: [{ side: 3, amount: 2 }],
+              }
+            : {}),
+        },
+      ]),
+      spell: "cast",
+      token: true,
+      conjured: true,
+      edges: [0, 0, 0, 0],
+    });
+    run = {
+      ...run,
+      battle: {
+        ...run.battle!,
+        hands: [
+          [
+            rally("Whole Hand Rally"),
+            rally("Giant Rally", true),
+            { ...make("Ally Giant"), tribes: ["giants"] },
+            { ...make("Fire Giant"), element: "fire", tribes: ["giants"] },
+            make("Ordinary Ally"),
+          ],
+          run.battle!.hands[1],
+        ],
+      },
+    };
+    expect(validateAdventure(run)).toBe(true);
+    await page.addInitScript(
+      ({ key, run }) => {
+        if (!localStorage.getItem(key))
+          localStorage.setItem(key, JSON.stringify(run));
+      },
+      { key: ADVENTURE_STORAGE, run },
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: "Adventure", exact: true }).click();
+    await page
+      .getByRole("button", { name: /^Select Whole Hand Rally,/ })
+      .click();
+    let saved = await read(page);
+    expect(saved.battle.current).toBe(0);
+    expect(saved.battle.board.filter(Boolean)).toHaveLength(0);
+    expect(saved.battle.hands[0]).toHaveLength(4);
+    expect(
+      saved.battle.hands[0].every(
+        (c: Stone) => c.discardBuffs?.pips.join() === "1,1,1,1",
+      ),
+    ).toBe(true);
+    await expect(
+      page.getByRole("dialog", { name: "Choose Enchant targets" }),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: /^Select Giant Rally,/ }).click();
+    saved = await read(page);
+    expect(saved.battle.current).toBe(0);
+    for (const card of saved.battle.hands[0]) {
+      expect(card.discardBuffs.pips).toEqual(
+        card.tribes?.includes("giants") ? [1, 3, 1, 1] : [1, 1, 1, 1],
+      );
+      expect(card.discardBuffs.shields).toEqual(
+        card.tribes?.includes("giants") ? [0, 0, 0, 2] : [0, 0, 0, 0],
+      );
+    }
+    expect(saved.inventory).toEqual(run.inventory);
+    expect(validateAdventure(saved)).toBe(true);
+    await page.reload();
+    await page.getByRole("button", { name: "Adventure", exact: true }).click();
+    expect((await read(page)).battle.hands).toEqual(saved.battle.hands);
+    await page.getByRole("button", { name: /^Select Ally Giant,/ }).click();
+    await page
+      .getByRole("button", { name: "A1, empty adventure square", exact: true })
+      .click();
+    saved = await read(page);
+    expect(saved.battle.board[0].edges).toEqual([5, 3, 2, 1]);
+    expect(saved.battle.board[0].shields[3]).toBe(2);
+  });

@@ -182,9 +182,7 @@ export function validDiscardKeyword(value: DiscardKeyword, depth = 0): boolean {
     case "parting-gift":
     case "enchant":
       return (
-        (value.type !== "enchant" ||
-          (value.target !== "discarder" &&
-            !!(value.keywords?.length || value.randomKeywords))) &&
+        (value.type !== "enchant" || value.target !== "discarder") &&
         [
           "self",
           "discarder",
@@ -1032,7 +1030,12 @@ export function partingGiftSummary(
     hands: "BOTH HANDS",
   }[k.target];
   const selection =
-    k.mode && k.mode !== "all" ? `${k.mode.toUpperCase()} ${k.count || 1}` : "";
+    k.mode && k.mode !== "all"
+      ? `${k.mode.toUpperCase()} ${k.count || 1}`
+      : k.type === "enchant" && !["self", "discarder"].includes(k.target)
+        ? "ALL"
+        : "";
+  const matching = filterText(k.filter);
   const stats = (["pips", "shields"] as const).flatMap((kind) =>
     (k[kind] || []).map(
       (p) =>
@@ -1044,12 +1047,14 @@ export function partingGiftSummary(
     selection,
     ...stats,
     ...(k.keywords || []).map((g) => g.type.replaceAll("-", " ")),
+    ...(k.randomKeywords ? [`${k.randomKeywords.count} RANDOM KEYWORDS`] : []),
+    ...(matching !== "all cards" ? [`MATCH: ${matching}`] : []),
   ]
     .filter(Boolean)
     .join(" · ");
 }
 export function enchantText(keyword: EnchantKeyword): string {
-  return `On play, ${partingGiftSummary(keyword)}${keyword.randomKeywords ? ` · ${keyword.randomKeywords.count} random keyword(s), never Flash` : ""}${keyword.filter ? ` · matching ${filterText(keyword.filter)}` : ""}. Resolve after Conjure. Hand recipients use granted keywords on their later plays or discards. Board Shield and conditional pip bonuses activate immediately for their controller; on-play effects are attached without replaying them or captures.`;
+  return `On play, ${partingGiftSummary(keyword)}. Resolve after Conjure, affecting only matching cards present then. Change pips, add Shield, grant keywords, or combine them. These buffs last for this battle; hand cards keep them when played. Random keywords never include Flash. Hand recipients use granted keywords on their later plays or discards. Board Shield and conditional pip bonuses activate immediately for their controller; on-play effects are attached without replaying them or captures.`;
 }
 export function discardText(keyword: DiscardKeyword): string {
   switch (keyword.type) {

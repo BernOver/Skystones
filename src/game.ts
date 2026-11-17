@@ -253,7 +253,7 @@ export const KEYWORD_RULES = {
   dizzy: { name: "Dizzy", condition: "before captures" },
   enchant: {
     name: "Enchant",
-    condition: "grant keywords to hand or board cards",
+    condition: "buff pips, Shield or keywords in hand or on board",
   },
   shuffle: {
     name: "Shuffle",

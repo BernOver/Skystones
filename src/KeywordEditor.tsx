@@ -513,6 +513,38 @@ function Fields({
       )}
       {(keyword.type === "parting-gift" || keyword.type === "enchant") && (
         <div className="effect-editor-options">
+          {keyword.type === "enchant" && (
+            <div className="hand-buff-preset">
+              <button
+                type="button"
+                className="button button-outline"
+                aria-label={`Buff whole hand preset · ${label}`}
+                onClick={() =>
+                  onChange({
+                    ...keyword,
+                    target: "hand",
+                    mode: "all",
+                    count: undefined,
+                    pips: ([0, 1, 2, 3] as Side[]).map((side) => ({
+                      side,
+                      amount: 1,
+                    })),
+                    shields: undefined,
+                    keywords: undefined,
+                    randomKeywords: undefined,
+                    filter: undefined,
+                  })
+                }
+              >
+                Preset: +1 pip per side to your whole hand
+              </button>
+              <p>
+                Buff every card in your hand, or use the recipient filters below
+                for a specific card type, element or tribe. Customize the pips,
+                Shield and keywords independently.
+              </p>
+            </div>
+          )}
           <label>
             Buff recipients
             <select
@@ -610,7 +642,7 @@ function Fields({
           />
           <small>
             {keyword.type === "enchant" ? (
-              "On play, grant keywords after Conjure. The caster chooses recipients. Board Shield and conditional pip bonuses activate immediately for the recipient’s controller; other on-play effects are attached without replaying them. Canceling leaves the whole spell unchanged."
+              "On play, change pips, add Shield or grant keywords after Conjure. All matching cards affects every eligible recipient, without a target limit. Filters can restrict the buff to a card type, element or tribe. Buffs apply to cards present now and last for this battle, including after hand cards are played. Board Shield and conditional pip bonuses activate immediately for the recipient’s controller; other on-play effects attach without replaying them. Canceling a choice leaves the whole play unchanged."
             ) : (
               <>
                 Triggers from the actual hand card when discarded, including

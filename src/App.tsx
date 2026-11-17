@@ -2610,8 +2610,8 @@ export default function App() {
                           {draft.spell === "discard"
                             ? "All its spell effects trigger when discarded; automatic targeting favors its owner."
                             : "Click one in your hand to cast it, then continue your turn."}{" "}
-                          Use Next Play to grant pip or keyword buffs to another
-                          card.
+                          Use Enchant to buff matching hand or board cards, or
+                          Next Play to buff the next card.
                         </p>
                       )}
                     </div>

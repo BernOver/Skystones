@@ -141,7 +141,7 @@ export function CardFilterFields({
       )}
       <small>
         All chosen requirements must match. Pip checks use ordinary pips before
-        this Trap’s modifiers.
+        field modifiers.
       </small>
     </fieldset>
   );

@@ -94,9 +94,7 @@ export function TrapPanel({
               : "Play a stone with a Trap keyword to place a crystal. Only one shared Trap can be active."}
           </p>
           {state?.active?.source && (
-            <small>
-              Placed by {state.active.source}. A new stone’s Trap replaces it.
-            </small>
+            <small>Placed by {state.active.source}.</small>
           )}
         </div>
       </section>

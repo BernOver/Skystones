@@ -661,7 +661,7 @@ export function trapText(trap: Trap): string {
   ]
     .filter(Boolean)
     .join(" ");
-  return `${trap.affects?.exclude ? "All except " : ""}${who || "All"} cards, both players: ${trap.effects.map(trapEffectText).join("; ")}. Replaced by the next Trap.`;
+  return `${trap.affects?.exclude ? "All except " : ""}${who || "All"} cards, both players: ${trap.effects.map(trapEffectText).join("; ")}.`;
 }
 const STORAGE = "skystones-traps-v1";
 export function readTraps(): Trap[] {

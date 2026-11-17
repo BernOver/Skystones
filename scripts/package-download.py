@@ -95,9 +95,15 @@ Shuffle: choose two to four sides in Card studio. After Dizzy and before
 captures, their ordinary pip counts are randomly rearranged. The values and
 total are preserved, including buffs above five. Unmarked sides, Shield, and
 field bonuses stay separate. An unchanged arrangement is possible.
-Enchant: add this keyword to a spell or stone to grant any keyword to friendly,
-enemy, or both players' cards in hand or on the board. Use all, chosen, or
-random recipients. Board Shield activates immediately; Head Start, Comeback
+Enchant: add this keyword to a spell or stone to change pips, add Shield and/or
+grant keywords to friendly, enemy, or both players' hand or board cards.
+Pip-only and Shield-only buffs work. In Card studio use "Preset: +1 pip per
+side to your whole hand", then customize its stats and optional keywords.
+Recipient filters can restrict it to card types, elements or tribes. Leave
+filters empty for the whole hand. All matching cards has no five-card limit.
+Only cards present when it resolves are buffed; Conjure resolves first.
+Buffs last this battle, stay on cards when played and survive Adventure reloads.
+Use all, chosen, or random recipients. Board Shield activates immediately; Head Start, Comeback
 and Resonance check once when granted. Other on-play effects attach without
 replaying placement or captures. Hand cards use grants on later plays/discards.
 Conjure resolves first. Canceling a target choice leaves the whole play unchanged.
