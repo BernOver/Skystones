@@ -5,6 +5,7 @@ import { CharacterAvatar } from "./CharacterAvatar";
 import { StoneCard } from "./Artwork";
 import { PORTRAIT_OPTIONS } from "./portraits";
 import { CONJURE_CARDS } from "./conjure";
+import { availableCards } from "./deletedContent";
 import { readTokens } from "./tokens";
 import { characterDefault, readCharacterDefaults } from "./cardDefaults";
 import { createId } from "./id";
@@ -54,11 +55,11 @@ export function EncounterEditor({
     const defaults = readCharacterDefaults();
     return [
       ...new Map(
-        [
+        availableCards([
           ...CONJURE_CARDS.map((card) => characterDefault(card, defaults)),
           ...customCards.filter((card) => !card.token),
           ...readTokens(),
-        ].map((card) => [card.id, card]),
+        ]).map((card) => [card.id, card]),
       ).values(),
     ];
   }, [customCards]);

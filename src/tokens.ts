@@ -3,6 +3,7 @@ import { DEFAULT_PARTS } from "./assemble.ts";
 import { validateStone } from "./game.ts";
 import { cardDependencies } from "./cardDependencies.ts";
 import type { Stone } from "./game.ts";
+import { availableCards, DELETED_CONTENT_STORAGE } from "./deletedContent.ts";
 
 export const TOKEN_ID_PREFIX = "custom-token-";
 export const LIBRARY_STORAGE = "skystones-library-v1";
@@ -124,20 +125,23 @@ export function tokenCatalogue(custom: readonly Stone[] = []): Stone[] {
     ]),
   );
   for (const card of custom) if (tokenDefinition(card)) byId.set(card.id, card);
-  return [...byId.values()];
+  return availableCards([...byId.values()]);
 }
 let cachedLibrary: string | null | undefined;
 let cachedTokens: Stone[] | undefined;
+let cachedDeleted: string | null | undefined;
 export function readTokens(): Stone[] {
   if (typeof localStorage === "undefined") return tokenCatalogue();
   try {
     const raw = localStorage.getItem(LIBRARY_STORAGE);
-    if (raw !== cachedLibrary) {
+    const deleted = localStorage.getItem(DELETED_CONTENT_STORAGE);
+    if (raw !== cachedLibrary || deleted !== cachedDeleted) {
       const library = JSON.parse(raw || "null");
       cachedTokens = tokenCatalogue(
         Array.isArray(library?.custom) ? library.custom : [],
       );
       cachedLibrary = raw;
+      cachedDeleted = deleted;
     }
     return cachedTokens || tokenCatalogue();
   } catch {

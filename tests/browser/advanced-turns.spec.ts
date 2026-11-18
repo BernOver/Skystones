@@ -399,3 +399,135 @@ test("a normal-game Command stone pauses the opponent and lets the player choose
     .click();
   await expect(page.locator(".board-cell.filled")).toHaveCount(2);
 });
+
+test("Trap editor combines hand pips, Shield, fixed keywords and random keywords", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Collection/ }).click();
+  await page.getByRole("button", { name: "Traps", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Create a Trap", exact: true })
+    .click();
+  await page.getByLabel("Trap name", { exact: true }).fill("Hand Crystal");
+  await page.getByLabel("Trap effect 1", { exact: true }).selectOption("grant");
+  await page
+    .getByRole("button", {
+      name: "Preset: +1 pip per side to hand cards",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel("Trap grant 1 North pips", { exact: true })
+    .selectOption("2");
+  await page
+    .getByLabel("Trap grant 1 East shields", { exact: true })
+    .selectOption("2");
+  await page
+    .getByRole("button", {
+      name: "Add Enchant keyword · Trap grant 1",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel("Trap grant 1 grant 1", { exact: true })
+    .selectOption("environment-immunity");
+  await page
+    .getByLabel("Trap grant 1 generate random keywords", { exact: true })
+    .check();
+  await page
+    .getByLabel("Trap grant timing 1", { exact: true })
+    .selectOption("turn-start");
+  await page
+    .getByLabel("Trap grant turns 1", { exact: true })
+    .selectOption("active");
+  await page
+    .getByLabel("Trap effect 1 matching card type", { exact: true })
+    .selectOption("stone");
+  await page.getByRole("button", { name: "Save Trap", exact: true }).click();
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("skystones-traps-v1")!).find(
+      (trap: { name: string }) => trap.name === "Hand Crystal",
+    ),
+  );
+  expect(validTrap(saved)).toBe(true);
+  expect(saved.effects[0]).toMatchObject({
+    kind: "grant",
+    target: "hand",
+    timing: "turn-start",
+    recipients: "active",
+    pips: [
+      { side: 0, amount: 2 },
+      { side: 1, amount: 1 },
+      { side: 2, amount: 1 },
+      { side: 3, amount: 1 },
+    ],
+    shields: [{ side: 1, amount: 2 }],
+    keywords: [{ type: "environment-immunity" }],
+    randomKeywords: { count: 1 },
+    condition: { type: "stone" },
+  });
+});
+
+for (const size of [3, 4] as const)
+  test(`${size}×${size} Trap hand buffs and keyword grants persist and activate on placement`, async ({
+    page,
+  }) => {
+    const trap = {
+      ...DEFAULT_TRAPS[0],
+      id: "trap-custom-hand-crystal",
+      name: "Hand Crystal",
+      affects: {},
+      effects: [
+        {
+          kind: "grant" as const,
+          target: "hand" as const,
+          timing: "placed" as const,
+          pips: [{ side: 0 as const, amount: 1 }],
+          shields: [{ side: 1 as const, amount: 2 }],
+          keywords: [{ type: "environment-immunity" as const }],
+        },
+      ],
+    };
+    let run = enterAdventureNode(newAdventure(size, 81), "moss");
+    const caster = make(
+      "Hand Crystal Caster",
+      [1, 1, 1, 1],
+      [{ type: "trap", trap }, { type: "flash" }],
+    );
+    const ally = make("Hand Ally", [1, 0, 0, 0], [{ type: "flash" }]);
+    run = {
+      ...run,
+      battle: {
+        ...run.battle!,
+        hands: [[caster, ally, ...run.battle!.hands[0]], run.battle!.hands[1]],
+      },
+    };
+    await seedRun(page, run);
+    await page
+      .getByRole("button", { name: /^Select Hand Crystal Caster,/ })
+      .click();
+    await page
+      .getByRole("button", { name: "A1, empty adventure square", exact: true })
+      .click();
+    let saved = await read(page);
+    expect(saved.battle.current).toBe(0);
+    for (const card of saved.battle.hands.flat()) {
+      expect(card.discardBuffs.pips).toEqual([1, 0, 0, 0]);
+      expect(card.discardBuffs.shields).toEqual([0, 2, 0, 0]);
+      expect(card.keywords).toContainEqual({ type: "environment-immunity" });
+    }
+    await page.reload();
+    await page.getByRole("button", { name: "Adventure", exact: true }).click();
+    await page.getByRole("button", { name: /^Select Hand Ally,/ }).click();
+    await page
+      .getByRole("button", { name: "B2, empty adventure square", exact: true })
+      .click();
+    saved = await read(page);
+    expect(saved.battle.board[size + 1].edges).toEqual([2, 0, 0, 0]);
+    expect(saved.battle.board[size + 1].shields[1]).toBe(2);
+    expect(saved.battle.board[size + 1].stone.keywords).toContainEqual({
+      type: "environment-immunity",
+    });
+    expect(validateAdventure(saved)).toBe(true);
+  });

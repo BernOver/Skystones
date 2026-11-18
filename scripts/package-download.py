@@ -12,6 +12,17 @@ instructions = """SKYSTONES — START HERE
 2. Double-click Skystones.html. Choose Chrome or Microsoft Edge if asked.
 3. Play! No installation, account, or server is required.
 
+Rules: click Rules in the header, or Rules & clarifications in an editor or
+card details. Search by keyword and open a topic for exceptions and timing.
+Rules closes back to your card or unfinished edit. How to play covers basics.
+Collection search matches names and keyword names, including nested grants.
+Filter by keyword narrows the results. Keyword pickers have a search box too.
+Delete default stones, tokens, spells and Parts from their card details, or
+delete a Trap in Collection > Traps. Collection > Deleted content restores them
+with saved edits. Deletions persist in this browser, clean normal decks and
+exclude the templates from new generation. Existing games keep their copies.
+Restore defaults if a mode runs out of available characters.
+
 Export everything at once: Collection > Export all cards downloads
 Skystones-all-cards.json. It includes every current built-in, edited character
 default, custom card, token template, uploaded image, custom tribe name, and
@@ -76,11 +87,14 @@ potions and other card effects still apply. Immunity cannot be doubled and
 does not spend queued Amplify. Shops and random keyword grants can offer it.
 
 Random keywords: Card studio > Enchant > Generate random keywords. Choose 1-5
-per recipient, strength, and an optional custom pool. Flash is never in random
-pools. Fixed and random grants can be combined. "This card" lets a stone grant
+per recipient, strength, and an optional custom pool. Open Rules for generation
+details. Fixed and random grants can be combined. "This card" lets a stone grant
 itself keywords. Spells grant to hand or board cards with the same controls.
-Traps can grant fixed or random keywords when placed, when cards enter, or at
-turn start. Grants resolve after captures and Conjure and last this battle.
+Traps > Buff cards or grant keywords changes pips, adds Shield and/or grants
+fixed or random keywords to hand cards, board cards, or both. Use the hand-buff
+preset, then customize sides, amounts, keywords and matching filters.
+Trigger when placed, when cards enter, or at turn start. Grants resolve after
+captures and Conjure, last this battle, and stay on hand cards when played.
 Use effect matching and side pip conditions for conditional bonuses. The preset
 "stones gain +2 on zero-pip sides" leaves nonzero sides unchanged.
 Turn Start: choose controller/opponent/every turn and the effects to repeat.

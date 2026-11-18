@@ -1,4 +1,5 @@
 import { SUPERCHARGER_PORTRAITS } from "./superchargers.ts";
+import { availableCards } from "./deletedContent.ts";
 import type { Stone, Element } from "./game.ts";
 export interface CharacterPortrait {
   id: string;
@@ -6547,7 +6548,18 @@ export const CHARACTER_STONES: Stone[] = [
     origin: "skylanders",
     portrait: "snap-shot",
     keywords: [
-      {type:"trap",trap:{id:"trap-water",name:"Water Tiki",element:"water",description:"A Traptanium crystal sharing water power across the battlefield.",affects:{element:"water"},effects:[{kind:"defense",side:"all",amount:1}]}},
+      {
+        type: "trap",
+        trap: {
+          id: "trap-water",
+          name: "Water Tiki",
+          element: "water",
+          description:
+            "A Traptanium crystal sharing water power across the battlefield.",
+          affects: { element: "water" },
+          effects: [{ kind: "defense", side: "all", amount: 1 }],
+        },
+      },
       {
         type: "shield",
         side: 1,
@@ -8143,12 +8155,12 @@ export function characterForBudget(
 ): Stone {
   // A Skystones picture includes its own pip markings. Only use that identity
   // at its original printed budget; character portraits can take any budget.
-  const all = [
+  const all = availableCards([
     ...CHARACTER_STONES,
     ...ENEMY_STONES.filter(
       (stone) => stone.edges.reduce((a, b) => a + b, 0) === budget,
     ),
-  ].filter((stone) => !excluded.includes(characterIdentity(stone)));
+  ]).filter((stone) => !excluded.includes(characterIdentity(stone)));
   if (!all.length) throw new Error("No unused character is available.");
   const filtered = element
     ? all.filter((stone) => stone.element === element)
@@ -8226,11 +8238,13 @@ export function adventureCharacter(
   keywords?: boolean,
   definitions: Stone[] = ADVENTURE_CHARACTERS,
 ): Stone {
-  const available = definitions.filter(
+  const available = availableCards(definitions).filter(
     (stone) => !excluded.includes(characterIdentity(stone)),
   );
   if (!available.length)
-    throw new Error("No unused Adventure character is available.");
+    throw new Error(
+      "No unused Adventure character is available. Restore deleted cards in Collection.",
+    );
   // Prefer the requested strength before considering keyword density, so a
   // keyword preference cannot turn a later reward into a weaker character.
   const distance = Math.min(

@@ -1057,7 +1057,7 @@ export function partingGiftSummary(
     .join(" · ");
 }
 export function enchantText(keyword: EnchantKeyword): string {
-  return `On play, ${partingGiftSummary(keyword)}. Resolve after Conjure, affecting only matching cards present then. Change pips, add Shield, grant keywords, or combine them. These buffs last for this battle; hand cards keep them when played. Random keywords never include Flash. Hand recipients use granted keywords on their later plays or discards. Board Shield and conditional pip bonuses activate immediately for their controller; on-play effects are attached without replaying them or captures.`;
+  return `On play, ${partingGiftSummary(keyword)}. Resolve after Conjure, affecting matching cards present then. Buffs last for this battle and stay on hand cards when played.`;
 }
 export function discardText(keyword: DiscardKeyword): string {
   switch (keyword.type) {

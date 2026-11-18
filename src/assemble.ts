@@ -1,4 +1,5 @@
 import { playSource } from "./playSources.ts";
+import { availableCards } from "./deletedContent.ts";
 import { readRecipes, matchingRecipe, partIdentity } from "./recipes.ts";
 import type { SuperchargerRecipe } from "./recipes.ts";
 import { SUPERCHARGER_VEHICLES } from "./superchargers.ts";
@@ -124,7 +125,7 @@ export function combineParts(
         Math.min(99, n + second.edges[s]),
       ) as Edges,
       description:
-        "Built from two Parts. Flash keeps your turn. Cover with a stone to inherit pips and effects, except Flash.",
+        "Built from two Parts. Flash keeps your turn. Cover with a stone to gain its pips and bonuses.",
       custom: true,
       conjured: true,
       runtimeEffects: true,
@@ -179,7 +180,7 @@ export function assembleParts(
   const cell = playSource(board, index);
   if (!cell) return { board, hands, messages: [] };
   const owner = cell.playedBy ?? cell.owner,
-    pool = tokens.filter((c) => c.part),
+    pool = availableCards(tokens).filter((c) => c.part),
     next: [Stone[], Stone[]] = [[...hands[0]], [...hands[1]]],
     messages: string[] = [];
   let state = seed >>> 0 || 0x9e3779b9,

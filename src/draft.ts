@@ -1,4 +1,5 @@
-import { DEFAULT_TRAPS } from "./traps.ts";
+import { readTraps } from "./traps.ts";
+import { availableCards } from "./deletedContent.ts";
 import { characterDefault, readCharacterDefaults } from "./cardDefaults.ts";
 import type { CharacterDefaults } from "./cardDefaults.ts";
 import { defaultEnvironment } from "./effects.ts";
@@ -87,7 +88,14 @@ export function draftCards(
             candidates.push([n, e, s, w]);
         }
   const rotation = Math.floor(rng() * 4);
-  const identities = shuffle(CHARACTER_STONES, rng).slice(0, 25);
+  const identities = shuffle(availableCards(CHARACTER_STONES), rng).slice(
+    0,
+    25,
+  );
+  if (identities.length < 25)
+    throw new Error(
+      "Draft needs 25 available characters. Restore deleted cards in Collection.",
+    );
   const cards = shuffle(candidates, rng)
     .slice(0, 25)
     .map((base, index): Stone => {
@@ -267,12 +275,13 @@ export function draftCards(
       { type: "amplify", effect: "all", duration: "next", count: 1 },
     ];
   }
-  if (includeTraps)
+  const traps = readTraps();
+  if (includeTraps && traps.length)
     cards[23].keywords = [
       ...(cards[23].keywords || []),
       {
         type: "trap",
-        trap: structuredClone(DEFAULT_TRAPS[seed % DEFAULT_TRAPS.length]),
+        trap: structuredClone(traps[seed % traps.length]),
       },
     ];
   return cards.map((card) => characterDefault(card, defaults));

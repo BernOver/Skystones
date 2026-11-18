@@ -65,7 +65,12 @@ export function Draft({
     return () => window.removeEventListener("keydown", close);
   }, []);
   function start() {
-    setDraft(newDraft(size));
+    try {
+      setDraft(newDraft(size));
+    } catch (e) {
+      setError((e as Error).message);
+      return;
+    }
     setSelected([]);
     setRestart(false);
     setError("");
@@ -182,6 +187,7 @@ export function Draft({
           Start draft <Shuffle size={16} />
         </button>
         <small>Selections save automatically in this browser.</small>
+        {error && <p role="alert">{error}</p>}
       </section>
     );
   const quota = nominationCount(draft.size),

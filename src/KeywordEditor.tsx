@@ -1,4 +1,7 @@
 import { RandomKeywordFields } from "./RandomKeywordFields";
+import { RulesLink } from "./RulesGuide";
+import { availableCards } from "./deletedContent";
+import { keywordMatches } from "./keywordSearch";
 import { CardFilterFields } from "./CardFilterFields";
 import { readTraps, trapKeywordText } from "./traps";
 import { readUniques } from "./unique";
@@ -53,7 +56,19 @@ export function defaultKeyword(
       when: "self",
       keywords: [{ type: "next-play", side, amount: 1, recipient: "self" }],
     };
-  if (type === "trap") return { type, trap: structuredClone(readTraps()[0]) };
+  if (type === "trap")
+    return {
+      type,
+      trap: structuredClone(
+        readTraps()[0] || {
+          id: "trap-custom-unset",
+          name: "New crystal",
+          element: "magic",
+          description: "Choose or create a crystal in Collection.",
+          effects: [{ kind: "pips", side: "all", amount: 1 }],
+        },
+      ),
+    };
   if (type === "assemble") return { type, count: 2 };
   if (type === "flash") return { type };
   if (type === "environment-immunity") return { type };
@@ -100,7 +115,7 @@ export function defaultKeyword(
   if (type === "discard-priority") return { type, priority: 1 };
   return { type, side };
 }
-function BuffFields({
+export function BuffFields({
   spec,
   label,
   onChange,
@@ -209,19 +224,31 @@ function Fields({
     : label;
   const side =
     "side" in keyword && typeof keyword.side === "number" ? keyword.side : 0;
+  const [keywordQuery, setKeywordQuery] = useState("");
   return (
     <>
       <div>
+        <label className="keyword-search-field">
+          Search keywords
+          <input
+            type="search"
+            aria-label={`Search keywords · ${label}`}
+            placeholder="Find an ability…"
+            value={keywordQuery}
+            onChange={(event) => setKeywordQuery(event.target.value)}
+          />
+        </label>
         <label>
           {label}
           <select
             aria-label={label}
             value={keyword.type}
-            onChange={(e) =>
+            onChange={(e) => {
+              setKeywordQuery("");
               onChange(
                 defaultKeyword(e.target.value as KeywordType, side, element),
-              )
-            }
+              );
+            }}
           >
             {Object.entries(KEYWORD_RULES)
               .filter(
@@ -229,6 +256,11 @@ function Fields({
                   !allowedTypes || allowedTypes.includes(type as KeywordType),
               )
               .filter(([type]) => !spellOnly || SPELL_EFFECT_TYPES.has(type))
+              .filter(
+                ([type]) =>
+                  type === keyword.type ||
+                  keywordMatches(type as KeywordType, keywordQuery),
+              )
               .filter(([type]) => allowCombo || type !== "combo")
               .filter(
                 ([type]) =>
@@ -349,8 +381,7 @@ function Fields({
       )}
       {keyword.type === "flash" && (
         <p className="field-note">
-          This card can be played without ending your turn. A stone covering a
-          Supercharger inherits its other effects, but not Flash.
+          This card can be played without ending your turn.
         </p>
       )}
       {keyword.type === "environment-immunity" && (
@@ -906,7 +937,7 @@ function Fields({
                   onChange({ ...keyword, card: event.target.value })
                 }
               >
-                {[...CONJURE_CARDS]
+                {availableCards(CONJURE_CARDS)
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map((card) => (
                     <option key={card.portrait} value={card.portrait}>
@@ -2107,6 +2138,7 @@ export function KeywordEditor({
         printed 12-point budget. All on-play checks happen once. Captures never
         retrigger keywords.
       </p>
+      <RulesLink />
     </section>
   );
 }

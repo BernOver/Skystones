@@ -1,4 +1,5 @@
 import { BotControlPanel } from "./BotControl";
+import { RulesLink } from "./RulesGuide";
 import { TrapPanel } from "./Traps";
 import { canPlace } from "./game";
 import { isSwapForce } from "./swapForce";
@@ -412,7 +413,16 @@ function ExpeditionView({
     } catch {
       /* An old note never blocks a new run. */
     }
-    setRun(newAdventure(size, undefined, note));
+    try {
+      setRun(newAdventure(size, undefined, note));
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Restore deleted cards before starting an Adventure.",
+      );
+      return;
+    }
     setSetup(false);
     setSelected(null);
     setTarget(null);
@@ -492,6 +502,7 @@ function ExpeditionView({
           The run saves automatically in this browser. Its gold and cards belong
           to this adventure.
         </p>
+        {error && <p role="alert">{error}</p>}
       </section>
     );
   const encounter = adventureEncounter(run);
@@ -2023,6 +2034,7 @@ function ExpeditionView({
             · West {card.edges[3]}
           </p>
           <KeywordDetails stone={card} size={run.size} />
+          <RulesLink />
           <p className="field-note">{card.description}</p>
         </RunDialog>
       )}
@@ -2047,6 +2059,7 @@ function ExpeditionView({
           </div>
           <h2>{inspected.stone.name}</h2>
           <InspectionDetails inspection={inspected} />
+          <RulesLink />
         </RunDialog>
       )}
       {relicGuide && (

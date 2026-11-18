@@ -1,6 +1,6 @@
 import { KEYWORD_RULES, mergeKeywordGrants } from "./game.ts";
 import type { Element, KeywordType, Side, StoneKeyword } from "./game.ts";
-import { DEFAULT_TRAPS } from "./traps.ts";
+import { readTraps } from "./traps.ts";
 
 export interface RandomKeywordSpec {
   count: number;
@@ -42,9 +42,11 @@ export function keywordTemplate(
     case "environment-immunity":
       return { type };
     case "flash":
-      throw new Error("Flash cannot be randomly generated.");
+      throw new Error("That keyword is not available in this random pool.");
     case "trap":
-      return { type, trap: structuredClone(DEFAULT_TRAPS[0]) };
+      if (!readTraps().length)
+        throw new Error("Create or restore a Trap first.");
+      return { type, trap: structuredClone(readTraps()[0]) };
     case "assemble":
       return { type, count: Math.min(5, strength + 1) };
     case "amplify":
@@ -126,7 +128,7 @@ export function rollKeywords(
   element: Element = "magic",
 ): StoneKeyword[] {
   if (!validRandomKeywords(spec))
-    throw new Error("Choose a valid random keyword pool without Flash.");
+    throw new Error("Choose a valid random keyword pool.");
   let state = seed >>> 0 || 0x9e3779b9;
   const random = () => {
     state ^= state << 13;
@@ -134,8 +136,11 @@ export function rollKeywords(
     state ^= state << 5;
     return (state >>> 0) / 0x100000000;
   };
-  const pool = spec.pool || randomKeywordTypes(),
+  const pool = (spec.pool || randomKeywordTypes()).filter(
+      (type) => type !== "trap" || readTraps().length > 0,
+    ),
     result: StoneKeyword[] = [];
+  if (!pool.length) return result;
   for (
     let attempt = 0;
     result.length < spec.count && attempt < spec.count * 96;

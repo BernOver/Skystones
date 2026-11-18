@@ -4,6 +4,7 @@ import type { SuperchargerRecipe } from "./recipes.ts";
 import { readUniques, validUniqueKey, uniqueName } from "./unique.ts";
 import { combineParts } from "./assemble.ts";
 import { CHARACTER_STONES, ENEMY_STONES } from "./characters.ts";
+import { availableCards } from "./deletedContent.ts";
 import { hasTribe, validTribe, tribeName } from "./tribes.ts";
 import type { Tribe } from "./tribes.ts";
 import {
@@ -236,7 +237,7 @@ export function applyConjure(
                 ...getTokens().filter((c) => !c.part && !c.spell),
               ]
             : cards;
-    const pool = candidates.filter((card) =>
+    const pool = availableCards(candidates).filter((card) =>
       keyword.mode === "unique"
         ? card.unique === true && card.id === keyword.unique
         : keyword.mode === "specific"

@@ -1789,7 +1789,8 @@ function rollWorkshopOffer(
   );
   const pipSide = Math.floor(rng() * 4) as Side;
   const types = (Object.keys(KEYWORD_RULES) as KeywordType[]).filter(
-    (type) => !excluded.includes(type),
+    (type) =>
+      !excluded.includes(type) && (type !== "trap" || readTraps().length > 0),
   );
   const type = types[Math.floor(rng() * types.length)];
   const side = Math.floor(rng() * 4) as Side;

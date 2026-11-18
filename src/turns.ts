@@ -221,6 +221,10 @@ export function resolveTrapGrants(
               target: location === "board" ? "allies" : "hand",
               mode: "all",
               filter: { ids },
+              ...(e.pips?.length ? { pips: structuredClone(e.pips) } : {}),
+              ...(e.shields?.length
+                ? { shields: structuredClone(e.shields) }
+                : {}),
               ...(e.keywords?.length
                 ? { keywords: structuredClone(e.keywords) }
                 : {}),

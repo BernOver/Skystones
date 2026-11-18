@@ -1,9 +1,11 @@
 import { CardFilterFields, PipTestFields } from "./CardFilterFields";
 import { RandomKeywordFields } from "./RandomKeywordFields";
-import { GrantKeywordFields } from "./KeywordEditor";
+import { RulesLink } from "./RulesGuide";
+import { GrantKeywordFields, BuffFields } from "./KeywordEditor";
 import { trapImageLayout } from "./imageLayout";
 import { ImageLayoutControls } from "./ImageLayoutControls";
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
+import { DELETED_CONTENT_STORAGE, deleteDefault } from "./deletedContent";
 import type { Board, Element, Owner, Side } from "./game";
 import { ELEMENTS } from "./game";
 import { pendingAmplify } from "./amplify";
@@ -125,7 +127,20 @@ export function TrapCollection() {
   const [cards, setCards] = useState(readTraps),
     [draft, setDraft] = useState<Trap | null>(null),
     [error, setError] = useState(""),
-    [pictureBusy, setPictureBusy] = useState(false);
+    [pictureBusy, setPictureBusy] = useState(false),
+    [deleting, setDeleting] = useState<Trap | null>(null);
+  useEffect(() => {
+    const refresh = () => setCards(readTraps());
+    const storage = (event: StorageEvent) => {
+      if (event.key === DELETED_CONTENT_STORAGE) refresh();
+    };
+    window.addEventListener(DELETED_CONTENT_STORAGE, refresh);
+    window.addEventListener("storage", storage);
+    return () => {
+      window.removeEventListener(DELETED_CONTENT_STORAGE, refresh);
+      window.removeEventListener("storage", storage);
+    };
+  }, []);
   return (
     <section className="trap-collection">
       <p>
@@ -163,6 +178,7 @@ export function TrapCollection() {
           }}
         >
           <h2>Create or edit a Trap</h2>
+          <RulesLink topic="traps-and-doubling" />
           <div className="trap-picture-editor">
             <TrapCrystal trap={draft} />
             <div>
@@ -477,9 +493,52 @@ export function TrapCollection() {
                 ? "Customize a copy"
                 : "Edit Trap"}
             </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setDeleting(trap)}
+            >
+              Delete {trap.name}
+            </button>
           </article>
         ))}
       </div>
+      {deleting && (
+        <div
+          className="trap-delete-confirm"
+          role="group"
+          aria-label={`Delete ${deleting.name}`}
+        >
+          <p>
+            Delete {deleting.name} from your Trap collection? Existing stones
+            and active games keep their chosen crystal. Restore it in Deleted
+            content.
+          </p>
+          <button
+            type="button"
+            className="button button-danger"
+            onClick={() => {
+              try {
+                deleteDefault("trap", deleting.id, deleting.name);
+                setDeleting(null);
+                setError("");
+              } catch {
+                setError("Your browser could not save this deletion.");
+              }
+            }}
+          >
+            Confirm delete Trap
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setDeleting(null)}
+          >
+            Keep Trap
+          </button>
+        </div>
+      )}
+      {!draft && error && <p role="alert">{error}</p>}
     </section>
   );
 }
@@ -523,6 +582,25 @@ function TrapEffectFields({
       </label>
       {effect.kind === "grant" && (
         <>
+          <button
+            type="button"
+            className="button button-outline"
+            onClick={() =>
+              onChange({
+                ...effect,
+                target: "hand",
+                pips: ([0, 1, 2, 3] as const).map((side) => ({
+                  side,
+                  amount: 1,
+                })),
+                shields: undefined,
+                keywords: undefined,
+                randomKeywords: undefined,
+              })
+            }
+          >
+            Preset: +1 pip per side to hand cards
+          </button>
           <label>
             Recipients
             <select
@@ -579,6 +657,12 @@ function TrapEffectFields({
               </select>
             </label>
           )}
+          <BuffFields
+            spec={effect}
+            label={`Trap grant ${number}`}
+            signed
+            onChange={(buff) => onChange({ ...effect, ...buff })}
+          />
           <GrantKeywordFields
             label={`Trap grant ${number}`}
             depth={0}
@@ -588,10 +672,17 @@ function TrapEffectFields({
               target: effect.target === "hand" ? "hands" : "board",
               keywords: effect.keywords,
               randomKeywords: effect.randomKeywords,
+              pips: effect.pips,
+              shields: effect.shields,
             }}
             onChange={(keyword) =>
               keyword.type === "enchant" &&
-              onChange({ ...effect, keywords: keyword.keywords })
+              onChange({
+                ...effect,
+                keywords: keyword.keywords,
+                pips: keyword.pips,
+                shields: keyword.shields,
+              })
             }
           />
           <RandomKeywordFields
@@ -601,10 +692,7 @@ function TrapEffectFields({
               onChange({ ...effect, randomKeywords })
             }
           />
-          <small>
-            Grants last for this battle even if this Trap is replaced. Flash is
-            excluded from random grants.
-          </small>
+          <small>Grants last for this battle.</small>
         </>
       )}
       {"side" in effect && (

@@ -5,6 +5,9 @@ import {
   comparePips,
   filterText,
 } from "./cardFilters.ts";
+import { contentDeleted } from "./deletedContent.ts";
+import { validBuffSpec, buffText } from "./discard.ts";
+import type { BuffSpec } from "./discard.ts";
 import type { CardFilter, PipTest } from "./cardFilters.ts";
 import { validateKeywords } from "./game.ts";
 import type { StoneKeyword } from "./game.ts";
@@ -43,7 +46,7 @@ export type TrapGrantEffect = {
   recipients?: "active" | "both";
   keywords?: StoneKeyword[];
   randomKeywords?: RandomKeywordSpec;
-};
+} & BuffSpec;
 export type TrapEffect = (
   | TrapGrantEffect
   | TrapPipEffect
@@ -127,9 +130,9 @@ export const TRAP_EFFECTS: Record<
   { name: string; description: string }
 > = {
   grant: {
-    name: "Grant keywords",
+    name: "Buff cards or grant keywords",
     description:
-      "Grant fixed or random keywords to matching hand or board cards when this Trap is placed, cards enter, or a turn starts. Grants last for this battle.",
+      "Change pips, add Shield or grant keywords to matching hand or board cards when this Trap is placed, cards enter, or a turn starts. Grants last for this battle.",
   },
   pips: {
     name: "Ordinary pips",
@@ -146,12 +149,12 @@ export const TRAP_EFFECTS: Record<
   amplify: {
     name: "Double a keyword or effect",
     description:
-      "Double a chosen keyword when it triggers, or a live battlefield effect. All keyword effects excludes Amplify, Flash, and Trap itself.",
+      "Double a chosen keyword when it triggers, or a live battlefield effect.",
   },
   nullify: {
     name: "Nullify a keyword or effect",
     description:
-      "Prevent a chosen keyword from triggering, or disable a live battlefield effect. Nullify overrides doubling. Trap placement stays available so a new crystal can replace this one.",
+      "Prevent a chosen keyword from triggering, or disable a live battlefield effect.",
   },
   multiply: {
     name: "Double pips",
@@ -382,7 +385,7 @@ function validTrapEffect(
       ["placed", "enter", "turn-start"].includes(e.timing) &&
       (e.recipients === undefined ||
         ["active", "both"].includes(e.recipients)) &&
-      !!(e.keywords?.length || e.randomKeywords) &&
+      validBuffSpec(e, true, !!(e.keywords?.length || e.randomKeywords)) &&
       (e.keywords === undefined ||
         (e.keywords.length <= 5 &&
           validateKeywords(e.keywords, depth + 1, runtime))) &&
@@ -650,8 +653,16 @@ export function trapEffectText(e: TrapEffect): string {
   const { condition, sideCondition, ...plain } = e;
   if (condition || sideCondition)
     return `${trapEffectText(plain as TrapEffect)}${condition ? `; only ${filterText(condition)}` : ""}${sideCondition ? `; only sides ${sideCondition.compare === "eq" ? "=" : sideCondition.compare === "lte" ? "≤" : "≥"} ${sideCondition.value} ordinary pips before Trap changes` : ""}`;
-  if (e.kind === "grant")
-    return `Grant ${e.keywords?.map((k) => k.type).join(", ") || ""}${e.randomKeywords ? `${e.keywords?.length ? " and " : ""}${e.randomKeywords.count} random keyword(s), never Flash` : ""} to ${e.target} cards ${e.timing === "placed" ? "when placed" : e.timing === "enter" ? "when cards enter" : "at the beginning of each turn"}${e.recipients === "active" && e.timing === "turn-start" ? ", current player only" : ", both players"}; grants last this battle`;
+  if (e.kind === "grant") {
+    const changes = [
+      buffText(e),
+      e.keywords?.map((k) => k.type).join(", "),
+      e.randomKeywords ? `${e.randomKeywords.count} random keyword(s)` : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
+    return `Grant ${changes} to ${e.target} cards ${e.timing === "placed" ? "when placed" : e.timing === "enter" ? "when cards enter" : "at the beginning of each turn"}${e.recipients === "active" && e.timing === "turn-start" ? ", current player only" : ", both players"}; grants last this battle`;
+  }
   const sides = "side" in e ? trapEffectSides(e) : [];
   const where =
     sides.length === 4
@@ -661,9 +672,9 @@ export function trapEffectText(e: TrapEffect): string {
     return `${e.amount > 0 ? "+" : ""}${e.amount} ${e.kind === "pips" ? "pip" : e.kind + " pip"}${Math.abs(e.amount) === 1 ? "" : "s"} ${where}`;
   switch (e.kind) {
     case "amplify":
-      return `double ${e.effect === "all" ? "all eligible keyword effects (excluding Amplify, Flash, and Trap)" : trapTargetName(e.effect).toLowerCase()}${TRAP_BOARD_TARGETS.includes(e.effect as TrapBoardTarget) ? " while active" : " when they trigger"}`;
+      return `double ${e.effect === "all" ? "all keyword effects" : trapTargetName(e.effect).toLowerCase()}${TRAP_BOARD_TARGETS.includes(e.effect as TrapBoardTarget) ? " while active" : " when they trigger"}`;
     case "nullify":
-      return `nullify ${e.effect === "all" ? "all keywords except Trap placement" : trapTargetName(e.effect).toLowerCase()}${TRAP_BOARD_TARGETS.includes(e.effect as TrapBoardTarget) ? " while active" : " when they trigger"}`;
+      return `nullify ${e.effect === "all" ? "all keywords" : trapTargetName(e.effect).toLowerCase()}${TRAP_BOARD_TARGETS.includes(e.effect as TrapBoardTarget) ? " while active" : " when they trigger"}`;
     case "multiply":
       return `double ordinary pips ${where}`;
     case "mirror":
@@ -686,7 +697,7 @@ export function trapText(trap: Trap): string {
   return `${trap.affects?.exclude ? "All except " : ""}${who || "All"} cards, both players: ${trap.effects.map(trapEffectText).join("; ")}.`;
 }
 const STORAGE = "skystones-traps-v1";
-export function readTraps(): Trap[] {
+export function readTraps(includeDeleted = false): Trap[] {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE) || "[]");
     return [
@@ -694,14 +705,16 @@ export function readTraps(): Trap[] {
       ...(Array.isArray(saved)
         ? saved.filter((t): t is Trap => validTrap(t))
         : []),
-    ];
+    ].filter((trap) => includeDeleted || !contentDeleted("trap", trap.id));
   } catch {
-    return DEFAULT_TRAPS;
+    return DEFAULT_TRAPS.filter(
+      (trap) => includeDeleted || !contentDeleted("trap", trap.id),
+    );
   }
 }
 export function saveTrap(trap: Trap) {
   if (!validTrap(trap)) throw new Error("Check the Trap’s name and effects.");
-  const custom = readTraps().filter(
+  const custom = readTraps(true).filter(
     (t) => !DEFAULT_TRAPS.some((d) => d.id === t.id) && t.id !== trap.id,
   );
   localStorage.setItem(STORAGE, JSON.stringify([...custom, trap]));

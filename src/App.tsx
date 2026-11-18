@@ -1,6 +1,14 @@
 import { advanceTurn, postPlayTrapGrants } from "./turns";
 import type { TurnState } from "./turns";
 import { BotControlPanel } from "./BotControl";
+import { RulesLink } from "./RulesGuide";
+import { DeletedDefaults } from "./DeletedDefaults";
+import { keywordSearchText, keywordTypes } from "./keywordSearch";
+import {
+  availableCards,
+  deleteDefault,
+  DELETED_CONTENT_STORAGE,
+} from "./deletedContent";
 import { DEFAULT_SPELLS } from "./spellCards.ts";
 import { ImageLayoutControls } from "./ImageLayoutControls";
 import {
@@ -211,6 +219,14 @@ interface Match {
   lastPlaced: number;
 }
 const STORAGE_KEY = "skystones-library-v1";
+const isDefaultCard = (id: string) =>
+  [
+    ...CHARACTER_STONES,
+    ...GIANTS_STONES,
+    ...DEFAULT_TOKENS,
+    ...DEFAULT_PARTS,
+    ...DEFAULT_SPELLS,
+  ].some((card) => card.id === id);
 const freshDraft = (): Stone => ({
   id: "custom-draft",
   name: "",
@@ -240,7 +256,7 @@ function readLibrary(): Library {
         .filter((card: Stone) => !card.token || tokenDefinition(card))
         .map((s: Stone) => ({ ...s, custom: true }));
       const ids = new Set(
-        [...CHARACTER_STONES, ...GIANTS_STONES, ...custom]
+        availableCards([...CHARACTER_STONES, ...GIANTS_STONES, ...custom])
           .filter(deckEligible)
           .map((s) => s.id),
       );
@@ -259,7 +275,11 @@ function readLibrary(): Library {
     custom: [],
     ...restoreDecks(
       null,
-      new Set([...CHARACTER_STONES, ...GIANTS_STONES].map((card) => card.id)),
+      new Set(
+        availableCards([...CHARACTER_STONES, ...GIANTS_STONES]).map(
+          (card) => card.id,
+        ),
+      ),
     ),
     sound: false,
     boardSkin: "giants",
@@ -272,23 +292,37 @@ function createMatch(
   mode: Mode = "computer",
   first: Owner = 0,
 ): Match {
-  const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
+  const collection = availableCards([...CHARACTER_STONES, ...GIANTS_STONES])
     .map((card) => characterDefault(card))
-    .concat(library.custom.filter(deckEligible));
+    .concat(availableCards(library.custom).filter(deckEligible));
   // A half-edited saved deck must not strand the initial practice match.
   const count = handSize(library.boardSize);
   const deck =
     library.deck.length === count &&
     library.deck.every((id) => collection.some((card) => card.id === id))
       ? library.deck
-      : STARTER_STONES.slice(0, count).map((s) => s.id);
+      : [
+          ...availableCards(STARTER_STONES),
+          ...collection.filter(
+            (card) => !STARTER_STONES.some((s) => s.id === card.id),
+          ),
+        ]
+          .slice(0, count)
+          .map((s) => s.id);
   const human = deck
     .map((id) => collection.find((s) => s.id === id))
     .filter((s): s is Stone => !!s);
-  const pool =
+  const pool = availableCards(
     library.boardSize === 4
       ? [...STARTER_STONES.slice(5), ...STARTER_STONES.slice(0, 5)]
-      : [...STARTER_STONES.slice(5)];
+      : [...STARTER_STONES.slice(5)],
+  );
+  if (pool.length < count)
+    pool.push(
+      ...collection
+        .filter((card) => !pool.some((c) => c.id === card.id))
+        .slice(0, count - pool.length),
+    );
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -547,6 +581,9 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [elementFilter, setElementFilter] = useState("all");
   const [tribeFilter, setTribeFilter] = useState<Tribe | "">("");
+  const [keywordFilter, setKeywordFilter] = useState<
+    import("./game").KeywordType | ""
+  >("");
   const [onlyCustom, setOnlyCustom] = useState(false);
   const [onlyGiants, setOnlyGiants] = useState(false);
   const [onlyTokens, setOnlyTokens] = useState(false);
@@ -566,13 +603,26 @@ export default function App() {
   const audioRef = useRef<AudioContext | null>(null);
   const lastSound = useRef("");
   const tokens = tokenCatalogue(library.custom);
-  const collection = [...CHARACTER_STONES, ...GIANTS_STONES]
+  const collection = availableCards([...CHARACTER_STONES, ...GIANTS_STONES])
     .map((card) => characterDefault(card, characterDefaults))
-    .concat(library.custom.filter(deckEligible), tokens);
+    .concat(availableCards(library.custom).filter(deckEligible), tokens);
   const uniques = uniqueCatalogue(
     library.custom,
     CONJURE_CARDS.map((c) => characterDefault(c, characterDefaults)),
   );
+  useEffect(() => {
+    const refresh = () =>
+      saveLibrary({ ...library, custom: [...library.custom] });
+    const storage = (event: StorageEvent) => {
+      if (event.key === DELETED_CONTENT_STORAGE) setLibrary(readLibrary());
+    };
+    window.addEventListener(DELETED_CONTENT_STORAGE, refresh);
+    window.addEventListener("storage", storage);
+    return () => {
+      window.removeEventListener(DELETED_CONTENT_STORAGE, refresh);
+      window.removeEventListener("storage", storage);
+    };
+  }, [library]);
   const filled = match.board.filter((c) => !!c && !c.stone.supercharger).length;
   const activeTrap = match.traps?.active?.trap;
   const scores = score(match.board);
@@ -604,7 +654,11 @@ export default function App() {
       (!onlyGiants || onlyCustom || s.origin === "giants") &&
       (elementFilter === "all" || s.element === elementFilter) &&
       (!tribeFilter || hasTribe(s, tribeFilter)) &&
-      s.name.toLowerCase().includes(query.toLowerCase()),
+      (!keywordFilter || keywordTypes(s.keywords).includes(keywordFilter)) &&
+      `${s.name} ${keywordSearchText(s.keywords)}`
+        .toLowerCase()
+        .replaceAll("-", " ")
+        .includes(query.trim().toLowerCase().replaceAll("-", " ")),
   );
   const totalPoints = draft.edges.reduce((a, b) => a + b, 0);
   const draftBudget = draft.origin === "giants" ? 16 : 12;
@@ -714,7 +768,7 @@ export default function App() {
   function saveLibrary(next: Library): boolean {
     try {
       const allowed = new Set(
-        [...CHARACTER_STONES, ...GIANTS_STONES, ...next.custom]
+        availableCards([...CHARACTER_STONES, ...GIANTS_STONES, ...next.custom])
           .filter(deckEligible)
           .map((card) => card.id),
       );
@@ -1468,6 +1522,7 @@ export default function App() {
               {library.sound ? <Volume2 size={19} /> : <VolumeX size={19} />}
             </button>
             <span className="header-divider" />
+            <RulesLink label="Rules" className="rules-button" />
             <button
               className="rules-button"
               aria-label="How to play"
@@ -2235,6 +2290,7 @@ export default function App() {
               </button>
             </section>
 
+            <DeletedDefaults />
             <div className="collection-toolbar">
               <div className="collection-tabs">
                 <button
@@ -2340,7 +2396,7 @@ export default function App() {
                   <Search size={16} />
                   <input
                     aria-label="Search stones"
-                    placeholder="Find a little friend…"
+                    placeholder="Search names or keywords…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
@@ -2367,6 +2423,25 @@ export default function App() {
                     onChange={setTribeFilter}
                     empty="All tribes"
                   />
+                </div>
+                <div className="filter-select">
+                  <select
+                    aria-label="Filter by keyword"
+                    value={keywordFilter}
+                    onChange={(event) =>
+                      setKeywordFilter(
+                        event.target.value as typeof keywordFilter,
+                      )
+                    }
+                  >
+                    <option value="">All keywords</option>
+                    {Object.entries(KEYWORD_RULES).map(([type, rule]) => (
+                      <option key={type} value={type}>
+                        {rule.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} />
                 </div>
               </div>
             </div>
@@ -3108,6 +3183,7 @@ export default function App() {
           <div className="eyebrow">A CLOSER LOOK</div>
           <h2>{dialog.inspection.stone.name}</h2>
           <InspectionDetails inspection={dialog.inspection} />
+          <RulesLink />
           <button
             className="button button-dark full-width"
             onClick={() => setDialog(null)}
@@ -3148,6 +3224,7 @@ export default function App() {
             <Swords size={30} strokeWidth={1.3} />
           </span>
           <div className="eyebrow">WELCOME TO THE TABLE</div>
+          <RulesLink />
           <p>
             <strong>Spells:</strong> generate them with Conjure → Specified
             token or spell, or Random → Spells only. Click a castable spell in
@@ -3644,6 +3721,7 @@ export default function App() {
             ))}
           </div>
           <KeywordDetails stone={dialog.stone} />
+          <RulesLink />
           <div className="detail-actions">
             {deckEligible(dialog.stone) && (
               <button
@@ -3742,20 +3820,17 @@ export default function App() {
               <ImagePlus size={14} />
               {downloadBusy ? "Preparing…" : "Save image"}
             </button>
-            {dialog.stone.custom &&
-              ![...DEFAULT_TOKENS, ...DEFAULT_PARTS, ...DEFAULT_SPELLS].some(
-                (token) => token.id === dialog.stone.id,
-              ) && (
-                <button
-                  className="icon-button delete-card-button"
-                  aria-label={`Delete ${dialog.stone.name}`}
-                  onClick={() =>
-                    setDialog({ kind: "delete", stone: dialog.stone })
-                  }
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
+            {
+              <button
+                className="icon-button delete-card-button"
+                aria-label={`Delete ${dialog.stone.name}`}
+                onClick={() =>
+                  setDialog({ kind: "delete", stone: dialog.stone })
+                }
+              >
+                <Trash2 size={16} />
+              </button>
+            }
           </div>
         </Dialog>
       )}
@@ -3784,7 +3859,11 @@ export default function App() {
       )}
       {dialog?.kind === "delete" && (
         <Dialog
-          title="Delete custom stone"
+          title={
+            isDefaultCard(dialog.stone.id)
+              ? "Delete default card"
+              : "Delete custom stone"
+          }
           onClose={() => setDialog(null)}
           className="delete-dialog"
         >
@@ -3794,8 +3873,10 @@ export default function App() {
           <h2>Say a little goodbye?</h2>
           <p className="dialog-intro">
             {dialog.stone.name} will be removed from your collection and all
-            saved decks. Your current match will keep its stones. Export a card
-            file first if you’d like a backup.
+            saved decks. Existing games keep their copies.{" "}
+            {isDefaultCard(dialog.stone.id)
+              ? "You can restore this default in Collection → Deleted content. It will not appear in new card generation while deleted."
+              : "Export a card file first if you’d like a backup."}
           </p>
           <div className="detail-actions">
             <button
@@ -3808,6 +3889,24 @@ export default function App() {
               className="button button-danger"
               onClick={() => {
                 const id = dialog.stone.id;
+                if (isDefaultCard(id)) {
+                  try {
+                    deleteDefault("card", id, dialog.stone.name);
+                    setDialog(null);
+                    if (editingId === id) {
+                      setEditingId(null);
+                      setDraft(freshDraft());
+                    }
+                    setToast(
+                      "Default card deleted. Restore it in Collection → Deleted content.",
+                    );
+                  } catch {
+                    setToast(
+                      "Your browser could not save this deletion. Check storage availability.",
+                    );
+                  }
+                  return;
+                }
                 if (
                   saveLibrary({
                     ...library,
@@ -3825,7 +3924,7 @@ export default function App() {
               }}
             >
               <Trash2 size={15} />
-              Delete stone
+              {isDefaultCard(dialog.stone.id) ? "Delete card" : "Delete stone"}
             </button>
           </div>
         </Dialog>

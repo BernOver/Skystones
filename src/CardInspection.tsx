@@ -255,7 +255,7 @@ export function KeywordDetails({
                       : k.type === "amplify"
                         ? amplifyText(k)
                         : k.type === "assemble"
-                          ? `Generate ${k.count} ${k.mode === "specific" ? `copies of ${readTokens().find((c) => c.id === k.part)?.name || "the specified Part"}` : "random Parts tokens"}. Two Parts in hand immediately combine into a Supercharger with both Parts’ pips and effects plus Flash. Any player can cover it to inherit its pips and other effects, which trigger again. Flash is not inherited.`
+                          ? `Generate ${k.count} ${k.mode === "specific" ? `copies of ${readTokens().find((c) => c.id === k.part)?.name || "the specified Part"}` : "random Parts tokens"}. Two Parts in hand combine into a Supercharger with both Parts’ pips and effects plus Flash. Any player can cover it to gain its pips and bonuses.`
                           : "Play this card without ending your turn. A temporary Supercharger must be covered by a stone before the board is complete."}
                   </p>
                 ))}
@@ -754,8 +754,7 @@ export function KeywordDetails({
                   Mirror Pool and Equalizer. This works before captures and
                   stays with the card when moved or captured. Silence or a Trap
                   nullifying this keyword disables it. Tile effects remain for
-                  other cards. Traps, the elemental arena and other card effects
-                  still apply. Doubling does not strengthen immunity.
+                  other cards.
                 </p>
               </section>
             );
@@ -1248,8 +1247,8 @@ export function InspectionDetails({ inspection }: { inspection: Inspection }) {
       )}
       {stone.supercharger && (
         <p className="inspection-note">
-          Supercharger · {stone.supercharger.parts.join(" + ")}. Cover to
-          inherit its pips and effects, except Flash.
+          Supercharger · {stone.supercharger.parts.join(" + ")}. Cover to gain
+          its pips and bonuses.
         </p>
       )}
       {inspection.trap && (

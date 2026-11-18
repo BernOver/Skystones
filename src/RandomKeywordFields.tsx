@@ -2,6 +2,7 @@ import { KEYWORD_RULES } from "./game";
 import type { KeywordType } from "./game";
 import { randomKeywordTypes } from "./randomKeywords";
 import type { RandomKeywordSpec } from "./randomKeywords";
+import { RulesLink } from "./RulesGuide";
 export function RandomKeywordFields({
   value,
   onChange,
@@ -99,10 +100,10 @@ export function RandomKeywordFields({
             </div>
           )}
           <small>
-            Flash is never in a random pool. Each recipient rolls independently,
-            duplicate unique assignments are avoided, and the card’s keyword
-            limit still applies. Rolls are fixed when granted and survive saves.
+            Each recipient gains randomly generated keywords when the grant
+            resolves.
           </small>
+          <RulesLink topic="random-keywords" />
         </>
       )}
     </fieldset>

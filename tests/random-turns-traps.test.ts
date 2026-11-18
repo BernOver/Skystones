@@ -72,7 +72,10 @@ test("random generation validates pools, never generates Flash, and reaches ever
     validRandomKeywords({ count: 1, pool: ["shield", "shield"] }),
     false,
   );
-  assert.throws(() => rollKeywords({ count: 1, pool: ["flash"] }, 1), /Flash/);
+  assert.throws(
+    () => rollKeywords({ count: 1, pool: ["flash"] }, 1),
+    /valid random keyword pool/,
+  );
   const seen = new Set<string>();
   for (let n = 0; n < 1500; n++) {
     const seed = keywordSeed(`sample-${n}`),

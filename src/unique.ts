@@ -1,4 +1,5 @@
 import { validateStone } from "./game.ts";
+import { availableCards } from "./deletedContent.ts";
 import type { Stone } from "./game.ts";
 import { CONJURE_CARDS } from "./conjure.ts";
 import { characterDefault } from "./cardDefaults.ts";
@@ -25,13 +26,13 @@ export function uniqueCatalogue(
   characters: readonly Stone[] = [],
 ) {
   return [
-    ...characters
+    ...availableCards(characters)
       .filter((c) => c.unique && !c.token)
       .map((c) => ({
         ...c,
         id: `custom-unique-default-${c.characterKey || c.portrait}`,
       })),
-    ...custom.filter(uniqueDefinition),
+    ...availableCards(custom).filter(uniqueDefinition),
   ];
 }
 export function readUniques(): Stone[] {
